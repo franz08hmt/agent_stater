@@ -1,0 +1,17 @@
+{
+  "name": "ai-agent-starter",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Minimal, explainable LLM agent starter: goal -> model chooses a tool -> backend validates and executes -> loop until a stop condition.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test tests/*.test.js",
+    "eval": "node eval/run-eval.js",
+    "eval:live": "node eval/run-eval.js --live",
+    "smoke:live": "node scripts/smoke-live.js"
+  }
+}

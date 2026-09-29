@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Agent Starter</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="top">
+    <h1>AI Agent Starter</h1>
+    <p id="model-badge" class="badge" aria-live="polite">Đang kiểm tra model…</p>
+  </header>
+
+  <main>
+    <section class="panel" aria-labelledby="goal-title">
+      <h2 id="goal-title">Mục tiêu</h2>
+      <form id="goal-form">
+        <label for="goal">Nhập mục tiêu cho agent</label>
+        <textarea id="goal" name="goal" rows="3" maxlength="500" required
+          placeholder="Ví dụ: 401 và 403 khác nhau thế nào?"></textarea>
+        <p class="hint"><span id="goal-count">0</span>/500 ký tự</p>
+        <fieldset class="samples">
+          <legend>Mục tiêu mẫu</legend>
+          <button type="button" data-goal="401 và 403 khác nhau thế nào?">Tra cứu 1 tài liệu</button>
+          <button type="button" data-goal="Tổng tỉ trọng điểm giữa kỳ và đồ án cuối kỳ là bao nhiêu phần trăm?">Ghép 2 tài liệu</button>
+          <button type="button" data-goal="Phòng thi giữa kỳ ở đâu?">Không có đáp án</button>
+          <button type="button" data-goal="Tóm tắt về idempotency và lưu bản nháp">Tóm tắt + lưu nháp</button>
+          <button type="button" data-goal="Tổng hợp mẹo ôn tập từ ghi chú chép diễn đàn">Tài liệu chứa injection</button>
+        </fieldset>
+        <p class="actions">
+          <button type="submit" id="start" class="primary">Bắt đầu</button>
+          <button type="button" id="stop" class="secondary" hidden>Dừng run</button>
+          <button type="button" id="new-run" class="secondary" hidden>Run mới</button>
+        </p>
+        <p id="form-error" class="error" role="alert" hidden></p>
+      </form>
+    </section>
+
+    <section class="panel" id="run-panel" aria-labelledby="run-title" hidden>
+      <h2 id="run-title">Run</h2>
+      <dl class="run-meta">
+        <div><dt>Trạng thái</dt><dd><span id="status" class="status"></span></dd></div>
+        <div><dt>Run ID</dt><dd><code id="run-id"></code></dd></div>
+        <div><dt>Tool calls</dt><dd id="steps"></dd></div>
+        <div><dt>Thời gian thực thi</dt><dd id="elapsed"></dd></div>
+      </dl>
+
+      <section id="approval" class="approval" aria-labelledby="approval-title" hidden>
+        <h3 id="approval-title">Cần phê duyệt thao tác ghi</h3>
+        <p>Agent đề xuất gọi <code id="approval-tool"></code> với đúng các tham số dưới đây. Phê duyệt chỉ áp dụng cho bộ tham số này.</p>
+        <pre id="approval-args"></pre>
+        <p class="hint">args_hash: <code id="approval-hash"></code></p>
+        <p class="actions">
+          <button type="button" id="approve" class="primary">Phê duyệt</button>
+          <button type="button" id="reject" class="danger">Từ chối</button>
+        </p>
+      </section>
+
+      <section id="result" aria-labelledby="result-title" hidden>
+        <h3 id="result-title">Kết quả</h3>
+        <p id="answer" class="answer"></p>
+        <p id="unresolved" class="unresolved" hidden></p>
+        <h4>Nguồn</h4>
+        <ul id="sources"></ul>
+      </section>
+
+      <p id="failure" class="error" role="alert" hidden></p>
+
+      <h3>Nhật ký thực thi</h3>
+      <div class="table-wrap">
+        <table>
+          <caption class="sr-only">Các bước của run: quyết định của model, tool call, phê duyệt</caption>
+          <thead><tr><th scope="col">Step</th><th scope="col">Loại</th><th scope="col">Tool</th><th scope="col">Arguments</th><th scope="col">Trạng thái</th><th scope="col">ms</th><th scope="col">Kết quả</th></tr></thead>
+          <tbody id="trace"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="drafts-title">
+      <h2 id="drafts-title">Bản nháp đã lưu</h2>
+      <ul id="drafts"><li class="hint">Chưa có bản nháp.</li></ul>
+    </section>
+  </main>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

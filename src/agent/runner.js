@@ -1,0 +1,356 @@
+// The agent loop:
+//   observe state -> ask the model for ONE action -> backend validates it
+//   -> execute (or park it for approval) -> record the observation -> check stop conditions -> repeat.
+// The model chooses WHAT to do next. This file decides WHETHER it may, and WHEN the run ends.
+
+import { randomUUID } from 'node:crypto';
+import { buildSystemPrompt, REPAIR_MESSAGE } from '../../config/prompts.js';
+import { parseDecision, checkGrounding } from './decision.js';
+import { STATUS, transition, createRun, argsHash, callSignature, publicView } from './state.js';
+import { redact } from './redact.js';
+
+export class AgentError extends Error {
+  constructor(code, message, httpStatus = 400) {
+    super(message);
+    this.code = code;
+    this.httpStatus = httpStatus;
+  }
+}
+
+function withTimeout(promise, ms, label) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(Object.assign(new Error(`${label} exceeded ${ms} ms`), { code: 'TIMEOUT' })), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+function summarize(toolName, status, result, error) {
+  if (status !== 'ok') return error || status;
+  if (Array.isArray(result?.results)) {
+    return result.count === 0 ? '0 results' : `${result.count} result(s): ${result.results.map((r) => `${r.source_id}§${r.passage}`).join(', ')}`;
+  }
+  if (result?.draft_id) return `draft ${result.draft_id} ${result.created ? 'created' : 'already existed — no duplicate written'}`;
+  return `${toolName} ok`;
+}
+
+/** Keep every observation valid JSON while forcing it under the size limit. */
+function fitObservation(obs, max) {
+  let text = JSON.stringify(obs);
+  const results = obs.untrusted_data?.results;
+  if (text.length > max && Array.isArray(results) && results.length) {
+    const per = Math.max(80, Math.floor((max - 500) / results.length));
+    obs = { ...obs, untrusted_data: { ...obs.untrusted_data, results: results.map((r) => ({ ...r, text: r.text.length > per ? `${r.text.slice(0, per)}…` : r.text })) } };
+    text = JSON.stringify(obs);
+  }
+  if (text.length > max) text = JSON.stringify({ tool: obs.tool, status: obs.status, note: 'result too long; truncated', preview: text.slice(0, max - 200) });
+  return text;
+}
+
+export function createAgentRunner({ model, registry, retriever, store, limits, modelTimeoutMs }) {
+  const runs = new Map();
+  const locks = new Map();       // run_id -> tail of that run's work queue
+  const segments = new Map();    // run_id -> start time of the current active segment
+  const controllers = new Map(); // run_id -> AbortController for the in-flight model call
+
+  /** Serialize all work on one run, so a double-clicked approval can never race. */
+  function withLock(runId, fn) {
+    const next = (locks.get(runId) || Promise.resolve()).then(fn);
+    locks.set(runId, next.catch(() => {}));
+    return next;
+  }
+
+  const elapsed = (run) => run.active_ms + (segments.has(run.run_id) ? Date.now() - segments.get(run.run_id) : 0);
+  const toolCtx = (run, extra = {}) => ({ run, retriever, store, ...extra });
+
+  function trace(run, entry) {
+    const record = { step: run.steps_used, at: new Date().toISOString(), ...entry };
+    if ('arguments' in record) record.arguments = redact(record.arguments);
+    run.trace.push(record);
+    store.appendAudit({ run_id: run.run_id, ...record }).catch(() => {});
+  }
+
+  function observe(run, obs) {
+    const exhausted = run.steps_used >= limits.maxSteps;
+    const header = `OBSERVATION after tool call ${run.steps_used}/${limits.maxSteps}${exhausted ? ' — tool budget exhausted: reply with a final answer now' : ''}:`;
+    run.messages.push({ role: 'user', content: `${header}\n${fitObservation(obs, limits.maxObservationChars)}`, meta: { tool: obs.tool, status: obs.status } });
+  }
+
+  /** System prompt + conversation; oldest observations are shortened first if over the context limit. */
+  function buildMessages(run) {
+    const msgs = run.messages.map((m) => ({ ...m }));
+    let total = msgs.reduce((s, m) => s + m.content.length, 0);
+    for (const m of msgs) {
+      if (total <= limits.maxContextChars) break;
+      if (!m.meta) continue;
+      const short = `OBSERVATION (older result shortened to fit the context limit):\n${JSON.stringify({ tool: m.meta.tool, status: m.meta.status })}`;
+      total -= m.content.length - short.length;
+      m.content = short;
+    }
+    const system = buildSystemPrompt({ tools: registry.describe(), limits });
+    return [{ role: 'system', content: system }, ...msgs.map(({ role, content }) => ({ role, content }))];
+  }
+
+  function finish(run, status, failure) {
+    if (failure) run.failure = failure;
+    transition(run, status);
+    trace(run, { kind: 'system', status, summary: failure ? `${failure.code}: ${failure.message}` : 'run completed' });
+  }
+
+  async function persist(run) {
+    await store.saveRun(run);
+  }
+
+  /** Ask the model for one valid decision, repairing malformed replies a bounded number of times. */
+  async function askModel(run, controller) {
+    for (;;) {
+      const remaining = limits.runMaxMs - elapsed(run);
+      if (remaining <= 0) return { ok: false, status: STATUS.STOPPED, failure: { code: 'run_timeout', message: `Run exceeded ${limits.runMaxMs} ms of execution time.` } };
+      const signal = AbortSignal.any([AbortSignal.timeout(Math.min(modelTimeoutMs, remaining)), controller.signal]);
+      const started = Date.now();
+      let text;
+      try {
+        ({ text } = await model.complete({ messages: buildMessages(run), signal }));
+      } catch (err) {
+        const duration_ms = Date.now() - started;
+        if (run.stop_requested) return { ok: false, status: STATUS.STOPPED, failure: { code: 'user_stopped', message: 'Stopped by the user.' } };
+        if (elapsed(run) >= limits.runMaxMs) return { ok: false, status: STATUS.STOPPED, failure: { code: 'run_timeout', message: `Run exceeded ${limits.runMaxMs} ms of execution time.` } };
+        const code = { timeout: 'model_timeout', unavailable: 'model_unavailable', bad_request: 'model_request_rejected', bad_response: 'model_bad_response' }[err.kind] || 'model_error';
+        trace(run, { kind: 'decision', status: 'error', duration_ms, summary: err.message });
+        return { ok: false, status: STATUS.FAILED, failure: { code, message: err.message } };
+      }
+      const duration_ms = Date.now() - started;
+      const parsed = parseDecision(text, limits);
+      let errors = parsed.ok ? [] : parsed.errors;
+      if (parsed.ok && parsed.decision.type === 'final') errors = checkGrounding(parsed.decision, run.retrieved_source_ids);
+      if (!errors.length) {
+        const d = parsed.decision;
+        trace(run, { kind: 'decision', status: 'ok', duration_ms, tool_name: d.type === 'tool_call' ? d.tool : undefined, summary: d.type === 'final' ? 'final answer' : `proposed ${d.tool}` });
+        return { ok: true, decision: d };
+      }
+      trace(run, { kind: 'decision', status: 'invalid', duration_ms, summary: errors.join('; ') });
+      if (run.repairs_used >= limits.maxRepairs) {
+        return { ok: false, status: STATUS.FAILED, failure: { code: 'invalid_model_output', message: `Model output still invalid after ${limits.maxRepairs} repair attempt(s): ${errors.join('; ')}` } };
+      }
+      run.repairs_used += 1;
+      run.messages.push({ role: 'assistant', content: String(text).slice(0, 2000) }, { role: 'user', content: REPAIR_MESSAGE(errors) });
+    }
+  }
+
+  async function executeTool(run, tool, args, signature, extra) {
+    const started = Date.now();
+    run.steps_used += 1;
+    run.executed_calls.push(signature);
+    let status = 'ok', result = null, error = null;
+    try {
+      const budget = Math.max(1, Math.min(limits.toolTimeoutMs, limits.runMaxMs - elapsed(run)));
+      result = await withTimeout(tool.execute(args, toolCtx(run, extra)), budget, tool.name);
+      for (const r of result?.results || []) {
+        if (r.source_id && !run.retrieved_source_ids.includes(r.source_id)) run.retrieved_source_ids.push(r.source_id);
+      }
+    } catch (err) {
+      status = err.code === 'TIMEOUT' ? 'timeout' : 'error';
+      error = err.message;
+    }
+    trace(run, { kind: 'tool', tool_name: tool.name, arguments: args, status, duration_ms: Date.now() - started, summary: summarize(tool.name, status, result, error) });
+    observe(run, status === 'ok' ? { tool: tool.name, status, untrusted_data: result } : { tool: tool.name, status, error });
+    return { status, result };
+  }
+
+  /** Run the loop until the run leaves the "running" status. Always called under the run's lock. */
+  async function drive(run) {
+    const controller = new AbortController();
+    controllers.set(run.run_id, controller);
+    segments.set(run.run_id, Date.now());
+    try {
+      while (run.status === STATUS.RUNNING) {
+        if (run.stop_requested) { finish(run, STATUS.STOPPED, { code: 'user_stopped', message: 'Stopped by the user.' }); break; }
+        const res = await askModel(run, controller);
+        if (!res.ok) { finish(run, res.status, res.failure); break; }
+        const d = res.decision;
+        run.messages.push({ role: 'assistant', content: JSON.stringify(d) });
+
+        if (d.type === 'final') {
+          run.final = { answer: d.answer, source_ids: d.source_ids, unresolved: d.unresolved };
+          finish(run, STATUS.COMPLETED);
+          break;
+        }
+
+        // Limits are checked BEFORE the proposed action touches anything.
+        if (run.steps_used >= limits.maxSteps) {
+          finish(run, STATUS.STOPPED, { code: 'max_steps', message: `Reached the limit of ${limits.maxSteps} tool calls without a final answer.` });
+          break;
+        }
+        const signature = callSignature(d.tool, d.arguments);
+        if (run.executed_calls.includes(signature)) {
+          finish(run, STATUS.STOPPED, { code: 'repeated_action', message: `The model repeated ${d.tool} with identical arguments; its result cannot change, so the run was stopped.` });
+          break;
+        }
+
+        const check = registry.check(d.tool, d.arguments, toolCtx(run));
+        if (!check.ok) {
+          run.steps_used += 1;
+          run.executed_calls.push(signature);
+          trace(run, { kind: 'tool', tool_name: d.tool, arguments: d.arguments, status: 'rejected', duration_ms: 0, summary: `${check.code}: ${check.errors.join('; ')}` });
+          observe(run, { tool: d.tool, status: 'rejected', code: check.code, errors: check.errors });
+          await persist(run);
+          continue;
+        }
+
+        if (check.tool.requiresApproval) {
+          const approval = {
+            approval_id: `apr_${randomUUID().replaceAll('-', '')}`,
+            tool: d.tool,
+            arguments: d.arguments,
+            args_hash: argsHash(run.run_id, d.tool, d.arguments),
+            signature,
+            state: 'pending',
+            proposed_at: new Date().toISOString(),
+            decided_at: null,
+            result: null,
+          };
+          run.approvals.push(approval);
+          run.pending_approval = approval.approval_id;
+          transition(run, STATUS.AWAITING_APPROVAL);
+          trace(run, { kind: 'approval', tool_name: d.tool, arguments: d.arguments, status: 'pending', summary: 'waiting for a human to approve or reject this write' });
+          break;
+        }
+
+        await executeTool(run, check.tool, d.arguments, signature);
+        await persist(run);
+      }
+    } catch (err) {
+      // A bug in our own code must still end the run cleanly, never leave it "running".
+      if (run.status === STATUS.RUNNING) finish(run, STATUS.FAILED, { code: 'internal_error', message: err.message });
+    } finally {
+      run.active_ms += Date.now() - segments.get(run.run_id);
+      segments.delete(run.run_id);
+      controllers.delete(run.run_id);
+      await persist(run);
+    }
+  }
+
+  function requireRun(runId) {
+    const run = runs.get(runId);
+    if (!run) throw new AgentError('run_not_found', `No run with id ${runId}.`, 404);
+    return run;
+  }
+
+  return {
+    model,
+
+    /** Reload saved runs. A run that was mid-execution when the server died cannot resume safely. */
+    async init() {
+      for (const run of await store.loadRuns()) {
+        if (run.status === STATUS.RUNNING) {
+          run.failure = { code: 'interrupted', message: 'The server restarted while this run was executing.' };
+          transition(run, STATUS.FAILED);
+          await persist(run);
+        }
+        runs.set(run.run_id, run);
+      }
+    },
+
+    async startRun(goal) {
+      const text = typeof goal === 'string' ? goal.trim() : '';
+      if (!text) throw new AgentError('invalid_goal', 'Goal must be a non-empty string.');
+      if (text.length > limits.maxGoalChars) throw new AgentError('goal_too_long', `Goal must be at most ${limits.maxGoalChars} characters (got ${text.length}).`);
+      const run = createRun({ goal: text, model });
+      run.messages.push({ role: 'user', content: `GOAL: ${text}` });
+      runs.set(run.run_id, run);
+      trace(run, { kind: 'system', status: 'running', summary: `run started with ${model.isMock ? 'MOCK' : 'real'} model ${model.name}` });
+      await persist(run);
+      withLock(run.run_id, () => drive(run)); // runs in the background; the UI polls
+      return publicView(run);
+    },
+
+    getRun(runId) {
+      return publicView(requireRun(runId));
+    },
+
+    listRuns() {
+      return [...runs.values()].map(publicView).sort((a, b) => b.created_at.localeCompare(a.created_at));
+    },
+
+    /**
+     * Approve or reject exactly the call that was shown: run_id + approval_id + args_hash must all match.
+     * Re-sending the same decision is answered from the stored result and never writes twice.
+     */
+    async decideApproval(runId, approvalId, { decision, args_hash } = {}) {
+      if (!['approve', 'reject'].includes(decision)) throw new AgentError('invalid_decision', 'decision must be "approve" or "reject".');
+      requireRun(runId);
+      return withLock(runId, async () => {
+        const run = requireRun(runId);
+        const a = run.approvals.find((x) => x.approval_id === approvalId);
+        if (!a) throw new AgentError('approval_not_found', 'No such approval on this run.', 404);
+        if (typeof args_hash !== 'string' || args_hash !== a.args_hash) {
+          throw new AgentError('approval_mismatch', 'These are not the arguments that are pending. Review the current proposal and approve again.', 409);
+        }
+        if (argsHash(run.run_id, a.tool, a.arguments) !== a.args_hash) {
+          throw new AgentError('approval_tampered', 'Stored arguments no longer match their approval hash.', 409);
+        }
+        if (a.state !== 'pending') {
+          const sameAnswer = (decision === 'approve' && ['executed', 'failed'].includes(a.state)) || (decision === 'reject' && a.state === 'rejected');
+          if (!sameAnswer) throw new AgentError('approval_already_decided', `This approval was already ${a.state}.`, 409);
+          return { run: publicView(run), replayed: true };
+        }
+        if (run.status !== STATUS.AWAITING_APPROVAL || run.pending_approval !== a.approval_id) {
+          throw new AgentError('not_awaiting_approval', `Run is ${run.status}; nothing to approve.`, 409);
+        }
+
+        segments.set(run.run_id, Date.now());
+        a.decided_at = new Date().toISOString();
+        run.pending_approval = null;
+        if (decision === 'reject') {
+          a.state = 'rejected';
+          run.steps_used += 1;
+          run.executed_calls.push(a.signature);
+          trace(run, { kind: 'approval', tool_name: a.tool, arguments: a.arguments, status: 'rejected', summary: 'rejected by the user — nothing was written' });
+          observe(run, { tool: a.tool, status: 'rejected_by_user', note: 'A human rejected this write. Nothing was saved. Do not propose it again; finish instead.' });
+        } else {
+          trace(run, { kind: 'approval', tool_name: a.tool, arguments: a.arguments, status: 'approved', summary: 'approved by the user' });
+          const check = registry.check(a.tool, a.arguments, toolCtx(run)); // rules re-checked at execution time
+          if (!check.ok) {
+            a.state = 'failed';
+            run.steps_used += 1;
+            run.executed_calls.push(a.signature);
+            observe(run, { tool: a.tool, status: 'rejected', code: check.code, errors: check.errors });
+          } else {
+            const r = await executeTool(run, check.tool, a.arguments, a.signature, { idempotencyKey: a.approval_id });
+            a.state = r.status === 'ok' ? 'executed' : 'failed';
+            a.result = r.result;
+          }
+        }
+        run.active_ms += Date.now() - segments.get(run.run_id);
+        segments.delete(run.run_id);
+        transition(run, STATUS.RUNNING);
+        await persist(run);
+        withLock(run.run_id, () => drive(run)); // continue the loop after this response
+        return { run: publicView(run), replayed: false };
+      });
+    },
+
+    async stopRun(runId) {
+      const run = requireRun(runId);
+      if (run.status === STATUS.RUNNING) {
+        run.stop_requested = true;
+        controllers.get(runId)?.abort();
+      }
+      return withLock(runId, async () => {
+        if (run.status === STATUS.AWAITING_APPROVAL) {
+          const a = run.approvals.find((x) => x.approval_id === run.pending_approval);
+          if (a) a.state = 'cancelled';
+          run.pending_approval = null;
+          finish(run, STATUS.STOPPED, { code: 'user_stopped', message: 'Stopped by the user while waiting for approval.' });
+          await persist(run);
+        }
+        return publicView(run);
+      });
+    },
+
+    /** Resolves when all queued work for a run has finished (used by tests and the eval script). */
+    idle(runId) {
+      return locks.get(runId) || Promise.resolve();
+    },
+  };
+}
