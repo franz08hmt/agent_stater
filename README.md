@@ -29,12 +29,20 @@ Copy-Item .env.example .env  # mặc định MODEL_PROVIDER=mock
 npm start
 ```
 
-Mở http://127.0.0.1:8787. Góc phải trên có huy hiệu:
+Mở http://127.0.0.1:8787. Trong cột **Agent profile** có trạng thái model:
 
-- **MOCK — rule-based-mock (không phải LLM thật)** — màu cam: đang chạy model giả lập.
-- **LLM thật: gemini-2.5-flash** — màu xanh: đang gọi model thật.
+- **Mock · rule-based-mock** — màu cam: đang chạy model giả lập.
+- **Live · gemini-2.5-flash** (hoặc tên model đã cấu hình) — màu xanh: đang gọi model thật.
 
 Dừng server: `Ctrl + C`.
+
+Giao diện **Agent Studio** có bốn khu vực: điều hướng, hồ sơ agent, cấu hình mục tiêu,
+và hội thoại/kết quả. Chọn một tình huống mẫu hoặc nhập mục tiêu, chạy agent, mở
+**Execution trace** để xem từng bước; thao tác ghi bản nháp luôn cần phê duyệt.
+Toàn bộ giao diện, font Poppins và Heroicons được phục vụ từ máy cục bộ, không cần CDN
+hay kết nối Internet khi trình bày. Giấy phép font nằm tại
+`public/assets/fonts/OFL.txt`, giấy phép icon tại `public/assets/icons/LICENSE`;
+ảnh robot là hình tham chiếu do người dùng cung cấp.
 
 ## 3. Cấu hình model
 

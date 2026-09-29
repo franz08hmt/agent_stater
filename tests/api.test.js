@@ -86,5 +86,5 @@ test('static UI is served with a content security policy', async () => {
   const res = await fetch(`${base}/`);
   assert.equal(res.status, 200);
   assert.match(res.headers.get('content-security-policy'), /default-src 'self'/);
-  assert.match(await res.text(), /AI Agent Starter/);
+  assert.match(await res.text(), /Agent Studio — Configure, run and inspect an AI agent/);
 });

@@ -3,14 +3,26 @@
 
 const $ = (id) => document.getElementById(id);
 const STATUS_TEXT = {
-  running: 'Đang chạy',
-  awaiting_approval: 'Chờ phê duyệt',
-  completed: 'Hoàn thành',
-  failed: 'Lỗi',
-  stopped: 'Đã dừng',
+  running: 'Running',
+  awaiting_approval: 'Awaiting approval',
+  completed: 'Completed',
+  failed: 'Failed',
+  stopped: 'Stopped',
 };
 let current = null;
 let pollTimer = null;
+
+function updateCurrentNav() {
+  const activeHash = window.location.hash || '#agent-profile';
+  for (const link of document.querySelectorAll('.nav-link')) {
+    const active = link.getAttribute('href') === activeHash;
+    link.classList.toggle('is-current', active);
+    if (active) link.setAttribute('aria-current', 'location');
+    else link.removeAttribute('aria-current');
+  }
+}
+window.addEventListener('hashchange', updateCurrentNav);
+updateCurrentNav();
 
 async function api(path, options = {}) {
   const res = await fetch(path, {
@@ -39,12 +51,12 @@ async function loadHealth() {
     const h = await api('/api/health');
     const badge = $('model-badge');
     badge.textContent = h.model.is_mock
-      ? `MOCK — ${h.model.name} (không phải LLM thật)`
-      : `LLM thật: ${h.model.name}`;
+      ? `Mock · ${h.model.name}`
+      : `Live · ${h.model.name}`;
     badge.className = `badge ${h.model.is_mock ? 'is-mock' : 'is-live'}`;
     $('steps').dataset.max = h.limits.max_steps;
   } catch {
-    $('model-badge').textContent = 'Không kết nối được backend';
+    $('model-badge').textContent = 'Backend unavailable';
   }
 }
 
@@ -52,10 +64,10 @@ async function loadDrafts() {
   const { drafts } = await api('/api/drafts');
   const list = $('drafts');
   list.replaceChildren();
-  if (!drafts.length) list.append(el('li', 'Chưa có bản nháp.', 'hint'));
+  if (!drafts.length) list.append(el('li', 'No drafts saved yet.', 'hint'));
   for (const d of drafts) {
     const li = el('li');
-    li.append(el('strong', d.title), el('span', ` · nguồn: ${d.source_ids.join(', ')} · ${d.draft_id}`, 'hint'));
+    li.append(el('strong', d.title), el('span', `Sources: ${d.source_ids.join(', ')} · ${d.draft_id}`, 'hint'));
     list.append(li);
   }
 }
@@ -63,6 +75,9 @@ async function loadDrafts() {
 function render(run) {
   current = run;
   $('run-panel').hidden = false;
+  $('run-panel').setAttribute('aria-busy', String(run.status === 'running'));
+  $('goal-preview').textContent = run.goal;
+  $('goal-preview').hidden = false;
   $('status').textContent = STATUS_TEXT[run.status] || run.status;
   $('status').className = `status is-${run.status}`;
   $('run-id').textContent = run.run_id;
@@ -86,10 +101,10 @@ function render(run) {
   if (run.final) {
     $('answer').textContent = run.final.answer;
     $('unresolved').hidden = !run.final.unresolved;
-    $('unresolved').textContent = run.final.unresolved ? `Chưa xác định: ${run.final.unresolved}` : '';
+  $('unresolved').textContent = run.final.unresolved ? `Unresolved: ${run.final.unresolved}` : '';
     const sources = $('sources');
     sources.replaceChildren();
-    if (!run.final.source_ids.length) sources.append(el('li', 'Không có nguồn — câu trả lời không dựa trên tài liệu.', 'hint'));
+    if (!run.final.source_ids.length) sources.append(el('li', 'No source cited — this answer is not grounded in a retrieved note.', 'hint'));
     for (const id of run.final.source_ids) sources.append(el('li', id));
   }
 
@@ -181,6 +196,8 @@ $('new-run').addEventListener('click', () => {
   clearTimeout(pollTimer);
   current = null;
   $('run-panel').hidden = true;
+  $('goal-preview').hidden = true;
+  $('goal-preview').textContent = '';
   $('start').disabled = false;
   $('new-run').hidden = true;
   $('goal').value = '';

@@ -1,85 +1,150 @@
 <!doctype html>
-<html lang="vi">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AI Agent Starter</title>
+  <meta name="theme-color" content="#e9edf5">
+  <meta name="description" content="A local AI agent workspace for configuring a task, inspecting tool decisions, approving writes, and reviewing grounded answers.">
+  <title>Agent Studio — Configure, run and inspect an AI agent</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <header class="top">
-    <h1>AI Agent Starter</h1>
-    <p id="model-badge" class="badge" aria-live="polite">Đang kiểm tra model…</p>
+  <a class="skip-link" href="#workspace">Skip to agent workspace</a>
+  <header class="hero" aria-labelledby="page-title">
+    <p class="eyebrow">Creation</p>
+    <h1 id="page-title">Easily Create<br>Complex Agent</h1>
+    <p class="hero-subtitle">Configure a goal, observe decisions, and keep every write under human control.</p>
+    <aside class="hero-notes" aria-label="Workspace highlights">
+      <section class="hero-note">
+        <h2>Simplified concepts</h2>
+        <p>A compact workflow connects goals, knowledge retrieval, tools, and results.</p>
+      </section>
+      <section class="hero-note">
+        <h2>Real-time debugging</h2>
+        <p>Inspect each model decision and review proposed writes before execution.</p>
+      </section>
+    </aside>
   </header>
 
-  <main>
-    <section class="panel" aria-labelledby="goal-title">
-      <h2 id="goal-title">Mục tiêu</h2>
+  <main id="workspace" class="workspace" aria-label="AI agent workspace">
+    <nav class="sidebar" aria-label="Workspace navigation">
+      <a class="brand" href="#workspace" aria-label="Agent Studio home">
+        <span class="brand-mark"><span class="icon icon--cpu-chip" aria-hidden="true"></span></span>
+        <span>Agent<span class="brand-accent">Studio</span></span>
+      </a>
+      <p class="nav-label">Workspace</p>
+      <ul class="nav-list">
+        <li><a class="nav-link is-current" href="#agent-profile" aria-current="location"><span class="icon icon--squares-2x2" aria-hidden="true"></span>Overview</a></li>
+        <li><a class="nav-link" href="#configuration"><span class="icon icon--sparkles" aria-hidden="true"></span>Agent</a></li>
+        <li><a class="nav-link" href="#dialogue"><span class="icon icon--chat-bubble-left-right" aria-hidden="true"></span>Dialogue</a></li>
+        <li><a class="nav-link" href="#drafts-title"><span class="icon icon--document-text" aria-hidden="true"></span>Saved drafts</a></li>
+      </ul>
+      <p class="sidebar-foot"><span class="icon icon--shield-check" aria-hidden="true"></span>Local-first workspace</p>
+    </nav>
+
+    <section id="agent-profile" class="profile" aria-labelledby="profile-title">
+      <header class="section-heading">
+        <p class="section-kicker">Agent profile</p>
+        <h2 id="profile-title">Study Notes Agent</h2>
+        <p>Research assistant · course workspace</p>
+      </header>
+      <figure class="avatar-card">
+        <img src="/assets/robot-pet.png" width="1024" height="1024" alt="Green-eyed robotic cat avatar for the Study Notes Agent">
+        <figcaption>Knowledge-powered assistant</figcaption>
+      </figure>
+      <dl class="profile-facts">
+        <div><dt>Model</dt><dd id="model-badge" class="badge" aria-live="polite">Checking model…</dd></div>
+        <div><dt>Knowledge</dt><dd>Local study notes</dd></div>
+        <div><dt>Retrieval</dt><dd>Keyword search</dd></div>
+        <div><dt>Write policy</dt><dd>Approval required</dd></div>
+      </dl>
+      <section class="drafts-card" aria-labelledby="drafts-title">
+        <h3 id="drafts-title"><span class="icon icon--document-text" aria-hidden="true"></span>Saved drafts</h3>
+        <ul id="drafts"><li class="hint">No drafts saved yet.</li></ul>
+      </section>
+    </section>
+
+    <section id="configuration" class="configuration" aria-labelledby="configuration-title">
+      <header class="section-heading config-heading">
+        <span class="section-kicker">01 / Configure</span>
+        <h2 id="configuration-title">Define the agent goal</h2>
+        <p>Describe the outcome. The agent chooses permitted tools and the backend validates every step.</p>
+      </header>
       <form id="goal-form">
-        <label for="goal">Nhập mục tiêu cho agent</label>
-        <textarea id="goal" name="goal" rows="3" maxlength="500" required
-          placeholder="Ví dụ: 401 và 403 khác nhau thế nào?"></textarea>
-        <p class="hint"><span id="goal-count">0</span>/500 ký tự</p>
+        <fieldset class="form-section">
+          <legend><span class="icon icon--bolt" aria-hidden="true"></span>Task</legend>
+          <label for="goal">Goal</label>
+          <textarea id="goal" name="goal" rows="5" maxlength="500" required aria-describedby="goal-help goal-count" placeholder="e.g. Explain the difference between HTTP 401 and 403 using the study notes."></textarea>
+          <p id="goal-help" class="hint">Use a specific, verifiable request. No API key is exposed in this browser.</p>
+          <p class="character-count"><span id="goal-count">0</span> / 500 characters</p>
+        </fieldset>
         <fieldset class="samples">
-          <legend>Mục tiêu mẫu</legend>
-          <button type="button" data-goal="401 và 403 khác nhau thế nào?">Tra cứu 1 tài liệu</button>
-          <button type="button" data-goal="Tổng tỉ trọng điểm giữa kỳ và đồ án cuối kỳ là bao nhiêu phần trăm?">Ghép 2 tài liệu</button>
-          <button type="button" data-goal="Phòng thi giữa kỳ ở đâu?">Không có đáp án</button>
-          <button type="button" data-goal="Tóm tắt về idempotency và lưu bản nháp">Tóm tắt + lưu nháp</button>
-          <button type="button" data-goal="Tổng hợp mẹo ôn tập từ ghi chú chép diễn đàn">Tài liệu chứa injection</button>
+          <legend>Try a course scenario</legend>
+          <button type="button" data-goal="401 và 403 khác nhau thế nào?">401 vs 403</button>
+          <button type="button" data-goal="Tổng tỉ trọng điểm giữa kỳ và đồ án cuối kỳ là bao nhiêu phần trăm?">Combine two notes</button>
+          <button type="button" data-goal="Phòng thi giữa kỳ ở đâu?">Missing evidence</button>
+          <button type="button" data-goal="Tóm tắt về idempotency và lưu bản nháp">Summary + draft</button>
+          <button type="button" data-goal="Tổng hợp mẹo ôn tập từ ghi chú chép diễn đàn">Injection example</button>
         </fieldset>
         <p class="actions">
-          <button type="submit" id="start" class="primary">Bắt đầu</button>
-          <button type="button" id="stop" class="secondary" hidden>Dừng run</button>
-          <button type="button" id="new-run" class="secondary" hidden>Run mới</button>
+          <button type="submit" id="start" class="primary"><span class="icon icon--play" aria-hidden="true"></span>Run agent</button>
+          <button type="button" id="stop" class="secondary" hidden><span class="icon icon--stop" aria-hidden="true"></span>Stop run</button>
+          <button type="button" id="new-run" class="secondary" hidden><span class="icon icon--arrow-path" aria-hidden="true"></span>New run</button>
         </p>
         <p id="form-error" class="error" role="alert" hidden></p>
       </form>
+      <section class="policy-note" aria-labelledby="policy-title">
+        <span class="icon icon--shield-check" aria-hidden="true"></span>
+        <div><h3 id="policy-title">Human-in-the-loop control</h3><p>Read tools run automatically. Saving a draft pauses the agent until the exact action is approved.</p></div>
+      </section>
     </section>
 
-    <section class="panel" id="run-panel" aria-labelledby="run-title" hidden>
-      <h2 id="run-title">Run</h2>
-      <dl class="run-meta">
-        <div><dt>Trạng thái</dt><dd><span id="status" class="status"></span></dd></div>
-        <div><dt>Run ID</dt><dd><code id="run-id"></code></dd></div>
-        <div><dt>Tool calls</dt><dd id="steps"></dd></div>
-        <div><dt>Thời gian thực thi</dt><dd id="elapsed"></dd></div>
-      </dl>
-
-      <section id="approval" class="approval" aria-labelledby="approval-title" hidden>
-        <h3 id="approval-title">Cần phê duyệt thao tác ghi</h3>
-        <p>Agent đề xuất gọi <code id="approval-tool"></code> với đúng các tham số dưới đây. Phê duyệt chỉ áp dụng cho bộ tham số này.</p>
-        <pre id="approval-args"></pre>
-        <p class="hint">args_hash: <code id="approval-hash"></code></p>
-        <p class="actions">
-          <button type="button" id="approve" class="primary">Phê duyệt</button>
-          <button type="button" id="reject" class="danger">Từ chối</button>
-        </p>
+    <section id="dialogue" class="dialogue" aria-labelledby="dialogue-title">
+      <header class="section-heading dialogue-heading">
+        <span class="section-kicker">02 / Observe</span>
+        <h2 id="dialogue-title">Dialogue &amp; execution</h2>
+        <p>Live output, approvals, and an auditable trace.</p>
+      </header>
+      <section class="conversation" aria-label="Agent conversation">
+        <p class="conversation-date">Agent session</p>
+        <p class="message message--agent">Ready to inspect the course notes. Enter a goal or choose a scenario to begin.</p>
+        <p id="goal-preview" class="message message--user" hidden></p>
+        <section id="run-panel" class="run-content" aria-labelledby="run-title" hidden>
+          <h3 id="run-title" class="sr-only">Current run</h3>
+          <dl class="run-meta">
+            <div><dt>Status</dt><dd><span id="status" class="status" role="status" aria-live="polite"></span></dd></div>
+            <div><dt>Steps</dt><dd id="steps"></dd></div>
+            <div><dt>Elapsed</dt><dd id="elapsed"></dd></div>
+            <div class="run-id-row"><dt>Run ID</dt><dd><code id="run-id"></code></dd></div>
+          </dl>
+          <section id="approval" class="approval" aria-labelledby="approval-title" hidden>
+            <h4 id="approval-title">Write approval required</h4>
+            <p>The agent proposes <code id="approval-tool"></code>. Approval applies only to these exact arguments.</p>
+            <pre id="approval-args"></pre>
+            <p class="hint">Argument hash: <code id="approval-hash"></code></p>
+            <p class="actions"><button type="button" id="approve" class="primary">Approve write</button><button type="button" id="reject" class="danger">Reject</button></p>
+          </section>
+          <section id="result" class="result" aria-labelledby="result-title" hidden>
+            <h4 id="result-title">Agent response</h4>
+            <p id="answer" class="answer"></p>
+            <p id="unresolved" class="unresolved" hidden></p>
+            <h5>Retrieved sources</h5>
+            <ul id="sources"></ul>
+          </section>
+          <p id="failure" class="error" role="alert" hidden></p>
+          <details class="trace-details">
+            <summary>Execution trace <span class="icon icon--chevron-right" aria-hidden="true"></span></summary>
+            <div class="table-wrap">
+              <table>
+                <caption>Model decisions, tool calls, approvals, and execution results</caption>
+                <thead><tr><th scope="col">Step</th><th scope="col">Type</th><th scope="col">Tool</th><th scope="col">Arguments</th><th scope="col">Status</th><th scope="col">ms</th><th scope="col">Result</th></tr></thead>
+                <tbody id="trace"></tbody>
+              </table>
+            </div>
+          </details>
+        </section>
       </section>
-
-      <section id="result" aria-labelledby="result-title" hidden>
-        <h3 id="result-title">Kết quả</h3>
-        <p id="answer" class="answer"></p>
-        <p id="unresolved" class="unresolved" hidden></p>
-        <h4>Nguồn</h4>
-        <ul id="sources"></ul>
-      </section>
-
-      <p id="failure" class="error" role="alert" hidden></p>
-
-      <h3>Nhật ký thực thi</h3>
-      <div class="table-wrap">
-        <table>
-          <caption class="sr-only">Các bước của run: quyết định của model, tool call, phê duyệt</caption>
-          <thead><tr><th scope="col">Step</th><th scope="col">Loại</th><th scope="col">Tool</th><th scope="col">Arguments</th><th scope="col">Trạng thái</th><th scope="col">ms</th><th scope="col">Kết quả</th></tr></thead>
-          <tbody id="trace"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="panel" aria-labelledby="drafts-title">
-      <h2 id="drafts-title">Bản nháp đã lưu</h2>
-      <ul id="drafts"><li class="hint">Chưa có bản nháp.</li></ul>
+      <footer class="dialogue-foot"><span class="icon icon--check-circle" aria-hidden="true"></span>Backend-enforced tool permissions and source IDs</footer>
     </section>
   </main>
   <script type="module" src="/app.js"></script>

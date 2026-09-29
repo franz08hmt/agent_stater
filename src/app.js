@@ -21,11 +21,18 @@ const STATIC = {
   '/index.html': ['index.html', 'text/html; charset=utf-8'],
   '/app.js': ['app.js', 'text/javascript; charset=utf-8'],
   '/styles.css': ['styles.css', 'text/css; charset=utf-8'],
+  '/assets/robot-pet.png': ['assets/robot-pet.png', 'image/png'],
 };
+for (const weight of ['Regular', 'Medium', 'SemiBold', 'Bold']) {
+  STATIC[`/assets/fonts/Poppins-${weight}.ttf`] = [`assets/fonts/Poppins-${weight}.ttf`, 'font/ttf'];
+}
+for (const icon of ['cpu-chip', 'squares-2x2', 'sparkles', 'document-text', 'chat-bubble-left-right', 'bolt', 'shield-check', 'play', 'stop', 'arrow-path', 'chevron-right', 'check-circle']) {
+  STATIC[`/assets/icons/${icon}.svg`] = [`assets/icons/${icon}.svg`, 'image/svg+xml'];
+}
 
 const SECURITY_HEADERS = {
   'x-content-type-options': 'nosniff',
-  'content-security-policy': "default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' data:",
+  'content-security-policy': "default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' data:; font-src 'self'",
   'referrer-policy': 'no-referrer',
 };
 
@@ -67,7 +74,7 @@ export async function createApp({ config, model, dataDir, varDir, publicDir }) {
 
     if (req.method === 'GET' && STATIC[url.pathname]) {
       const [file, type] = STATIC[url.pathname];
-      return send(res, 200, await readFile(join(publicDir, file), 'utf8'), type);
+      return send(res, 200, await readFile(join(publicDir, file)), type);
     }
     if (parts[0] !== 'api') return send(res, 404, { error: 'not_found', message: 'Not found.' });
 
