@@ -34,10 +34,10 @@
       </a>
       <p class="nav-label">Workspace</p>
       <ul class="nav-list">
-        <li><a class="nav-link is-current" href="#agent-profile" aria-current="location"><span class="icon icon--squares-2x2" aria-hidden="true"></span>Overview</a></li>
-        <li><a class="nav-link" href="#configuration"><span class="icon icon--sparkles" aria-hidden="true"></span>Agent</a></li>
-        <li><a class="nav-link" href="#dialogue"><span class="icon icon--chat-bubble-left-right" aria-hidden="true"></span>Dialogue</a></li>
-        <li><a class="nav-link" href="#drafts-title"><span class="icon icon--document-text" aria-hidden="true"></span>Saved drafts</a></li>
+        <li><a class="nav-link is-current" href="#agent-profile" aria-current="location"><span class="icon icon--squares-2x2" aria-hidden="true"></span>Overview<span class="icon icon--chevron-right nav-arrow" aria-hidden="true"></span></a></li>
+        <li><a class="nav-link" href="#configuration"><span class="icon icon--sparkles" aria-hidden="true"></span>Agent<span class="icon icon--chevron-right nav-arrow" aria-hidden="true"></span></a></li>
+        <li><a class="nav-link" href="#dialogue"><span class="icon icon--chat-bubble-left-right" aria-hidden="true"></span>Dialogue<span class="icon icon--chevron-right nav-arrow" aria-hidden="true"></span></a></li>
+        <li><a class="nav-link" href="#drafts-title"><span class="icon icon--document-text" aria-hidden="true"></span>Saved drafts<span class="icon icon--chevron-right nav-arrow" aria-hidden="true"></span></a></li>
       </ul>
       <p class="sidebar-foot"><span class="icon icon--shield-check" aria-hidden="true"></span>Local-first workspace</p>
     </nav>
@@ -80,14 +80,14 @@
         </fieldset>
         <fieldset class="samples">
           <legend>Try a course scenario</legend>
-          <button type="button" data-goal="401 và 403 khác nhau thế nào?">401 vs 403</button>
-          <button type="button" data-goal="Tổng tỉ trọng điểm giữa kỳ và đồ án cuối kỳ là bao nhiêu phần trăm?">Combine two notes</button>
-          <button type="button" data-goal="Phòng thi giữa kỳ ở đâu?">Missing evidence</button>
-          <button type="button" data-goal="Tóm tắt về idempotency và lưu bản nháp">Summary + draft</button>
-          <button type="button" data-goal="Tổng hợp mẹo ôn tập từ ghi chú chép diễn đàn">Injection example</button>
+          <button type="button" data-goal="401 và 403 khác nhau thế nào?">401 vs 403<span class="icon icon--chevron-right" aria-hidden="true"></span></button>
+          <button type="button" data-goal="Tổng tỉ trọng điểm giữa kỳ và đồ án cuối kỳ là bao nhiêu phần trăm?">Combine two notes<span class="icon icon--chevron-right" aria-hidden="true"></span></button>
+          <button type="button" data-goal="Phòng thi giữa kỳ ở đâu?">Missing evidence<span class="icon icon--chevron-right" aria-hidden="true"></span></button>
+          <button type="button" data-goal="Tóm tắt về idempotency và lưu bản nháp">Summary + draft<span class="icon icon--chevron-right" aria-hidden="true"></span></button>
+          <button type="button" data-goal="Tổng hợp mẹo ôn tập từ ghi chú chép diễn đàn">Injection example<span class="icon icon--chevron-right" aria-hidden="true"></span></button>
         </fieldset>
         <p class="actions">
-          <button type="submit" id="start" class="primary"><span class="icon icon--play" aria-hidden="true"></span>Run agent</button>
+          <button type="submit" id="start" class="primary"><span class="button-label">Run agent</span><span class="button-end"><span class="icon icon--chevron-right" aria-hidden="true"></span></span></button>
           <button type="button" id="stop" class="secondary" hidden><span class="icon icon--stop" aria-hidden="true"></span>Stop run</button>
           <button type="button" id="new-run" class="secondary" hidden><span class="icon icon--arrow-path" aria-hidden="true"></span>New run</button>
         </p>
@@ -122,7 +122,7 @@
             <p>The agent proposes <code id="approval-tool"></code>. Approval applies only to these exact arguments.</p>
             <pre id="approval-args"></pre>
             <p class="hint">Argument hash: <code id="approval-hash"></code></p>
-            <p class="actions"><button type="button" id="approve" class="primary">Approve write</button><button type="button" id="reject" class="danger">Reject</button></p>
+            <p class="actions"><button type="button" id="approve" class="primary"><span class="button-label">Approve write</span><span class="button-end"><span class="icon icon--check-circle" aria-hidden="true"></span></span></button><button type="button" id="reject" class="danger">Reject</button></p>
           </section>
           <section id="result" class="result" aria-labelledby="result-title" hidden>
             <h4 id="result-title">Agent response</h4>
