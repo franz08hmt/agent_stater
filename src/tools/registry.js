@@ -6,8 +6,32 @@ import { searchNotes } from './searchNotes.js';
 import { saveDraft } from './saveDraft.js';
 
 const MAX_ARGUMENT_BYTES = 6000;
+const ACCESS_LEVELS = ['read', 'write'];
+
+/**
+ * Declaration rules, enforced when the registry is built so a mistake fails at startup
+ * (with the tool's name) instead of surfacing as an unapproved write during a demo.
+ *  - access must be exactly 'read' or 'write' (a missing/typo'd value must not skip the rule below)
+ *  - every 'write' tool must set requiresApproval to the boolean true (a truthy string is not enough)
+ *  - tool names are unique (a later tool must not silently replace an earlier one)
+ */
+export function assertToolDeclarations(tools) {
+  const seen = new Set();
+  for (const tool of tools) {
+    const name = typeof tool?.name === 'string' && tool.name ? tool.name : '(unnamed)';
+    if (!ACCESS_LEVELS.includes(tool?.access)) {
+      throw new Error(`Tool "${name}" must declare access: 'read' or 'write' (got ${JSON.stringify(tool?.access)}).`);
+    }
+    if (tool.access === 'write' && tool.requiresApproval !== true) {
+      throw new Error(`Tool "${name}" has access: 'write' but requiresApproval is not true. Every write tool must require human approval.`);
+    }
+    if (seen.has(name)) throw new Error(`Duplicate tool name "${name}".`);
+    seen.add(name);
+  }
+}
 
 export function createToolRegistry(tools = [searchNotes, saveDraft]) {
+  assertToolDeclarations(tools);
   const byName = new Map(tools.map((t) => [t.name, t]));
 
   return {

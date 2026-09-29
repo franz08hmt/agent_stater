@@ -51,6 +51,11 @@ Lớp kiểm tra theo thứ tự (`src/tools/registry.js` → `check()`):
    → nếu sai: `rule_violation`.
 5. Tool **ghi** không chạy ngay mà chuyển run sang `awaiting_approval`.
 
+Ngoài các lớp kiểm tra theo từng lần gọi, còn một luật **ngay lúc khai báo**: `createToolRegistry()` từ chối khởi động
+nếu một tool có `access: 'write'` mà `requiresApproval` không phải đúng giá trị `true` (chuỗi `"yes"` hay `1` cũng bị
+từ chối), hoặc `access` không phải `read`/`write`, hoặc trùng tên tool. Runner còn tự suy ra cổng phê duyệt từ
+`access`, nên một registry dựng tay cũng không thể bỏ qua bước duyệt.
+
 Lỗi được gửi lại cho model dưới dạng quan sát để nó tự sửa; mỗi lần bị từ chối vẫn tính một bước.
 
 ## 5. Phê duyệt và chống ghi trùng
@@ -90,7 +95,8 @@ Backend kiểm tra mọi `source_id` trong câu trả lời cuối **phải thu�
 | Người dùng bấm Dừng | `stopped` | `user_stopped` |
 | Model trả sai định dạng sau `AGENT_MAX_REPAIRS` lần sửa | `failed` | `invalid_model_output` |
 | Model quá thời gian | `failed` | `model_timeout` |
-| Model không kết nối được (đã thử lại 1 lần với 429/5xx) | `failed` | `model_unavailable` |
+| Model không kết nối được (5xx hoặc lỗi mạng, đã thử lại 1 lần) | `failed` | `model_unavailable` |
+| Provider báo hết quota (HTTP 429) — **không** thử lại | `failed` | `model_rate_limited` |
 | Server tắt khi run đang chạy | `failed` | `interrupted` |
 | Tool quá thời gian / lỗi | *không dừng* — thành quan sát lỗi, model tự quyết định tiếp | — |
 
@@ -140,9 +146,14 @@ Giới hạn còn lại:
 - Grounding chỉ kiểm tra *nguồn có được truy xuất*, không kiểm tra *nguồn có ủng hộ câu trả lời*.
 - Tool bị timeout vẫn có thể hoàn tất ngầm; với `save_draft` thì khóa idempotency ngăn ghi trùng.
 - Mock chỉ là bộ luật; chạy đúng với mock không chứng minh LLM thật chọn bước tốt.
-- Đã chạy với `gemini-2.5-flash` thật: tra cứu 1 nguồn, ghép 2 nguồn, câu ngoài phạm vi đều đúng.
-  Luồng phê duyệt và tài liệu injection **chưa** được thử với LLM thật vì hết quota free tier (README mục 9).
-- Free tier Gemini chỉ có 20 request/ngày/model — nên có key riêng cho buổi thi.
+- Đã chạy với `gemini-2.5-flash` thật: tra cứu 1 nguồn, ghép 2 nguồn, câu ngoài phạm vi (2026-09-26) và luồng
+  từ chối / phê duyệt `save_draft` (2026-09-29) đều đúng.
+- **Chưa** thử với LLM thật trước tài liệu chứa injection (E16 bị 429). Với injection, bằng chứng hiện có chỉ là test dùng
+  model giả "bị lừa" chứng minh *backend* vẫn chặn; đừng nói rằng LLM thật đã chống được injection.
+- Quota Gemini tính theo **project**, không theo API key: thêm key trong cùng project không tăng quota, và mọi ứng dụng dùng
+  chung project đó (kể cả `Final-Project`) cùng trừ vào một quota. "20 request/ngày" chỉ là số đã quan sát ngày 2026-09-26
+  với `gemini-2.5-flash` free tier, không phải cam kết. Phương án dự phòng (key/project/model/Ollama) chỉ có giá trị khi
+  đã chạy `npm run smoke:live` thành công với nó trước ngày thi.
 
 ## 10. Phần do AI hỗ trợ
 

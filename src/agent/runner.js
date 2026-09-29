@@ -115,7 +115,7 @@ export function createAgentRunner({ model, registry, retriever, store, limits, m
         const duration_ms = Date.now() - started;
         if (run.stop_requested) return { ok: false, status: STATUS.STOPPED, failure: { code: 'user_stopped', message: 'Stopped by the user.' } };
         if (elapsed(run) >= limits.runMaxMs) return { ok: false, status: STATUS.STOPPED, failure: { code: 'run_timeout', message: `Run exceeded ${limits.runMaxMs} ms of execution time.` } };
-        const code = { timeout: 'model_timeout', unavailable: 'model_unavailable', bad_request: 'model_request_rejected', bad_response: 'model_bad_response' }[err.kind] || 'model_error';
+        const code = { timeout: 'model_timeout', unavailable: 'model_unavailable', rate_limited: 'model_rate_limited', bad_request: 'model_request_rejected', bad_response: 'model_bad_response' }[err.kind] || 'model_error';
         trace(run, { kind: 'decision', status: 'error', duration_ms, summary: err.message });
         return { ok: false, status: STATUS.FAILED, failure: { code, message: err.message } };
       }
@@ -147,6 +147,9 @@ export function createAgentRunner({ model, registry, retriever, store, limits, m
       result = await withTimeout(tool.execute(args, toolCtx(run, extra)), budget, tool.name);
       for (const r of result?.results || []) {
         if (r.source_id && !run.retrieved_source_ids.includes(r.source_id)) run.retrieved_source_ids.push(r.source_id);
+        // Passage-level record ("source§n"): lets an evaluation prove WHICH passage reached the model.
+        const ref = r.source_id && r.passage !== undefined ? `${r.source_id}§${r.passage}` : null;
+        if (ref && !run.retrieved_passages.includes(ref)) run.retrieved_passages.push(ref);
       }
     } catch (err) {
       status = err.code === 'TIMEOUT' ? 'timeout' : 'error';
@@ -197,7 +200,9 @@ export function createAgentRunner({ model, registry, retriever, store, limits, m
           continue;
         }
 
-        if (check.tool.requiresApproval) {
+        // Defence in depth: the registry already refuses a write tool without requiresApproval,
+        // but the runner also derives the gate from `access`, so a hand-built registry cannot skip it.
+        if (check.tool.access !== 'read' || check.tool.requiresApproval) {
           const approval = {
             approval_id: `apr_${randomUUID().replaceAll('-', '')}`,
             tool: d.tool,
@@ -242,6 +247,7 @@ export function createAgentRunner({ model, registry, retriever, store, limits, m
     /** Reload saved runs. A run that was mid-execution when the server died cannot resume safely. */
     async init() {
       for (const run of await store.loadRuns()) {
+        run.retrieved_passages ??= []; // runs saved before this field existed
         if (run.status === STATUS.RUNNING) {
           run.failure = { code: 'interrupted', message: 'The server restarted while this run was executing.' };
           transition(run, STATUS.FAILED);

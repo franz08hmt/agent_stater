@@ -43,6 +43,7 @@ export function createRun({ goal, model }) {
     model: { provider: model.provider, name: model.name, is_mock: model.isMock },
     trace: [],              // what the UI shows: actions and observations, no model reasoning
     retrieved_source_ids: [],
+    retrieved_passages: [], // "source§paragraph" for every passage a tool returned
     executed_calls: [],     // signatures of calls already made, for repeat detection
     approvals: [],          // every write proposal and what happened to it
     pending_approval: null, // approval_id currently blocking the run

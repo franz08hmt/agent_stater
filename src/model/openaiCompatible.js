@@ -4,14 +4,16 @@
 // Docs checked: ai.google.dev/gemini-api/docs/openai, docs.ollama.com/api/openai-compatibility
 
 export class ModelError extends Error {
-  /** @param {'unavailable'|'timeout'|'bad_request'|'bad_response'} kind */
+  /** @param {'unavailable'|'rate_limited'|'timeout'|'bad_request'|'bad_response'} kind */
   constructor(kind, message) {
     super(message);
     this.kind = kind;
   }
 }
 
-const RETRYABLE = new Set([429, 500, 502, 503, 504]);
+// 429 is deliberately NOT retried: it means a quota or rate limit was hit, and an immediate
+// second request cannot succeed but can still count against a daily quota.
+const RETRYABLE = new Set([500, 502, 503, 504]);
 
 export function createOpenAICompatibleModel(cfg) {
   const base = cfg.baseUrl.endsWith('/') ? cfg.baseUrl : `${cfg.baseUrl}/`;
@@ -38,10 +40,22 @@ export function createOpenAICompatibleModel(cfg) {
       throw new ModelError('unavailable', `Model endpoint unreachable (${err.cause?.code || err.cause?.message || err.message}).`);
     }
     if (!res.ok) {
-      // Keep a short excerpt for diagnosis; the request (and its key) is never echoed.
-      const excerpt = (await res.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 240);
-      const kind = RETRYABLE.has(res.status) ? 'unavailable' : 'bad_request';
-      throw Object.assign(new ModelError(kind, `Model endpoint returned HTTP ${res.status}: ${excerpt}`), { status: res.status });
+      // Keep a short excerpt for diagnosis. The request is never echoed, and the key is masked in case
+      // a provider repeats it in an error body — this text ends up in the trace and the audit log.
+      const raw = (await res.text().catch(() => '')).replace(/\s+/g, ' ');
+      let excerpt = cfg.apiKey ? raw.split(cfg.apiKey).join('[redacted]') : raw;
+      excerpt = excerpt.slice(0, 240);
+      // A 429 body can say WHICH limit was hit (e.g. a per-day quota vs a per-minute one) and when to
+      // retry. Surface that up front, before the excerpt is cut: it decides whether to wait or to switch.
+      let quota = '';
+      if (res.status === 429) {
+        const id = raw.match(/"quotaId":\s*"([^"]+)"/)?.[1];
+        const delay = raw.match(/"retryDelay":\s*"([^"]+)"/)?.[1];
+        const parts = [id && `quotaId=${id}`, delay && `retryDelay=${delay}`].filter(Boolean);
+        if (parts.length) quota = ` [${parts.join(', ')}]`;
+      }
+      const kind = res.status === 429 ? 'rate_limited' : RETRYABLE.has(res.status) ? 'unavailable' : 'bad_request';
+      throw Object.assign(new ModelError(kind, `Model endpoint returned HTTP ${res.status}${quota}: ${excerpt}`), { status: res.status });
     }
     const data = await res.json().catch(() => null);
     const text = data?.choices?.[0]?.message?.content;
@@ -53,7 +67,7 @@ export function createOpenAICompatibleModel(cfg) {
     provider: 'openai-compatible',
     name: cfg.name,
     isMock: false,
-    /** One bounded retry for rate limits / 5xx / network errors; never for timeouts or 4xx. */
+    /** One bounded retry for 5xx / network errors; never for timeouts, 429 or other 4xx. */
     async complete({ messages, signal }) {
       try {
         return await once(messages, signal);

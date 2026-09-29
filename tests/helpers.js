@@ -30,13 +30,13 @@ export const LIMITS = {
 export const tool = (name, args) => JSON.stringify({ type: 'tool_call', tool: name, arguments: args });
 export const final = (answer, source_ids = [], unresolved = '') => JSON.stringify({ type: 'final', answer, source_ids, unresolved });
 
-export async function harness({ replies, model, limits = {}, docs, retriever, modelTimeoutMs = 2000 } = {}) {
+export async function harness({ replies, model, limits = {}, docs, retriever, registry, modelTimeoutMs = 2000 } = {}) {
   const dir = await mkdtemp(join(tmpdir(), 'agent-test-'));
   const store = await createFileStore({ root: dir });
   const r = retriever || (docs ? createRetrieverFromDocs(docs) : await createKeywordRetriever({ dir: NOTES_DIR }));
   const m = model || createScriptedModel(replies || []);
   const runner = createAgentRunner({
-    model: m, registry: createToolRegistry(), retriever: r, store,
+    model: m, registry: registry || createToolRegistry(), retriever: r, store,
     limits: { ...LIMITS, ...limits }, modelTimeoutMs,
   });
   await runner.init();
