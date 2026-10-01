@@ -26,7 +26,7 @@
     </aside>
   </header>
 
-  <main id="workspace" class="workspace" aria-label="AI agent workspace">
+  <main id="workspace" class="workspace" data-view="overview" aria-label="AI agent workspace">
     <nav class="sidebar" aria-label="Workspace navigation">
       <a class="brand" href="#workspace" aria-label="Agent Studio home">
         <span class="brand-mark" aria-hidden="true"><img src="/assets/robot-pet.png" width="1024" height="1024" alt=""></span>
@@ -45,7 +45,7 @@
     <section id="agent-profile" class="profile" aria-labelledby="profile-title">
       <header class="section-heading">
         <p class="section-kicker">Agent profile</p>
-        <h2 id="profile-title">Study Notes Agent</h2>
+        <h2 id="profile-title" tabindex="-1">Study Notes Agent</h2>
       </header>
       <figure class="avatar-card">
         <img src="/assets/robot-pet.png" width="1024" height="1024" alt="Green-eyed robotic cat avatar for the Study Notes Agent">
@@ -57,15 +57,15 @@
         <div><dt>Write policy</dt><dd>Approval required</dd></div>
       </dl>
       <section class="drafts-card" aria-labelledby="drafts-title">
-        <h3 id="drafts-title"><span class="icon icon--document-text" aria-hidden="true"></span>Saved drafts</h3>
-        <ul id="drafts"><li class="hint">No drafts yet.</li></ul>
+        <h3 id="drafts-title" tabindex="-1"><span class="icon icon--document-text" aria-hidden="true"></span>Saved drafts</h3>
+        <ul id="drafts"><li class="hint">No drafts yet. <a href="#configuration">Open Agent</a> to create one.</li></ul>
       </section>
     </section>
 
     <section id="configuration" class="configuration" aria-labelledby="configuration-title">
       <header class="section-heading config-heading">
         <span class="section-kicker">01 / Configure</span>
-        <h2 id="configuration-title">Define the agent goal</h2>
+        <h2 id="configuration-title" tabindex="-1">Define the agent goal</h2>
       </header>
       <form id="goal-form">
         <fieldset class="form-section">
@@ -98,10 +98,16 @@
     <section id="dialogue" class="dialogue" aria-labelledby="dialogue-title">
       <header class="section-heading dialogue-heading">
         <span class="section-kicker">02 / Observe</span>
-        <h2 id="dialogue-title">Dialogue &amp; execution</h2>
+        <h2 id="dialogue-title" tabindex="-1">Dialogue &amp; execution</h2>
+        <button type="button" id="stop-dialogue" class="dialogue-stop" hidden><span class="icon icon--stop" aria-hidden="true"></span>Stop run</button>
       </header>
+      <p id="dialogue-error" class="error" role="alert" hidden></p>
       <section class="conversation" aria-label="Agent conversation">
-        <p class="message message--agent">Enter a goal or choose a scenario.</p>
+        <section id="dialogue-empty" class="dialogue-empty" aria-labelledby="dialogue-empty-title">
+          <span class="icon icon--chat-bubble-left-right" aria-hidden="true"></span>
+          <h3 id="dialogue-empty-title">No run yet</h3>
+          <a href="#configuration">Open Agent <span class="icon icon--chevron-right" aria-hidden="true"></span></a>
+        </section>
         <p id="goal-preview" class="message message--user" hidden></p>
         <section id="run-panel" class="run-content" aria-labelledby="run-title" hidden>
           <h3 id="run-title" class="sr-only">Current run</h3>

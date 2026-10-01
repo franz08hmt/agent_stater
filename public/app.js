@@ -1,6 +1,8 @@
 // Browser side: only talks to our own backend. It holds no API key and cannot call
 // any tool directly — approving a write is a request the backend checks again.
 
+import { applyWorkspaceView } from './workspace-view.js';
+
 const $ = (id) => document.getElementById(id);
 const STATUS_TEXT = {
   running: 'Running',
@@ -12,16 +14,14 @@ const STATUS_TEXT = {
 let current = null;
 let pollTimer = null;
 
-function updateCurrentNav() {
-  const activeHash = window.location.hash || '#agent-profile';
-  for (const link of document.querySelectorAll('.nav-link')) {
-    const active = link.getAttribute('href') === activeHash;
-    link.classList.toggle('is-current', active);
-    if (active) link.setAttribute('aria-current', 'location');
-    else link.removeAttribute('aria-current');
+function updateCurrentNav(moveFocus = false) {
+  const headingId = applyWorkspaceView(document, window.location.hash);
+  if (moveFocus) {
+    $(headingId).focus({ preventScroll: true });
+    $('workspace').scrollIntoView({ block: 'start' });
   }
 }
-window.addEventListener('hashchange', updateCurrentNav);
+window.addEventListener('hashchange', () => updateCurrentNav(true));
 updateCurrentNav();
 
 async function api(path, options = {}) {
@@ -42,8 +42,10 @@ function el(tag, text, className) {
 }
 
 function showError(message) {
-  $('form-error').textContent = message;
-  $('form-error').hidden = !message;
+  for (const id of ['form-error', 'dialogue-error']) {
+    $(id).textContent = message;
+    $(id).hidden = !message;
+  }
 }
 
 async function loadHealth() {
@@ -64,7 +66,13 @@ async function loadDrafts() {
   const { drafts } = await api('/api/drafts');
   const list = $('drafts');
   list.replaceChildren();
-  if (!drafts.length) list.append(el('li', 'No drafts yet.', 'hint'));
+  if (!drafts.length) {
+    const empty = el('li', 'No drafts yet. ', 'hint');
+    const link = el('a', 'Open Agent');
+    link.href = '#configuration';
+    empty.append(link, ' to create one.');
+    list.append(empty);
+  }
   for (const d of drafts) {
     const li = el('li');
     li.append(el('strong', d.title), el('span', `Sources: ${d.source_ids.join(', ')} · ${d.draft_id}`, 'hint'));
@@ -74,6 +82,7 @@ async function loadDrafts() {
 
 function render(run) {
   current = run;
+  $('dialogue-empty').hidden = true;
   $('run-panel').hidden = false;
   $('run-panel').setAttribute('aria-busy', String(run.status === 'running'));
   $('goal-preview').textContent = run.goal;
@@ -87,6 +96,7 @@ function render(run) {
   const busy = run.status === 'running' || run.status === 'awaiting_approval';
   $('start').disabled = busy;
   $('stop').hidden = !busy;
+  $('stop-dialogue').hidden = !busy;
   $('new-run').hidden = busy;
 
   const pending = run.approvals.find((a) => a.approval_id === run.pending_approval);
@@ -159,6 +169,7 @@ $('goal-form').addEventListener('submit', async (e) => {
   try {
     const { run } = await api('/api/runs', { method: 'POST', body: JSON.stringify({ goal: $('goal').value }) });
     render(run);
+    window.location.hash = '#dialogue';
     schedulePoll();
   } catch (err) {
     showError(err.message);
@@ -188,14 +199,19 @@ async function decide(decision) {
 $('approve').addEventListener('click', () => decide('approve'));
 $('reject').addEventListener('click', () => decide('reject'));
 
-$('stop').addEventListener('click', async () => {
+async function stopRun() {
+  if (!current) return;
   try { render((await api(`/api/runs/${current.run_id}/stop`, { method: 'POST' })).run); } catch (err) { showError(err.message); }
-});
+}
+$('stop').addEventListener('click', stopRun);
+$('stop-dialogue').addEventListener('click', stopRun);
 
 $('new-run').addEventListener('click', () => {
   clearTimeout(pollTimer);
   current = null;
   $('run-panel').hidden = true;
+  $('dialogue-empty').hidden = false;
+  $('stop-dialogue').hidden = true;
   $('goal-preview').hidden = true;
   $('goal-preview').textContent = '';
   $('start').disabled = false;
