@@ -64,7 +64,7 @@ async function loadDrafts() {
   const { drafts } = await api('/api/drafts');
   const list = $('drafts');
   list.replaceChildren();
-  if (!drafts.length) list.append(el('li', 'No drafts saved yet.', 'hint'));
+  if (!drafts.length) list.append(el('li', 'No drafts yet.', 'hint'));
   for (const d of drafts) {
     const li = el('li');
     li.append(el('strong', d.title), el('span', `Sources: ${d.source_ids.join(', ')} · ${d.draft_id}`, 'hint'));

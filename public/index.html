@@ -13,15 +13,15 @@
   <header class="hero" aria-labelledby="page-title">
     <p class="eyebrow">Creation</p>
     <h1 id="page-title">Easily Create<br>Complex Agent</h1>
-    <p class="hero-subtitle">Configure a goal, observe decisions, and keep every write under human control.</p>
+    <p class="hero-subtitle">Configure. Run. Inspect.</p>
     <aside class="hero-notes" aria-label="Workspace highlights">
       <section class="hero-note">
         <h2>Simplified concepts</h2>
-        <p>A compact workflow connects goals, knowledge retrieval, tools, and results.</p>
+        <p>Goals, knowledge, tools, results.</p>
       </section>
       <section class="hero-note">
         <h2>Real-time debugging</h2>
-        <p>Inspect each model decision and review proposed writes before execution.</p>
+        <p>Inspect decisions and approvals.</p>
       </section>
     </aside>
   </header>
@@ -29,7 +29,7 @@
   <main id="workspace" class="workspace" aria-label="AI agent workspace">
     <nav class="sidebar" aria-label="Workspace navigation">
       <a class="brand" href="#workspace" aria-label="Agent Studio home">
-        <span class="brand-mark"><span class="icon icon--cpu-chip" aria-hidden="true"></span></span>
+        <span class="brand-mark" aria-hidden="true"><img src="/assets/robot-pet.png" width="1024" height="1024" alt=""></span>
         <span>Agent<span class="brand-accent">Studio</span></span>
       </a>
       <p class="nav-label">Workspace</p>
@@ -39,18 +39,16 @@
         <li><a class="nav-link" href="#dialogue"><span class="icon icon--chat-bubble-left-right" aria-hidden="true"></span>Dialogue<span class="icon icon--chevron-right nav-arrow" aria-hidden="true"></span></a></li>
         <li><a class="nav-link" href="#drafts-title"><span class="icon icon--document-text" aria-hidden="true"></span>Saved drafts<span class="icon icon--chevron-right nav-arrow" aria-hidden="true"></span></a></li>
       </ul>
-      <p class="sidebar-foot"><span class="icon icon--shield-check" aria-hidden="true"></span>Local-first workspace</p>
+      <p class="sidebar-foot"><span class="icon icon--shield-check" aria-hidden="true"></span>Local-first</p>
     </nav>
 
     <section id="agent-profile" class="profile" aria-labelledby="profile-title">
       <header class="section-heading">
         <p class="section-kicker">Agent profile</p>
         <h2 id="profile-title">Study Notes Agent</h2>
-        <p>Research assistant · course workspace</p>
       </header>
       <figure class="avatar-card">
         <img src="/assets/robot-pet.png" width="1024" height="1024" alt="Green-eyed robotic cat avatar for the Study Notes Agent">
-        <figcaption>Knowledge-powered assistant</figcaption>
       </figure>
       <dl class="profile-facts">
         <div><dt>Model</dt><dd id="model-badge" class="badge" aria-live="polite">Checking model…</dd></div>
@@ -60,7 +58,7 @@
       </dl>
       <section class="drafts-card" aria-labelledby="drafts-title">
         <h3 id="drafts-title"><span class="icon icon--document-text" aria-hidden="true"></span>Saved drafts</h3>
-        <ul id="drafts"><li class="hint">No drafts saved yet.</li></ul>
+        <ul id="drafts"><li class="hint">No drafts yet.</li></ul>
       </section>
     </section>
 
@@ -68,15 +66,13 @@
       <header class="section-heading config-heading">
         <span class="section-kicker">01 / Configure</span>
         <h2 id="configuration-title">Define the agent goal</h2>
-        <p>Describe the outcome. The agent chooses permitted tools and the backend validates every step.</p>
       </header>
       <form id="goal-form">
         <fieldset class="form-section">
           <legend><span class="icon icon--bolt" aria-hidden="true"></span>Task</legend>
           <label for="goal">Goal</label>
-          <textarea id="goal" name="goal" rows="5" maxlength="500" required aria-describedby="goal-help goal-count" placeholder="e.g. Explain the difference between HTTP 401 and 403 using the study notes."></textarea>
-          <p id="goal-help" class="hint">Use a specific, verifiable request. No API key is exposed in this browser.</p>
-          <p class="character-count"><span id="goal-count">0</span> / 500 characters</p>
+          <textarea id="goal" name="goal" rows="5" maxlength="500" required aria-describedby="goal-limit" placeholder="e.g. Explain HTTP 401 vs 403."></textarea>
+          <p id="goal-limit" class="character-count"><span id="goal-count">0</span> / 500 characters</p>
         </fieldset>
         <fieldset class="samples">
           <legend>Try a course scenario</legend>
@@ -95,7 +91,7 @@
       </form>
       <section class="policy-note" aria-labelledby="policy-title">
         <span class="icon icon--shield-check" aria-hidden="true"></span>
-        <div><h3 id="policy-title">Human-in-the-loop control</h3><p>Read tools run automatically. Saving a draft pauses the agent until the exact action is approved.</p></div>
+        <div><h3 id="policy-title">Write approval</h3><p>Saving a draft requires approval.</p></div>
       </section>
     </section>
 
@@ -103,11 +99,9 @@
       <header class="section-heading dialogue-heading">
         <span class="section-kicker">02 / Observe</span>
         <h2 id="dialogue-title">Dialogue &amp; execution</h2>
-        <p>Live output, approvals, and an auditable trace.</p>
       </header>
       <section class="conversation" aria-label="Agent conversation">
-        <p class="conversation-date">Agent session</p>
-        <p class="message message--agent">Ready to inspect the course notes. Enter a goal or choose a scenario to begin.</p>
+        <p class="message message--agent">Enter a goal or choose a scenario.</p>
         <p id="goal-preview" class="message message--user" hidden></p>
         <section id="run-panel" class="run-content" aria-labelledby="run-title" hidden>
           <h3 id="run-title" class="sr-only">Current run</h3>
@@ -119,7 +113,7 @@
           </dl>
           <section id="approval" class="approval" aria-labelledby="approval-title" hidden>
             <h4 id="approval-title">Write approval required</h4>
-            <p>The agent proposes <code id="approval-tool"></code>. Approval applies only to these exact arguments.</p>
+            <p>Tool: <code id="approval-tool"></code>. Review the exact arguments.</p>
             <pre id="approval-args"></pre>
             <p class="hint">Argument hash: <code id="approval-hash"></code></p>
             <p class="actions"><button type="button" id="approve" class="primary"><span class="button-label">Approve write</span><span class="button-end"><span class="icon icon--check-circle" aria-hidden="true"></span></span></button><button type="button" id="reject" class="danger">Reject</button></p>
@@ -144,7 +138,6 @@
           </details>
         </section>
       </section>
-      <footer class="dialogue-foot"><span class="icon icon--check-circle" aria-hidden="true"></span>Backend-enforced tool permissions and source IDs</footer>
     </section>
   </main>
   <script type="module" src="/app.js"></script>
