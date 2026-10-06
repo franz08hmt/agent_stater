@@ -45,16 +45,16 @@
     <section id="agent-profile" class="profile" aria-labelledby="profile-title">
       <header class="section-heading">
         <p class="section-kicker">Agent profile</p>
-        <h2 id="profile-title" tabindex="-1">Study Notes Agent</h2>
+        <h2 id="profile-title" tabindex="-1">Agent</h2>
       </header>
       <figure class="avatar-card">
-        <img src="/assets/robot-pet.png" width="1024" height="1024" alt="Green-eyed robotic cat avatar for the Study Notes Agent">
+        <img src="/assets/robot-pet.png" width="1024" height="1024" alt="Robotic cat agent avatar">
       </figure>
       <dl class="profile-facts">
         <div><dt>Model</dt><dd id="model-badge" class="badge" aria-live="polite">Checking model…</dd></div>
         <div><dt>Knowledge</dt><dd>Local study notes</dd></div>
         <div><dt>Retrieval</dt><dd>Keyword search</dd></div>
-        <div><dt>Write policy</dt><dd>Approval required</dd></div>
+        <div><dt>Write policy</dt><dd id="write-policy">Checking…</dd></div>
       </dl>
       <section class="drafts-card" aria-labelledby="drafts-title">
         <h3 id="drafts-title" tabindex="-1"><span class="icon icon--document-text" aria-hidden="true"></span>Saved drafts</h3>
@@ -71,16 +71,11 @@
         <fieldset class="form-section">
           <legend><span class="icon icon--bolt" aria-hidden="true"></span>Task</legend>
           <label for="goal">Goal</label>
-          <textarea id="goal" name="goal" rows="5" maxlength="500" required aria-describedby="goal-limit" placeholder="e.g. Explain HTTP 401 vs 403."></textarea>
+          <textarea id="goal" name="goal" rows="5" maxlength="500" required aria-describedby="goal-limit" placeholder="Describe a task for this agent."></textarea>
           <p id="goal-limit" class="character-count"><span id="goal-count">0</span> / 500 characters</p>
         </fieldset>
         <fieldset class="samples">
           <legend>Try a course scenario</legend>
-          <button type="button" data-goal="401 và 403 khác nhau thế nào?">401 vs 403<span class="icon icon--chevron-right" aria-hidden="true"></span></button>
-          <button type="button" data-goal="Tổng tỉ trọng điểm giữa kỳ và đồ án cuối kỳ là bao nhiêu phần trăm?">Combine two notes<span class="icon icon--chevron-right" aria-hidden="true"></span></button>
-          <button type="button" data-goal="Phòng thi giữa kỳ ở đâu?">Missing evidence<span class="icon icon--chevron-right" aria-hidden="true"></span></button>
-          <button type="button" data-goal="Tóm tắt về idempotency và lưu bản nháp">Summary + draft<span class="icon icon--chevron-right" aria-hidden="true"></span></button>
-          <button type="button" data-goal="Tổng hợp mẹo ôn tập từ ghi chú chép diễn đàn">Injection example<span class="icon icon--chevron-right" aria-hidden="true"></span></button>
         </fieldset>
         <p class="actions">
           <button type="submit" id="start" class="primary"><span class="button-label">Run agent</span><span class="button-end"><span class="icon icon--chevron-right" aria-hidden="true"></span></span></button>
@@ -124,11 +119,12 @@
             <p class="hint">Argument hash: <code id="approval-hash"></code></p>
             <p class="actions"><button type="button" id="approve" class="primary"><span class="button-label">Approve write</span><span class="button-end"><span class="icon icon--check-circle" aria-hidden="true"></span></span></button><button type="button" id="reject" class="danger">Reject</button></p>
           </section>
+          <p id="write-outcome" class="write-outcome" role="status" aria-live="polite" hidden></p>
           <section id="result" class="result" aria-labelledby="result-title" hidden>
-            <h4 id="result-title">Agent response</h4>
+            <h4 id="result-title">Answer</h4>
             <p id="answer" class="answer"></p>
             <p id="unresolved" class="unresolved" hidden></p>
-            <h5>Retrieved sources</h5>
+            <h5 id="sources-title">Sources</h5>
             <ul id="sources"></ul>
           </section>
           <p id="failure" class="error" role="alert" hidden></p>

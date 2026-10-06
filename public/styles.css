@@ -177,6 +177,9 @@ textarea:focus { border-color: var(--mint-dark); box-shadow: 0 0 0 3px rgba(22,1
 .approval { border: 1px solid #edc889; background: #fff9ee; }
 .approval h4 { color: #8b5818; font-size: 12px; }
 .approval .actions { margin-top: 2px; }
+.write-outcome { margin: 0 0 13px; padding: 9px 12px; border-radius: 8px; font-size: 11px; font-weight: 600; }
+.write-outcome.saved { background: #e5f6ef; color: #0a705c; }
+.write-outcome.not-saved { background: #fff2dc; color: #82520d; }
 .result { background: #f5faf9; }
 .result h4 { font-size: 12px; }
 .result h5 { color: #60717a; font-size: 10px; }

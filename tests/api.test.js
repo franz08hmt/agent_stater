@@ -7,6 +7,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createApp } from '../src/app.js';
+import { loadTaskConfig } from '../config/task.config.js';
 import { createRuleBasedMock } from '../src/model/mock.js';
 import { ROOT, NOTES_DIR, LIMITS } from './helpers.js';
 
@@ -20,7 +21,8 @@ before(async () => {
     limits: LIMITS,
     server: { maxBodyBytes: 16 * 1024 },
   };
-  ({ server } = await createApp({ config, model: createRuleBasedMock(), dataDir: NOTES_DIR, varDir: dir, publicDir: join(ROOT, 'public') }));
+  const task = await loadTaskConfig({ root: ROOT });
+  ({ server } = await createApp({ config, model: createRuleBasedMock(), task, varDir: dir, publicDir: join(ROOT, 'public') }));
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   base = `http://127.0.0.1:${server.address().port}`;
 });
@@ -46,6 +48,9 @@ test('health reports the model mode and never the key', async () => {
   const text = await res.text();
   assert.equal(res.status, 200);
   assert.equal(JSON.parse(text).model.is_mock, true);
+  assert.equal(JSON.parse(text).task.id, 'study-notes');
+  assert.deepEqual(JSON.parse(text).task.allowed_tools, ['search_notes', 'save_draft']);
+  assert.ok(!text.includes('task_fingerprint'));
   assert.ok(!text.includes(SECRET));
 });
 
@@ -62,6 +67,7 @@ test('full flow over HTTP: start -> awaiting approval -> approve -> completed, o
   const start = await post('/api/runs', { goal: 'Tóm tắt về idempotency và lưu bản nháp' });
   assert.equal(start.status, 202);
   const { run } = await start.json();
+  assert.equal(Object.hasOwn(run, 'task_fingerprint'), false);
   const waiting = await waitUntilSettled(run.run_id);
   assert.equal(waiting.status, 'awaiting_approval');
   const a = waiting.approvals.find((x) => x.approval_id === waiting.pending_approval);
@@ -87,4 +93,7 @@ test('static UI is served with a content security policy', async () => {
   assert.equal(res.status, 200);
   assert.match(res.headers.get('content-security-policy'), /default-src 'self'/);
   assert.match(await res.text(), /Agent Studio — Configure, run and inspect an AI agent/);
+  const outcomeModule = await fetch(`${base}/approval-outcome.js`);
+  assert.equal(outcomeModule.status, 200);
+  assert.match(outcomeModule.headers.get('content-type'), /text\/javascript/);
 });

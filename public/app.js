@@ -2,6 +2,7 @@
 // any tool directly — approving a write is a request the backend checks again.
 
 import { applyWorkspaceView } from './workspace-view.js';
+import { latestWriteOutcome } from './approval-outcome.js';
 
 const $ = (id) => document.getElementById(id);
 const STATUS_TEXT = {
@@ -13,6 +14,7 @@ const STATUS_TEXT = {
 };
 let current = null;
 let pollTimer = null;
+let resultLabels = { unresolved: 'Unresolved' };
 
 function updateCurrentNav(moveFocus = false) {
   const headingId = applyWorkspaceView(document, window.location.hash);
@@ -57,6 +59,25 @@ async function loadHealth() {
       : `Live · ${h.model.name}`;
     badge.className = `badge ${h.model.is_mock ? 'is-mock' : 'is-live'}`;
     $('steps').dataset.max = h.limits.max_steps;
+    const task = h.task;
+    if (task) {
+      $('profile-title').textContent = task.title;
+      document.querySelector('.avatar-card img').alt = `Robotic cat avatar for ${task.title}`;
+      $('result-title').textContent = task.result_labels.answer;
+      $('sources-title').textContent = task.result_labels.sources;
+      resultLabels = task.result_labels;
+      $('write-policy').textContent = task.allowed_tools.includes('save_draft') ? 'Approval required' : 'Read-only';
+      const samples = document.querySelector('.samples');
+      for (const sample of task.sample_inputs) {
+        const button = el('button');
+        button.type = 'button';
+        button.dataset.goal = sample.goal;
+        button.append(document.createTextNode(sample.label), el('span', undefined, 'icon icon--chevron-right'));
+        button.querySelector('span').setAttribute('aria-hidden', 'true');
+        samples.append(button);
+      }
+      document.querySelector('.policy-note').hidden = !task.allowed_tools.includes('save_draft');
+    }
   } catch {
     $('model-badge').textContent = 'Backend unavailable';
   }
@@ -107,11 +128,16 @@ function render(run) {
     $('approval-hash').textContent = `${pending.args_hash.slice(0, 16)}…`;
   }
 
+  const writeOutcome = latestWriteOutcome(run.approvals);
+  $('write-outcome').hidden = !writeOutcome;
+  $('write-outcome').textContent = writeOutcome?.message || '';
+  $('write-outcome').className = `write-outcome ${writeOutcome?.status || ''}`;
+
   $('result').hidden = !run.final;
   if (run.final) {
     $('answer').textContent = run.final.answer;
     $('unresolved').hidden = !run.final.unresolved;
-  $('unresolved').textContent = run.final.unresolved ? `Unresolved: ${run.final.unresolved}` : '';
+    $('unresolved').textContent = run.final.unresolved ? `${resultLabels.unresolved}: ${run.final.unresolved}` : '';
     const sources = $('sources');
     sources.replaceChildren();
     if (!run.final.source_ids.length) sources.append(el('li', 'No source cited — this answer is not grounded in a retrieved note.', 'hint'));
@@ -155,13 +181,14 @@ function schedulePoll() {
 
 $('goal').addEventListener('input', () => { $('goal-count').textContent = $('goal').value.length; });
 
-for (const b of document.querySelectorAll('.samples button')) {
-  b.addEventListener('click', () => {
+document.querySelector('.samples').addEventListener('click', (event) => {
+  const b = event.target.closest('button[data-goal]');
+  if (b) {
     $('goal').value = b.dataset.goal;
     $('goal-count').textContent = b.dataset.goal.length;
     $('goal').focus();
-  });
-}
+  }
+});
 
 $('goal-form').addEventListener('submit', async (e) => {
   e.preventDefault();

@@ -1,6 +1,8 @@
 // WRITE tool. Never runs on the model's say-so: the runner parks the call in
 // "awaiting_approval" and only a matching human approval executes it.
 
+import { tokenize } from '../retrieval/keywordSearch.js';
+
 export const saveDraft = {
   name: 'save_draft',
   access: 'write',
@@ -25,6 +27,11 @@ export const saveDraft = {
   /** A draft may only cite notes that exist AND that this run actually retrieved. */
   checkRules(args, ctx) {
     const errors = [];
+    const goal = tokenize(ctx.run?.goal || '');
+    const saveRequested = goal.some((word) => ['luu', 'save', 'store'].includes(word))
+      || (goal.includes('ban') && goal.includes('nhap') && goal.some((word) => ['tao', 'viet', 'ghi'].includes(word)))
+      || (goal.includes('draft') && goal.some((word) => ['create', 'write'].includes(word)));
+    if (!saveRequested) errors.push('save_not_requested: the goal did not explicitly request saving a draft.');
     for (const id of args.source_ids) {
       if (!ctx.retriever.has(id)) errors.push(`source_id "${id}" does not exist in the notes.`);
       else if (!ctx.run.retrieved_source_ids.includes(id)) errors.push(`source_id "${id}" was not retrieved in this run; search for it first.`);

@@ -29,11 +29,12 @@ export function transition(run, to) {
   run.updated_at = new Date().toISOString();
 }
 
-export function createRun({ goal, model }) {
+export function createRun({ goal, model, taskFingerprint = null }) {
   const now = new Date().toISOString();
   return {
     run_id: `run_${randomUUID()}`,
     goal,
+    task_fingerprint: taskFingerprint,
     status: STATUS.RUNNING,
     steps_used: 0,          // tool calls attempted (executed, rejected or approved)
     repairs_used: 0,        // malformed model replies that were retried
@@ -71,6 +72,6 @@ export const callSignature = (tool, args) => `${tool}:${canonicalJson(args)}`;
 
 /** What the API returns: everything except the raw model conversation. */
 export function publicView(run) {
-  const { messages, ...rest } = run;
+  const { messages, task_fingerprint, ...rest } = run;
   return structuredClone(rest);
 }

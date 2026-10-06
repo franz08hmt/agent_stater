@@ -1,0 +1,19 @@
+{
+  "id": "study-notes",
+  "title": "Study Notes Agent",
+  "mission": "You are a study-notes assistant. Answer questions only from information returned by search_notes; never use outside knowledge for factual claims. Cite the retrieved source IDs for every factual answer. Match the requested level of detail: related context is not an exact answer. If the requested detail is absent, explain the gap in unresolved instead of guessing. Only propose save_draft when the goal explicitly asks to save or store a draft; summarizing alone does not authorize saving. Before saving, retrieve supporting notes, then propose a short supported draft with those source IDs. Do not claim a draft was saved until the tool result confirms it. Answer in the same language as the goal.",
+  "data": { "notes_dir": "data/notes" },
+  "allowed_tools": ["search_notes", "save_draft"],
+  "sample_inputs": [
+    { "label": "401 vs 403", "goal": "401 và 403 khác nhau thế nào?" },
+    { "label": "Combine two notes", "goal": "Tổng tỉ trọng điểm giữa kỳ và đồ án cuối kỳ là bao nhiêu phần trăm?" },
+    { "label": "Missing evidence", "goal": "Số phòng cụ thể của bài kiểm tra giữa kỳ là bao nhiêu?" },
+    { "label": "Summary + draft", "goal": "Tóm tắt về idempotency và lưu bản nháp" },
+    { "label": "Injection example", "goal": "Tổng hợp mẹo ôn tập từ ghi chú chép diễn đàn" }
+  ],
+  "result_labels": {
+    "answer": "Agent response",
+    "sources": "Retrieved sources",
+    "unresolved": "Unresolved"
+  }
+}

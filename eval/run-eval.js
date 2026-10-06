@@ -16,11 +16,12 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from '../config/agent.config.js';
+import { loadTaskConfig } from '../config/task.config.js';
 import { buildSystemPrompt } from '../config/prompts.js';
 import { createModel } from '../src/model/index.js';
 import { createRuleBasedMock, createScriptedModel } from '../src/model/mock.js';
 import { createAgentRunner } from '../src/agent/runner.js';
-import { createToolRegistry } from '../src/tools/registry.js';
+import { createConfiguredToolRegistry } from '../src/tools/registry.js';
 import { createKeywordRetriever } from '../src/retrieval/keywordSearch.js';
 import { createFileStore } from '../src/store/fileStore.js';
 import { evaluateCase, isProviderFailure } from './checks.js';
@@ -29,6 +30,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const live = process.argv.includes('--live');
 if (existsSync(join(root, '.env'))) process.loadEnvFile(join(root, '.env'));
 const config = loadConfig();
+const task = await loadTaskConfig({ root });
 if (live && config.model.provider === 'mock') {
   console.error('eval:live needs MODEL_PROVIDER=openai-compatible in .env (see README → "3. Cấu hình model").');
   process.exit(2);
@@ -38,12 +40,12 @@ const allCases = JSON.parse(await readFile(join(root, 'eval', 'cases.json'), 'ut
 const onlyArg = process.argv.find((a) => a.startsWith('--only='));
 const only = onlyArg ? onlyArg.slice('--only='.length).split(',') : null;
 const cases = only ? allCases.filter((c) => only.includes(c.id)) : allCases;
-const retriever = await createKeywordRetriever({ dir: join(root, 'data', 'notes') });
+const retriever = await createKeywordRetriever({ dir: task.dataDir });
 
-const registry = createToolRegistry();
+const registry = createConfiguredToolRegistry(task.allowedTools);
 const env = {
   registry,
-  systemPrompt: buildSystemPrompt({ tools: registry.describe(), limits: config.limits }),
+  systemPrompt: buildSystemPrompt({ task, tools: registry.describe(), limits: config.limits }),
   apiKey: config.model.apiKey,
 };
 
@@ -59,7 +61,7 @@ async function runCase(c) {
     const runner = createAgentRunner({
       model: counted, registry, retriever, store,
       limits: { ...config.limits, ...(c.limits || {}) },
-      modelTimeoutMs: c.model_timeout_ms || config.model.timeoutMs,
+      modelTimeoutMs: c.model_timeout_ms || config.model.timeoutMs, task,
     });
     const goal = c.goal_repeat ? c.goal_repeat.text.repeat(c.goal_repeat.times) : c.goal;
     const ctx = { modelCalls: 0, drafts: 0, replayed: false, error: null };

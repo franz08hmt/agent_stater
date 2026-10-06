@@ -10,9 +10,11 @@ import { createToolRegistry } from '../src/tools/registry.js';
 import { createKeywordRetriever, createRetrieverFromDocs } from '../src/retrieval/keywordSearch.js';
 import { createFileStore } from '../src/store/fileStore.js';
 import { createScriptedModel } from '../src/model/mock.js';
+import { loadTaskConfig } from '../config/task.config.js';
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 export const NOTES_DIR = join(ROOT, 'data', 'notes');
+export const TASK = await loadTaskConfig({ root: ROOT });
 
 export const LIMITS = {
   maxSteps: 6,
@@ -37,7 +39,7 @@ export async function harness({ replies, model, limits = {}, docs, retriever, re
   const m = model || createScriptedModel(replies || []);
   const runner = createAgentRunner({
     model: m, registry: registry || createToolRegistry(), retriever: r, store,
-    limits: { ...LIMITS, ...limits }, modelTimeoutMs,
+    limits: { ...LIMITS, ...limits }, modelTimeoutMs, task: TASK,
   });
   await runner.init();
   return {

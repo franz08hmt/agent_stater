@@ -11,7 +11,7 @@ import { tokenize, createRetrieverFromDocs } from '../src/retrieval/keywordSearc
 import { LIMITS } from './helpers.js';
 
 const retriever = createRetrieverFromDocs([{ sourceId: 'http-status', title: 'HTTP', passages: ['401 means unauthenticated.'] }]);
-const ctx = (retrieved = []) => ({ retriever, run: { run_id: 'run_x', retrieved_source_ids: retrieved } });
+const ctx = (retrieved = []) => ({ retriever, run: { run_id: 'run_x', goal: 'Tóm tắt và lưu bản nháp', retrieved_source_ids: retrieved } });
 
 test('schema: accepts valid input and reports every violation', () => {
   const schema = { type: 'object', properties: { q: { type: 'string', minLength: 2, maxLength: 5 }, n: { type: 'integer', minimum: 1, maximum: 3 } }, required: ['q'], additionalProperties: false };

@@ -5,6 +5,15 @@ import { validate } from './schema.js';
 import { searchNotes } from './searchNotes.js';
 import { saveDraft } from './saveDraft.js';
 
+export const BUILTIN_TOOLS = Object.freeze({ search_notes: searchNotes, save_draft: saveDraft });
+
+export function createConfiguredToolRegistry(names) {
+  if (!Array.isArray(names) || !names.length || names.some((name) => !Object.hasOwn(BUILTIN_TOOLS, name))) {
+    throw new Error('Task allowed_tools contains an unavailable tool.');
+  }
+  return createToolRegistry(names.map((name) => BUILTIN_TOOLS[name]));
+}
+
 const MAX_ARGUMENT_BYTES = 6000;
 const ACCESS_LEVELS = ['read', 'write'];
 

@@ -58,12 +58,16 @@ function decide(messages) {
   const goalTerms = [...new Set(tokenize(goal).filter((t) => !SAVE_WORDS.has(t)))];
   const seen = new Set(tokenize(top.map((r) => `${r.title} ${r.text}`).join(' ')));
   const coverage = goalTerms.length ? goalTerms.filter((t) => seen.has(t)).length / goalTerms.length : 0;
-  if (coverage < 0.5) {
+  // A room-specific answer cannot be inferred from a note about the exam generally.
+  const missingRoom = goalTerms.includes('phong') && !seen.has('phong');
+  if (coverage < 0.5 || missingRoom) {
     return {
       type: 'final',
       answer: 'Ghi chú có đoạn liên quan tới chủ đề nhưng không chứa thông tin trả lời trực tiếp câu hỏi này.',
       source_ids: [],
-      unresolved: `Không đủ bằng chứng: chỉ ${Math.round(coverage * 100)}% từ khóa của câu hỏi xuất hiện trong các đoạn tìm được. Cần bổ sung tài liệu.`,
+      unresolved: missingRoom
+        ? 'Không đủ bằng chứng: ghi chú không nêu số phòng cụ thể. Cần bổ sung tài liệu.'
+        : `Không đủ bằng chứng: chỉ ${Math.round(coverage * 100)}% từ khóa của câu hỏi xuất hiện trong các đoạn tìm được. Cần bổ sung tài liệu.`,
     };
   }
   const ids = [...new Set(top.map((r) => r.source_id))];

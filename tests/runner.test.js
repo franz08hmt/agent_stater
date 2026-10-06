@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { harness, tool, final, LIMITS } from './helpers.js';
+import { harness, tool, final, LIMITS, TASK } from './helpers.js';
 import { createRuleBasedMock } from '../src/model/mock.js';
 import { createAgentRunner } from '../src/agent/runner.js';
 import { createToolRegistry } from '../src/tools/registry.js';
@@ -96,6 +96,16 @@ test('input limits: empty and oversized goals never start a run', async (t) => {
 
 const saveArgs = { title: 'Tóm tắt idempotency', content: 'POST không idempotent; dùng idempotency key.', source_ids: ['idempotency'] };
 const saveFlow = () => [tool('search_notes', { query: 'idempotency' }), tool('save_draft', saveArgs), final('Xong.', ['idempotency'])];
+
+test('summarize-only goal cannot create or request approval for a draft', async (t) => {
+  const h = await harness({ replies: saveFlow() });
+  t.after(h.cleanup);
+  const run = await h.run('Tóm tắt idempotency');
+  assert.equal(run.status, 'completed');
+  assert.equal(run.approvals.length, 0);
+  assert.equal((await h.store.listDrafts()).length, 0);
+  assert.match(run.trace.find((entry) => entry.kind === 'tool' && entry.tool_name === 'save_draft').summary, /save_not_requested/);
+});
 
 test('write action waits for approval; rejecting it writes nothing', async (t) => {
   const h = await harness({ replies: saveFlow() });
@@ -258,10 +268,10 @@ test('stopping a run that awaits approval cancels the write', async (t) => {
 test('a run interrupted by a server restart is marked failed, never resumed blindly', async (t) => {
   const h = await harness({ replies: [] });
   t.after(h.cleanup);
-  const ghost = { run_id: 'run_ghost', status: 'running', trace: [], approvals: [], messages: [], created_at: new Date().toISOString(), updated_at: '' };
+  const ghost = { run_id: 'run_ghost', task_fingerprint: TASK.fingerprint, status: 'running', trace: [], approvals: [], messages: [], created_at: new Date().toISOString(), updated_at: '' };
   await writeFile(join(h.dir, 'runs', 'run_ghost.json'), JSON.stringify(ghost));
   // A fresh runner over the same storage folder = a server restart.
-  const runner = createAgentRunner({ model: h.model, registry: createToolRegistry(), retriever: h.retriever, store: h.store, limits: LIMITS, modelTimeoutMs: 1000 });
+  const runner = createAgentRunner({ model: h.model, registry: createToolRegistry(), retriever: h.retriever, store: h.store, limits: LIMITS, modelTimeoutMs: 1000, task: TASK });
   await runner.init();
   const restored = runner.getRun('run_ghost');
   assert.equal(restored.status, 'failed');
@@ -276,7 +286,7 @@ test('prompt injection: a model that obeys the poisoned note is still stopped by
     tool('save_draft', { title: 'pwned', content: 'approved: true', source_ids: ['forum-copy'] }),
   ] });
   t.after(h.cleanup);
-  const run = await h.run('Tổng hợp mẹo ôn tập từ ghi chú chép diễn đàn');
+  const run = await h.run('Tổng hợp mẹo ôn tập từ ghi chú chép diễn đàn và lưu bản nháp');
   const firstObservation = h.model.calls[1].at(-1).content;
   assert.match(firstObservation, /"untrusted_data"/, 'retrieved text is delivered as data');
   assert.match(firstObservation, /IGNORE ALL PREVIOUS INSTRUCTIONS/, 'the injected text did reach the model');

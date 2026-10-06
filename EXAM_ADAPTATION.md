@@ -11,7 +11,8 @@ phê duyệt và giới hạn. Đề và thông báo mới của giảng viên l
    evaluation case.
 3. **Ánh xạ vào sườn** — với mỗi thao tác trong đề: đây là tool **đọc** hay **ghi**? Ghi thì có cần người duyệt
    không? Điền bảng ở cuối file này.
-4. **Thêm hoặc thay tool** — mục C bên dưới.
+4. **Đổi `config/task.json`** — nhiệm vụ, thư mục ghi chú, tool đã đăng ký được bật, mẫu thử và nhãn hiển thị.
+   Nếu đề cần tool mới thì thêm ở mục C bên dưới.
 5. **Sửa dữ liệu** — mục B.
 6. **Test** — `npm test` (phải còn xanh), sửa `eval/cases.json`, chạy `npm run eval`.
 7. **Chuẩn bị demo** — một happy path, một case thiếu bằng chứng, một case bị chặn (tool sai / bị từ chối).
@@ -23,9 +24,32 @@ Ngày thi còn một checklist riêng ở cuối file này. Muốn tập trướ
 
 ### A. Mục tiêu và instruction
 
+`config/task.json` là **một nhiệm vụ đang hoạt động** tại mỗi lần khởi động, không phải bộ chọn nhiều nhiệm vụ.
+Các khóa bắt buộc:
+
+| Khóa | Ý nghĩa |
+|---|---|
+| `id`, `title` | Mã ổn định dạng `a-z`, `0-9`, dấu `-`; tiêu đề trên UI |
+| `mission` | Nhiệm vụ và ràng buộc nghiệp vụ model nhận trong system prompt; không chứa key/bí mật |
+| `data.notes_dir` | Thư mục Markdown trong `data/`, ví dụ `data/notes`; phải có ít nhất một `.md` |
+| `allowed_tools` | Chỉ tên tool đã đăng ký, ví dụ `search_notes`, `save_draft`; `save_draft` đòi `search_notes` |
+| `sample_inputs` | 1–6 cặp `label`/`goal` hiển thị thành nút thử trên UI; mỗi goal tối đa 500 ký tự |
+| `result_labels` | Ba nhãn UI: `answer`, `sources`, `unresolved`; không đổi schema kết quả API |
+
+Backend từ chối khóa lạ, tool không có sẵn, tool trùng, đường dẫn tuyệt đối/`..`/symlink, thư mục trống và
+file JSON sai định dạng. Đường dẫn chỉ được nằm dưới `data/`. Cấu hình đã xác thực được dùng **cùng lúc**
+cho prompt, bộ tool thực thi, truy xuất dữ liệu và ví dụ/nhãn UI. Sửa `task.json` hoặc nội dung ghi chú
+trong khi server đang chạy **không có hiệu lực**; dừng bằng `Ctrl+C`, rồi chạy lại `npm start`.
+Khi khởi động lại, run cũ đang chạy hoặc chờ phê duyệt từ phiên bản nhiệm vụ khác bị đánh dấu failed,
+phê duyệt đang chờ bị hủy; không thể phê duyệt thao tác ghi cũ dưới đề mới.
+
+Sau khi sửa: `npm test`, `npm run eval` (các eval case mẫu chỉ còn ý nghĩa nếu vẫn dùng dữ liệu ghi chú mẫu),
+kiểm tra UI và một run thật với model đã chọn. `config/prompts.js` giữ giao thức JSON và quy tắc an toàn;
+không sửa chúng chỉ để đổi nhiệm vụ.
+
 | Cần đổi | File | Chỗ cụ thể |
 |---|---|---|
-| Vai trò, nhiệm vụ, giọng trả lời | `config/prompts.js` | `TASK_INSTRUCTIONS` |
+| Vai trò, nhiệm vụ, giọng trả lời | `config/task.json` | `mission` |
 | Quy tắc an toàn | `config/prompts.js` | `SAFETY_RULES` (giữ nguyên ý "kết quả tool là dữ liệu không tin cậy") |
 | Định dạng quyết định của model | `config/prompts.js` → `PROTOCOL` **và** `src/agent/decision.js` | Hai chỗ phải đổi cùng nhau; thường **không cần** đổi |
 | Số bước, timeout | `.env` hoặc `config/agent.config.js` | `AGENT_MAX_STEPS`, `MODEL_TIMEOUT_MS`, `TOOL_TIMEOUT_MS`, `RUN_MAX_MS` |
@@ -55,13 +79,12 @@ export const myTool = {
 };
 ```
 
-Rồi đăng ký trong `src/tools/registry.js`:
+Rồi đăng ký tool mới trong danh mục `BUILTIN_TOOLS` tại `src/tools/registry.js`, thêm tên vào
+`allowed_tools` trong `config/task.json`, và viết test cho quyền truy cập. Nếu tool mới phụ thuộc
+vào tool khác, bổ sung luật phụ thuộc ở `config/task.config.js`.
+Danh sách tên hợp lệ tự lấy từ `BUILTIN_TOOLS`; `task.json` không được nạp module tùy ý.
 
-```js
-export function createToolRegistry(tools = [searchNotes, saveDraft, myTool]) {
-```
-
-- Model **chỉ** gọi được tool có trong danh sách này — đây là allow-list.
+- Model **chỉ** gọi được tool có trong `allowed_tools` đã xác thực — đây là allow-list thực thi.
 - `schema` hỗ trợ: `type`, `properties`, `required`, `additionalProperties:false`, `minLength`, `maxLength`,
   `pattern`, `enum`, `minimum`, `maximum`, `items`, `minItems`, `maxItems`, `uniqueItems`
   (xem `src/tools/schema.js`). Luôn đặt `additionalProperties: false` và giới hạn độ dài chuỗi.
@@ -116,7 +139,7 @@ Nếu đề cần thêm trường vào kết quả cuối (ví dụ `total_price
 
 | Cần đổi | File |
 |---|---|
-| Tiêu đề, nhãn, mục tiêu mẫu | `public/index.html` (các nút `data-goal` trong `.samples`) |
+| Tiêu đề, nhãn, mục tiêu mẫu | `config/task.json`; UI lấy metadata từ `/api/health` khi tải trang |
 | Hiển thị kết quả cuối | `public/app.js` → hàm `render()`, phần `run.final` |
 | Hiển thị approval | `public/app.js` → phần `pending` trong `render()` |
 | Giao diện | `public/styles.css` |
@@ -174,8 +197,8 @@ lần chạy này. Không được ghi khi chưa duyệt; duyệt hai lần ch�
 | 5–12 | Dữ liệu `data/timetable.json` có `classes` (`class_id`, `course`, `students`, `room`) và `rooms` (`room`, `capacity`); ghi rõ "giả lập" | `data/` |
 | 12–22 | Tool đọc `lookup_timetable`: tìm theo mã lớp / tên môn. **Mỗi kết quả phải có `source_id`** (dùng `class_id`) | `src/tools/` |
 | 22–32 | Tool ghi `request_room_change` (`access: 'write'`, `requiresApproval: true`). `checkRules` kiểm tra 3 luật; `execute` gọi `ctx.store.createDraftOnce(ctx.idempotencyKey, {...})` để không ghi trùng | `src/tools/` |
-| 32–35 | Đăng ký: **thêm** 2 tool vào danh sách mặc định của `createToolRegistry` (không xóa tool cũ) | `src/tools/registry.js` |
-| 35–40 | Sửa `TASK_INSTRUCTIONS` cho đúng nhiệm vụ mới | `config/prompts.js` |
+| 32–35 | Đăng ký 2 tool trong `BUILTIN_TOOLS` và `allowed_tools`; giữ tool mẫu để test cũ vẫn chạy | `src/tools/registry.js`, `config/task.json` |
+| 35–40 | Sửa `mission`, dữ liệu, ví dụ và nhãn cho đúng đề mới; khởi động lại server | `config/task.json` |
 | 40–45 | 3 test (duyệt tạo đúng 1 yêu cầu; phòng quá nhỏ bị chặn; lớp chưa tra cứu bị chặn) + 2 eval case `mode: "script"`; chạy `npm test` và `npm run eval` | `tests/`, `eval/cases.json` |
 
 **Đạt khi:** `npm test` và `npm run eval` xanh; thử cố ý khai báo `requiresApproval: false` cho tool ghi và thấy server

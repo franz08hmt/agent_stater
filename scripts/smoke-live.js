@@ -9,15 +9,17 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from '../config/agent.config.js';
+import { loadTaskConfig } from '../config/task.config.js';
 import { createModel } from '../src/model/index.js';
 import { createAgentRunner } from '../src/agent/runner.js';
-import { createToolRegistry } from '../src/tools/registry.js';
+import { createConfiguredToolRegistry } from '../src/tools/registry.js';
 import { createKeywordRetriever } from '../src/retrieval/keywordSearch.js';
 import { createFileStore } from '../src/store/fileStore.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 if (existsSync(join(root, '.env'))) process.loadEnvFile(join(root, '.env'));
 const config = loadConfig();
+const task = await loadTaskConfig({ root });
 if (config.model.provider === 'mock') {
   console.error('MODEL_PROVIDER is "mock". Set MODEL_PROVIDER=openai-compatible and the MODEL_* values in .env first.');
   process.exit(2);
@@ -48,11 +50,11 @@ async function agentRuns() {
   // 2. Full agent runs through the same runner the server uses.
   const dir = await mkdtemp(join(tmpdir(), 'agent-smoke-'));
   const runner = createAgentRunner({
-    model, registry: createToolRegistry(), store: await createFileStore({ root: dir }),
-    retriever: await createKeywordRetriever({ dir: join(root, 'data', 'notes') }),
-    limits: config.limits, modelTimeoutMs: config.model.timeoutMs,
+    model, registry: createConfiguredToolRegistry(task.allowedTools), store: await createFileStore({ root: dir }),
+    retriever: await createKeywordRetriever({ dir: task.dataDir }),
+    limits: config.limits, modelTimeoutMs: config.model.timeoutMs, task,
   });
-  const goals = ['401 và 403 khác nhau thế nào?', 'Tổng tỉ trọng điểm giữa kỳ và đồ án cuối kỳ là bao nhiêu phần trăm?', 'Phòng thi giữa kỳ ở đâu?'];
+  const goals = task.sampleInputs.slice(0, 3).map((sample) => sample.goal);
   let ok = true;
   for (const goal of goals) {
     const t = Date.now();

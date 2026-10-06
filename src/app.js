@@ -12,7 +12,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createAgentRunner, AgentError } from './agent/runner.js';
-import { createToolRegistry } from './tools/registry.js';
+import { createConfiguredToolRegistry } from './tools/registry.js';
 import { createKeywordRetriever } from './retrieval/keywordSearch.js';
 import { createFileStore } from './store/fileStore.js';
 
@@ -20,6 +20,7 @@ const STATIC = {
   '/': ['index.html', 'text/html; charset=utf-8'],
   '/index.html': ['index.html', 'text/html; charset=utf-8'],
   '/app.js': ['app.js', 'text/javascript; charset=utf-8'],
+  '/approval-outcome.js': ['approval-outcome.js', 'text/javascript; charset=utf-8'],
   '/workspace-view.js': ['workspace-view.js', 'text/javascript; charset=utf-8'],
   '/styles.css': ['styles.css', 'text/css; charset=utf-8'],
   '/assets/robot-pet.png': ['assets/robot-pet.png', 'image/png'],
@@ -62,11 +63,12 @@ async function readJson(req, maxBytes) {
   }
 }
 
-export async function createApp({ config, model, dataDir, varDir, publicDir }) {
+export async function createApp({ config, model, task, varDir, publicDir }) {
+  if (!task?.fingerprint || !task?.dataDir || !task?.allowedTools?.length) throw new Error('Validated task config is required before server startup.');
   const store = await createFileStore({ root: varDir });
-  const retriever = await createKeywordRetriever({ dir: dataDir });
-  const registry = createToolRegistry();
-  const runner = createAgentRunner({ model, registry, retriever, store, limits: config.limits, modelTimeoutMs: config.model.timeoutMs });
+  const retriever = await createKeywordRetriever({ dir: task.dataDir });
+  const registry = createConfiguredToolRegistry(task.allowedTools);
+  const runner = createAgentRunner({ model, registry, retriever, store, limits: config.limits, modelTimeoutMs: config.model.timeoutMs, task });
   await runner.init();
 
   async function route(req, res) {
@@ -85,6 +87,7 @@ export async function createApp({ config, model, dataDir, varDir, publicDir }) {
         model: { provider: model.provider, name: model.name, is_mock: model.isMock },
         limits: { max_steps: config.limits.maxSteps, run_max_ms: config.limits.runMaxMs, max_goal_chars: config.limits.maxGoalChars },
         retrieval: retriever.kind,
+        task: { id: task.id, title: task.title, allowed_tools: task.allowedTools, sample_inputs: task.sampleInputs, result_labels: task.resultLabels },
       });
     }
     if (url.pathname === '/api/runs') {
