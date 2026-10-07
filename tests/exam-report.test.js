@@ -4,7 +4,15 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { loadEnvironment, configurationIdentity } from '../src/operations/context.js';
-import { saveReport, readReport, sanitizeEvidence, reportFreshness } from '../src/operations/reports.js';
+import { saveReport, readReport, sanitizeEvidence, reportFreshness, modelCheckStatus } from '../src/operations/reports.js';
+
+test('model check distinguishes protocol failure from blocked connection and missing usage', () => {
+  assert.equal(modelCheckStatus({ protocol_ok: false, error: { code: 'invalid_protocol' } }), 'FAIL');
+  assert.equal(modelCheckStatus({ protocol_ok: false, error: { code: 'timeout' } }), 'BLOCKED');
+  assert.equal(modelCheckStatus({ protocol_ok: false, error: { code: 'rate_limited' } }), 'BLOCKED');
+  assert.equal(modelCheckStatus({ protocol_ok: true, metrics: { tokens: { reported: { total: null } } } }), 'PASS');
+  assert.equal(modelCheckStatus({ status: 'BLOCKED', installed: false }), 'BLOCKED');
+});
 
 test('report sanitizer removes credentials, prompts and unnecessary internal paths', () => {
   const safe = sanitizeEvidence({ apiKey: 'private-key', messages: [{ content: 'system secret' }], root: 'D:/private',

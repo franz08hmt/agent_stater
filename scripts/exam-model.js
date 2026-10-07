@@ -1,7 +1,7 @@
 import { loadEnvironment } from '../src/operations/context.js';
 import { inspectLocalModel, warmProfile, localEndpoint } from '../src/operations/localModel.js';
 import { probeProfile } from '../src/model/probe.js';
-import { saveReport } from '../src/operations/reports.js';
+import { saveReport, modelCheckStatus } from '../src/operations/reports.js';
 
 try {
   const args = process.argv.slice(2), value = (key, fallback) => args.find((a) => a.startsWith(`--${key}=`))?.split('=').slice(1).join('=') ?? fallback;
@@ -16,7 +16,7 @@ try {
     const inspection = await inspectLocalModel(profile);
     result = action === 'warm' && inspection.installed === true ? { inspection, ...await warmProfile(profile) } : inspection;
   }
-  const status = result.error ? 'BLOCKED' : result.protocol_ok === false ? 'FAIL' : result.status ?? 'PASS';
+  const status = modelCheckStatus(result);
   const report = await saveReport(env, action, { status, model_profile_id: id, result });
   console.log(JSON.stringify({ status, model_profile_id: id, ...report.result }, null, 2));
   console.log(`Report ID: ${report.report_id}. Model response is separate from live case acceptance.`);

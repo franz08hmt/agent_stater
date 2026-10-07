@@ -62,7 +62,7 @@ export async function assessReadiness(env, { profileId = env.catalog.defaultProf
     : { status: 'NOT_RUN', note: 'Chưa đo thời gian đổi đề thực tế. Use exam:timer and review the recorded student steps.' };
   const status = !profile.model || server.state !== 'running' || server.configuration_matches === false || Object.values(liveCases).some((r) => r.status === 'BLOCKED') ? 'BLOCKED'
     : Object.values(liveCases).some((r) => r.status === 'FAIL') ? 'FAIL' : 'REVIEW_REQUIRED';
-  return { status, model_profile_id: profileId, server, model: { configured: !!profile.model, provider: profile.metadata.provider, name: profile.metadata.model,
+  return { status, model_profile_id: profileId, server, model: { configured: !!profile.model, provider: profile.metadata.provider, name: profile.metadata.name,
     is_mock: profile.metadata.is_mock, identity: profile.identity, probed, warmed, connection_verified: !profile.metadata.is_mock && probed.status === 'PASS' },
     offline, live_cases: liveCases, accounting, student_adaptation: student, student_timings: timings.map(({ timing_id, status, stale, task_id, total_ms }) => ({ timing_id, status, stale, task_id, total_ms })),
     reports: records.map(({ report: r, stale, commit_changed }) => ({ report_id: r.report_id, kind: r.kind, status: r.status, stale, commit_changed,

@@ -12,6 +12,7 @@ test('readiness distinguishes configured, probe/warm, live failures, stale and u
   t.after(() => rm(env.root, { recursive: true, force: true }));
   const server = { state: 'running', configuration_matches: true, url: 'http://127.0.0.1:8787' };
   const initial = await assessReadiness(env, { profileId: 'ollama-qwen3', server });
+  assert.equal(initial.model.name, 'qwen3:8b');
   assert.equal(initial.model.configured, true); assert.equal(initial.model.probed.status, 'NOT_RUN'); assert.equal(initial.status, 'REVIEW_REQUIRED');
   await saveReport(env, 'probe', { status: 'PASS', model_profile_id: 'ollama-qwen3', result: { protocol_ok: true, metrics: { provider_requests: 1 } } });
   await saveReport(env, 'smoke', { status: 'FAIL', model_evidence: 'LIVE', model_profile_id: 'ollama-qwen3',

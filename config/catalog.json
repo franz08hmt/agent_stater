@@ -10,6 +10,7 @@
   "model_profiles": [
     { "id": "env", "label": "Environment model", "source": "env" },
     { "id": "mock", "label": "Offline mock", "provider": "mock" },
-    { "id": "ollama-qwen3", "label": "Local Ollama Qwen3 8B", "provider": "openai-compatible", "name": "qwen3:8b", "base_url": "http://127.0.0.1:11434/v1/", "requires_key": false, "reasoning_effort": "none" }
+    { "id": "ollama-qwen3", "label": "Local Ollama Qwen3 8B", "provider": "openai-compatible", "name": "qwen3:8b", "base_url": "http://127.0.0.1:11434/v1/", "requires_key": false, "reasoning_effort": "none" },
+    { "id": "ollama-qwen3-4b", "label": "Local Ollama Qwen3 4B (comparison)", "provider": "openai-compatible", "name": "qwen3:4b", "base_url": "http://127.0.0.1:11434/v1/", "requires_key": false, "reasoning_effort": "none" }
   ]
 }

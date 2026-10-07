@@ -3,6 +3,9 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 export const STATUSES = ['PASS', 'FAIL', 'BLOCKED', 'REVIEW_REQUIRED', 'NOT_RUN'];
+export function modelCheckStatus(result) {
+  return result.error?.code === 'invalid_protocol' ? 'FAIL' : result.error ? 'BLOCKED' : result.protocol_ok === false ? 'FAIL' : result.status ?? 'PASS';
+}
 export function sanitizeEvidence(value, { secrets = [], root = '' } = {}) {
   if (typeof value === 'string') {
     for (const secret of [...secrets, root].filter(Boolean)) value = value.split(secret).join('[redacted]');

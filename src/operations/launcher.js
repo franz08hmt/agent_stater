@@ -55,7 +55,7 @@ export async function launchForeground(env, { log = console.log, signal, childEn
     }
     if (!ready) { stop(); throw new Error(spawnError ? 'Could not start Node server.' : 'Server failed health/catalog startup verification.'); }
     log(`Server running: ${state.url}. Open this URL in your browser. Ctrl+C stops this launcher-owned server.`);
-    log('Model profiles are configured only; no LLM request or live acceptance test has run during startup.');
+    log('Catalog validated; profile availability is listed in the UI. No LLM request or live acceptance test ran during startup.');
     const code = await exit;
     return { state: 'exited', exit_code: code ?? 0, url: state.url };
   } finally { process.off('SIGINT', stop); process.off('SIGTERM', stop); signal?.removeEventListener('abort', stop); }
