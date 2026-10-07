@@ -26,8 +26,8 @@ test('local inspection only reads installed/loaded model metadata', async (t) =>
   const missing = await inspectLocalModel({ ...h.profile, config: { ...h.profile.config, name: 'not-installed' } });
   assert.equal(missing.installed, false); assert.match(missing.suggestion, /not-installed/);
 });
-for (const scenario of ['success', '503', 'timeout', 'no usage']) test(`warm ${scenario} sends at most one model HTTP with its own usage`, async (t) => {
-  const h = await fixture(t, scenario === '503' ? { status: 503 } : scenario === 'timeout' ? { delay: 200 }
+for (const scenario of ['success', '503', '429', 'timeout', 'no usage']) test(`warm ${scenario} sends at most one model HTTP with its own usage`, async (t) => {
+  const h = await fixture(t, ['503', '429'].includes(scenario) ? { status: Number(scenario) } : scenario === 'timeout' ? { delay: 200 }
     : scenario === 'success' ? { usage: { prompt_tokens: 4, completion_tokens: 6, total_tokens: 10 } } : {});
   const warm = await warmProfile(h.profile, { timeoutMs: scenario === 'timeout' ? 50 : 2000 });
   assert.equal(h.requests(), 1); assert.equal(warm.metrics.provider_requests, 1); assert.equal(warm.metrics.retries, 0);
@@ -35,6 +35,7 @@ for (const scenario of ['success', '503', 'timeout', 'no usage']) test(`warm ${s
   else assert.equal(warm.metrics.tokens.reported.total, null);
   if (scenario === 'timeout') assert.equal(warm.error.code, 'timeout');
   if (scenario === '503') assert.equal(warm.error.code, 'unavailable');
+  if (scenario === '429') assert.equal(warm.error.code, 'rate_limited');
 });
 test('warm refuses cloud, mock, unavailable and invalid timeout before HTTP', async (t) => {
   const h = await fixture(t);

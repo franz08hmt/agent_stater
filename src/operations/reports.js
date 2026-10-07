@@ -26,7 +26,7 @@ export async function saveReport(env, kind, details) {
   return report;
 }
 export function reportFreshness(report, env) {
-  return { stale: report.context?.configuration_id !== env.service.configuration_id,
+  return { stale: report.context?.configuration_id !== env.service.configuration_id || report.context?.suite_identity !== env.evidenceContext.suite_identity,
     commit_changed: report.context?.commit !== env.evidenceContext.commit };
 }
 export async function readReport(env, id) {

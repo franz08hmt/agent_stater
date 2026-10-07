@@ -3,7 +3,9 @@
   "default_model_profile_id": "env",
   "tasks": [
     { "id": "study-notes", "file": "config/task.json" },
-    { "id": "datasets-demo", "file": "config/datasets-demo.task.json" }
+    { "id": "datasets-demo", "file": "config/datasets-demo.task.json" },
+    { "id": "rehearsal-tickets", "file": "config/rehearsal-tickets.task.json" },
+    { "id": "rehearsal-rooms", "file": "config/rehearsal-rooms.task.json" }
   ],
   "model_profiles": [
     { "id": "env", "label": "Environment model", "source": "env" },

@@ -32,9 +32,10 @@ export async function loadEnvironment({ root = PROJECT_ROOT, dotenv = true } = {
   let commit = 'unknown', dirty = null;
   try {
     commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
-    dirty = !!execFileSync('git', ['status', '--porcelain', '--untracked-files=no'], { cwd: root, encoding: 'utf8' }).trim();
+    dirty = execFileSync('git', ['status', '--porcelain', '--untracked-files=all'], { cwd: root, encoding: 'utf8' }).trim().split('\n').some((line) => line && !line.slice(3).startsWith('.agents/'));
   } catch { /* Git is optional at operation time. */ }
-  const evidenceContext = { commit, working_tree_modified: dirty, configuration_id: service.configuration_id, protocol_identity: protocol,
+  const suiteIdentity = hash((await Promise.all(['src/operations/cases.js', 'src/operations/suite.js'].map((f) => existsSync(join(root, f)) ? readFile(join(root, f), 'utf8') : 'not-added'))).join('\n'));
+  const evidenceContext = { commit, working_tree_modified: dirty, configuration_id: service.configuration_id, protocol_identity: protocol, suite_identity: suiteIdentity,
     environment: { node: process.versions.node, platform: process.platform, port: config.server.port },
     tasks: [...catalog.tasks.values()].map(({ task }) => ({ id: task.id, fingerprint: task.fingerprint,
       datasets: task.datasets.map((d) => ({ id: d.id, version: d.version, records: d.rows.length })) })),

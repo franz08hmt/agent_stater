@@ -28,6 +28,13 @@ try {
   assert.match(await text('task-tools'), /search_notes.*save_draft/s); assert.match(await text('task-data'), /http-status/);
   assert.ok((await text('task-data')).includes('<img id="qa-injected-image"'));
   assert.equal(await read("!!document.querySelector('#qa-injected-image') || globalThis.qaInjected === true"), false);
+  for (const [task, dataset, count, column] of [['rehearsal-tickets', 'tickets', 6, 'hours'], ['rehearsal-rooms', 'rooms', 5, 'capacity']]) {
+    await choose('task-select', task);
+    assert.match(await text('task-tools'), /query_dataset/); assert.ok(!(await text('task-tools')).includes('save_draft'));
+    assert.ok((await text('task-data')).includes(`${dataset}: ${count} records`)); assert.ok((await text('task-data')).includes(column));
+    assert.ok((await read("document.querySelector('.samples').textContent")).trim().length > 0);
+  }
+  assert.equal(app.requests.length, 0, 'new rehearsal metadata never calls a model');
   await choose('task-select', 'datasets-demo');
   assert.match(await text('task-tools'), /query_dataset/); assert.ok(!(await text('task-tools')).includes('save_draft'));
   assert.match(await text('task-data'), /products: 4 records.*classes: 4 records/s);

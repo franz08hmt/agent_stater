@@ -1,0 +1,6 @@
+id,room,location,capacity
+R1,A101,North,30
+R2,A102,North,40
+R3,B201,South,20
+R4,B202,South,60
+R5,C301,West,15

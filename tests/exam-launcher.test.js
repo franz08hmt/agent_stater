@@ -4,6 +4,10 @@ import { createServer } from 'node:http';
 import { PROJECT_ROOT, supportsNode, loadEnvironment } from '../src/operations/context.js';
 import { inspectPort } from '../src/operations/launcher.js';
 import { ROOT } from './helpers.js';
+import { cp, mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { launchForeground } from '../src/operations/launcher.js';
 
 test('launcher root is script-owned and Node check uses the declared minimum', async () => {
   assert.equal(PROJECT_ROOT.toLowerCase(), ROOT.toLowerCase());
@@ -37,4 +41,20 @@ test('only health plus catalog from the same project is reused; stale configurat
   assert.equal((await inspectPort(address, service)).configuration_matches, true);
   assert.equal((await inspectPort(address, { ...service, project_id: 'other' })).state, 'occupied');
   assert.equal((await inspectPort(address, { ...service, configuration_id: 'revision-2' })).configuration_matches, false);
+});
+
+test('foreground launcher starts and verifies its own server from a temporary project root', { timeout: 20000 }, async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'agent-launch-test-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  for (const name of ['src', 'config', 'data', 'package.json']) await cp(join(ROOT, name), join(root, name), { recursive: true });
+  const s = await server(t, (_, res) => res.end('unused'));
+  const port = s.address().port; await new Promise((r) => s.close(r));
+  const env = await loadEnvironment({ root, dotenv: false }); env.config.server = { ...env.config.server, host: '127.0.0.1', port };
+  const controller = new AbortController(), messages = [];
+  const result = await launchForeground(env, { signal: controller.signal,
+    childEnv: { ...process.env, PORT: String(port), HOST: '127.0.0.1' },
+    log(message) { messages.push(message); if (message.includes('Open this URL')) controller.abort(); },
+  });
+  assert.equal(result.state, 'exited'); assert.match(messages.join('\n'), /Open this URL.*Ctrl\+C/);
+  assert.equal((await inspectPort(env.config.server, env.service)).state, 'free');
 });

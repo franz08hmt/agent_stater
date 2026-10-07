@@ -18,7 +18,7 @@ try {
   }
   const status = result.error ? 'BLOCKED' : result.protocol_ok === false ? 'FAIL' : result.status ?? 'PASS';
   const report = await saveReport(env, action, { status, model_profile_id: id, result });
-  console.log(JSON.stringify(report, null, 2));
+  console.log(JSON.stringify({ status, model_profile_id: id, ...report.result }, null, 2));
   console.log(`Report ID: ${report.report_id}. Model response is separate from live case acceptance.`);
   if (status !== 'PASS') process.exitCode = 3;
 } catch (err) { console.error(`Model check blocked: ${err.message}`); process.exitCode = 2; }

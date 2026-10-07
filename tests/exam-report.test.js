@@ -26,3 +26,16 @@ test('reports are append-only IDs, keep failures/NOT_RUN and become stale on con
   await assert.rejects(readReport(env, '../outside'));
   await assert.rejects(saveReport(env, 'smoke', { status: 'UNKNOWN' }));
 });
+
+test('task/data fingerprint, profile identity and smoke definitions invalidate old evidence', async () => {
+  const env = await loadEnvironment({ dotenv: false });
+  const initial = env.service.configuration_id;
+  const task = env.catalog.tasks.get('rehearsal-tickets').task, original = task.fingerprint;
+  task.fingerprint = 'changed-data-snapshot';
+  assert.notEqual(configurationIdentity(env.catalog, env.config, env.evidenceContext.protocol_identity), initial);
+  task.fingerprint = original;
+  const profile = env.catalog.profiles.get('ollama-qwen3'); profile.identity = 'changed-model-endpoint';
+  assert.notEqual(configurationIdentity(env.catalog, env.config, env.evidenceContext.protocol_identity), initial);
+  const report = { context: { configuration_id: initial, suite_identity: 'old-grader', commit: env.evidenceContext.commit } };
+  assert.equal(reportFreshness(report, env).stale, true);
+});

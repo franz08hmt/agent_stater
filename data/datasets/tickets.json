@@ -1,0 +1,8 @@
+[
+  {"id":"T1","team":"Billing","status":"open","hours":"2"},
+  {"id":"T2","team":"Support","status":"open","hours":"3"},
+  {"id":"T3","team":"Support","status":"closed","hours":"1"},
+  {"id":"T4","team":"Billing","status":"closed","hours":"4"},
+  {"id":"T5","team":"Support","status":"open","hours":"2"},
+  {"id":"T6","team":"Sales","status":"pending","hours":"5"}
+]

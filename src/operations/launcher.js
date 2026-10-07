@@ -30,19 +30,21 @@ export async function inspectPort(address, service) {
   } catch { /* The owner may be non-HTTP or a different app. Never kill it. */ }
   return { state: 'occupied', url };
 }
-export async function launchForeground(env, { log = console.log } = {}) {
+export async function launchForeground(env, { log = console.log, signal, childEnv = process.env } = {}) {
   const state = await inspectPort(env.config.server, env.service);
-  if (state.state === 'occupied') throw new Error('Configured port is occupied by another application. Stop it yourself or choose an authorized port; no process was killed.');
+  if (state.state === 'occupied') throw new Error('Configured port has an unverified owner (another app or an older server without project identity). Stop it yourself; no process was killed.');
   if (state.state === 'running') {
     log(`Server running: ${state.url} (reused; stop it in its original terminal).`);
     if (!state.configuration_matches) log('Configuration is stale. Restart the original server before using the new task/profile.');
     return state;
   }
-  const child = spawn(process.execPath, [join(env.root, 'src/server.js')], { cwd: env.root, stdio: 'inherit', windowsHide: true });
+  if (signal?.aborted) throw new Error('Startup cancelled.');
+  const child = spawn(process.execPath, [join(env.root, 'src/server.js')], { cwd: env.root, env: childEnv, stdio: 'inherit', windowsHide: true });
   let exited = false, spawnError;
   const exit = new Promise((resolve) => { child.once('exit', (code) => { exited = true; resolve(code); }); child.once('error', (err) => { spawnError = err; exited = true; resolve(1); }); });
   const stop = () => { if (!exited) child.kill('SIGINT'); };
   process.on('SIGINT', stop); process.on('SIGTERM', stop);
+  signal?.addEventListener('abort', stop, { once: true });
   try {
     const deadline = Date.now() + 15000;
     let ready = false;
@@ -56,5 +58,5 @@ export async function launchForeground(env, { log = console.log } = {}) {
     log('Model profiles are configured only; no LLM request or live acceptance test has run during startup.');
     const code = await exit;
     return { state: 'exited', exit_code: code ?? 0, url: state.url };
-  } finally { process.off('SIGINT', stop); process.off('SIGTERM', stop); }
+  } finally { process.off('SIGINT', stop); process.off('SIGTERM', stop); signal?.removeEventListener('abort', stop); }
 }
