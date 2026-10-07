@@ -12,6 +12,10 @@
     "test": "node --test tests/*.test.js",
     "eval": "node eval/run-eval.js",
     "eval:live": "node eval/run-eval.js --live",
-    "smoke:live": "node scripts/smoke-live.js"
+    "smoke:live": "node scripts/smoke-live.js",
+    "demo:datasets": "node scripts/demo-datasets.js",
+    "demo:budgets": "node scripts/demo-budgets.js",
+    "qa:metrics": "node scripts/qa-metrics-browser.js",
+    "qa:configuration": "node scripts/qa-configuration-browser.js"
   }
 }

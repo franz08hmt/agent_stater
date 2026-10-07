@@ -42,7 +42,7 @@ const only = onlyArg ? onlyArg.slice('--only='.length).split(',') : null;
 const cases = only ? allCases.filter((c) => only.includes(c.id)) : allCases;
 const retriever = await createKeywordRetriever({ dir: task.dataDir });
 
-const registry = createConfiguredToolRegistry(task.allowedTools);
+const registry = createConfiguredToolRegistry(task.allowedTools, task.datasets);
 const env = {
   registry,
   systemPrompt: buildSystemPrompt({ task, tools: registry.describe(), limits: config.limits }),

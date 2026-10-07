@@ -1,0 +1,5 @@
+id,course,day,room,students
+c01,"Web, basics",Mon,A101,30
+c02,"Agent ""lab""",Mon,A102,25
+c03,Databases,Tue,A101,40
+c04,Testing,Wed,A103,20

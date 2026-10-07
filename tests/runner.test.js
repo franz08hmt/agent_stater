@@ -233,6 +233,14 @@ test('total run time limit stops the run', async (t) => {
   assert.equal(run.failure.code, 'run_timeout');
 });
 
+test('run deadline timer is distinguished from model timeout even when wall clock lags', async (t) => {
+  const frozen = Date.now(); t.mock.method(Date, 'now', () => frozen);
+  const h = await harness({ replies: [{ delayMs: 400, text: tool('search_notes', { query: 'rag' }) }], limits: { runMaxMs: 30 }, modelTimeoutMs: 5000 });
+  t.after(h.cleanup);
+  const run = await h.run('Run deadline');
+  assert.equal(run.status, 'stopped'); assert.equal(run.failure.code, 'run_timeout');
+});
+
 test('tool timeout becomes an observation; the model can still finish honestly', async (t) => {
   const hanging = { kind: 'stub', has: () => false, search: () => new Promise(() => {}) };
   const h = await harness({ retriever: hanging, limits: { toolTimeoutMs: 50 }, replies: [tool('search_notes', { query: 'rag' }), final('Không tra cứu được.', [], 'Công cụ tìm kiếm quá thời gian.')] });

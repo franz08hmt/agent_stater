@@ -7,6 +7,7 @@
   <meta name="description" content="A local AI agent workspace for configuring a task, inspecting tool decisions, approving writes, and reviewing grounded answers.">
   <title>Agent Studio — Configure, run and inspect an AI agent</title>
   <link rel="stylesheet" href="/styles.css">
+  <link rel="icon" href="/assets/robot-pet.png" type="image/png">
 </head>
 <body>
   <a class="skip-link" href="#workspace">Skip to agent workspace</a>
@@ -52,8 +53,8 @@
       </figure>
       <dl class="profile-facts">
         <div><dt>Model</dt><dd id="model-badge" class="badge" aria-live="polite">Checking model…</dd></div>
-        <div><dt>Knowledge</dt><dd>Local study notes</dd></div>
-        <div><dt>Retrieval</dt><dd>Keyword search</dd></div>
+        <div><dt>Knowledge</dt><dd id="knowledge">Loading…</dd></div>
+        <div><dt>Retrieval</dt><dd id="retrieval-kind">Loading…</dd></div>
         <div><dt>Write policy</dt><dd id="write-policy">Checking…</dd></div>
       </dl>
       <section class="drafts-card" aria-labelledby="drafts-title">
@@ -68,6 +69,23 @@
         <h2 id="configuration-title" tabindex="-1">Define the agent goal</h2>
       </header>
       <form id="goal-form">
+        <fieldset class="form-section" id="configuration-options">
+          <legend><span class="icon icon--cpu-chip" aria-hidden="true"></span>Run configuration</legend>
+          <label for="task-select">Task</label>
+          <select id="task-select" disabled><option>Loading tasks…</option></select>
+          <label for="model-select">Model profile</label>
+          <select id="model-select" disabled><option>Loading models…</option></select>
+          <p id="configuration-status" class="hint" role="status" aria-live="polite">Loading backend configuration…</p>
+          <section id="model-check" aria-label="Model connectivity check">
+            <p class="actions"><button type="button" id="probe-model" class="secondary" disabled><span class="icon icon--bolt" aria-hidden="true"></span>Check model</button></p>
+            <p id="probe-result" class="hint" role="status" aria-live="polite"></p>
+          </section>
+          <details class="configuration-details"><summary>Enabled tools &amp; data</summary>
+            <h3>Tools</h3><ul id="task-tools"></ul>
+            <h3>Allowed data</h3><div id="task-data"></div>
+            <p class="hint">Data is untrusted. save_draft supports note sources only; dataset citations cannot be saved yet.</p>
+          </details>
+        </fieldset>
         <fieldset class="form-section">
           <legend><span class="icon icon--bolt" aria-hidden="true"></span>Task</legend>
           <label for="goal">Goal</label>
@@ -78,7 +96,7 @@
           <legend>Try a course scenario</legend>
         </fieldset>
         <p class="actions">
-          <button type="submit" id="start" class="primary"><span class="button-label">Run agent</span><span class="button-end"><span class="icon icon--chevron-right" aria-hidden="true"></span></span></button>
+          <button type="submit" id="start" class="primary" disabled><span class="button-label">Run agent</span><span class="button-end"><span class="icon icon--chevron-right" aria-hidden="true"></span></span></button>
           <button type="button" id="stop" class="secondary" hidden><span class="icon icon--stop" aria-hidden="true"></span>Stop run</button>
           <button type="button" id="new-run" class="secondary" hidden><span class="icon icon--arrow-path" aria-hidden="true"></span>New run</button>
         </p>
@@ -86,7 +104,7 @@
       </form>
       <section class="policy-note" aria-labelledby="policy-title">
         <span class="icon icon--shield-check" aria-hidden="true"></span>
-        <div><h3 id="policy-title">Write approval</h3><p>Saving a draft requires approval.</p></div>
+        <div><h3 id="policy-title">Write approval</h3><p>Every write tool requires human approval.</p></div>
       </section>
     </section>
 
@@ -106,12 +124,18 @@
         <p id="goal-preview" class="message message--user" hidden></p>
         <section id="run-panel" class="run-content" aria-labelledby="run-title" hidden>
           <h3 id="run-title" class="sr-only">Current run</h3>
+          <p id="run-configuration" class="hint"></p>
           <dl class="run-meta">
             <div><dt>Status</dt><dd><span id="status" class="status" role="status" aria-live="polite"></span></dd></div>
             <div><dt>Steps</dt><dd id="steps"></dd></div>
-            <div><dt>Elapsed</dt><dd id="elapsed"></dd></div>
+            <div><dt>Active time</dt><dd id="elapsed"></dd></div>
+            <div><dt>Provider requests</dt><dd id="metrics-requests"></dd></div>
+            <div><dt>Model activity</dt><dd id="metrics-calls"></dd></div>
+            <div><dt>Run timing</dt><dd id="metrics-timing"></dd></div>
+            <div class="run-id-row"><dt>Tokens</dt><dd id="metrics-tokens"></dd></div>
             <div class="run-id-row"><dt>Run ID</dt><dd><code id="run-id"></code></dd></div>
           </dl>
+          <p id="metrics-note" class="hint"></p>
           <section id="approval" class="approval" aria-labelledby="approval-title" hidden>
             <h4 id="approval-title">Write approval required</h4>
             <p>Tool: <code id="approval-tool"></code>. Review the exact arguments.</p>

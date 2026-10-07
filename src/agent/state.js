@@ -2,6 +2,7 @@
 // through transition(), so an illegal jump (e.g. completed -> running) throws.
 
 import { randomUUID, createHash } from 'node:crypto';
+import { createMetrics } from './metrics.js';
 
 export const STATUS = Object.freeze({
   RUNNING: 'running',
@@ -29,16 +30,20 @@ export function transition(run, to) {
   run.updated_at = new Date().toISOString();
 }
 
-export function createRun({ goal, model, taskFingerprint = null }) {
+export function createRun({ goal, model, taskFingerprint = null, limits = {}, selection = null }) {
   const now = new Date().toISOString();
   return {
     run_id: `run_${randomUUID()}`,
     goal,
     task_fingerprint: taskFingerprint,
+    ...(selection ? { task_id: selection.task.id, model_profile_id: selection.profile.id, model_identity: selection.identity,
+      configuration: { task: structuredClone(selection.task), model_profile: structuredClone(selection.profile), limits: { max_steps: limits.maxSteps } },
+      runtime_settings: structuredClone(selection.settings) } : {}),
     status: STATUS.RUNNING,
     steps_used: 0,          // tool calls attempted (executed, rejected or approved)
     repairs_used: 0,        // malformed model replies that were retried
     active_ms: 0,           // execution time, excluding time spent waiting for approval
+    metrics: createMetrics(limits, model.isMock),
     created_at: now,
     updated_at: now,
     model: { provider: model.provider, name: model.name, is_mock: model.isMock },
@@ -72,6 +77,6 @@ export const callSignature = (tool, args) => `${tool}:${canonicalJson(args)}`;
 
 /** What the API returns: everything except the raw model conversation. */
 export function publicView(run) {
-  const { messages, task_fingerprint, ...rest } = run;
+  const { messages, task_fingerprint, model_identity, runtime_settings, ...rest } = run;
   return structuredClone(rest);
 }

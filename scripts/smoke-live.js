@@ -50,7 +50,7 @@ async function agentRuns() {
   // 2. Full agent runs through the same runner the server uses.
   const dir = await mkdtemp(join(tmpdir(), 'agent-smoke-'));
   const runner = createAgentRunner({
-    model, registry: createConfiguredToolRegistry(task.allowedTools), store: await createFileStore({ root: dir }),
+    model, registry: createConfiguredToolRegistry(task.allowedTools, task.datasets), store: await createFileStore({ root: dir }),
     retriever: await createKeywordRetriever({ dir: task.dataDir }),
     limits: config.limits, modelTimeoutMs: config.model.timeoutMs, task,
   });

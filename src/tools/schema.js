@@ -43,10 +43,10 @@ export function validate(schema, value, path = '$') {
   if (actual === 'object') {
     const props = schema.properties || {};
     for (const key of schema.required || []) {
-      if (!(key in value)) errors.push(`${path}.${key}: is required`);
+      if (!Object.hasOwn(value, key)) errors.push(`${path}.${key}: is required`);
     }
     for (const [key, v] of Object.entries(value)) {
-      if (props[key]) errors.push(...validate(props[key], v, `${path}.${key}`));
+      if (Object.hasOwn(props, key)) errors.push(...validate(props[key], v, `${path}.${key}`));
       else if (schema.additionalProperties === false) errors.push(`${path}.${key}: is not an allowed field`);
     }
   }

@@ -1,0 +1,6 @@
+[
+  { "id": "p01", "name": "Demo notebook", "category": "stationery", "price": "10.10", "stock": 12 },
+  { "id": "p02", "name": "Demo pen set", "category": "stationery", "price": "20.20", "stock": 5 },
+  { "id": "p03", "name": "Demo cable", "category": "electronics", "price": "30.00", "stock": 8 },
+  { "id": "p04", "name": "Demo adapter", "category": "electronics", "price": "40.00", "stock": 0 }
+]

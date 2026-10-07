@@ -128,6 +128,18 @@ test('through the runner: a 429 ends the run as failed/model_rate_limited after 
   assert.equal(p.hits.length, 1);
 });
 
+test('provider diagnostics omit echoed messages, request body and authorization headers', async (t) => {
+  const system = 'Private system prompt for this regression.';
+  const user = 'Private exam request for this regression.';
+  const p = await provider(() => [400, { error: { message: `Rejected: ${system} ${user}` }, request: { messages: [{ role: 'system', content: system }], authorization: 'Bearer secret-header' } }]);
+  t.after(p.close);
+  await assert.rejects(createOpenAICompatibleModel(cfg(p.baseUrl)).complete({ messages: [{ role: 'system', content: system }, { role: 'user', content: user }] }), (err) => {
+    assert.ok(!err.message.includes(system)); assert.ok(!err.message.includes(user));
+    assert.ok(!err.message.includes('secret-header')); assert.ok(!err.message.includes('messages'));
+    assert.match(err.message, /redacted request/); return true;
+  });
+});
+
 test('the runner records which passages a tool returned, not only which documents', async (t) => {
   const h = await harness({ replies: [
     JSON.stringify({ type: 'tool_call', tool: 'search_notes', arguments: { query: 'mẹo ôn tập diễn đàn', limit: 3 } }),

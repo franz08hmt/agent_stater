@@ -1,6 +1,8 @@
 // Every tunable number lives here. When the exam changes a limit, change it here
 // (or in .env) — nothing else in the code hard-codes these values.
 
+import { DEFAULT_BUDGETS } from '../src/agent/metrics.js';
+
 function int(name, fallback, min, max) {
   const raw = process.env[name];
   if (raw === undefined || raw === '') return fallback;
@@ -48,6 +50,8 @@ export function loadConfig() {
       timeoutMs: int('MODEL_TIMEOUT_MS', 30000, 1000, 300000),
     },
     limits: {
+      maxProviderRequests: int('AGENT_MAX_PROVIDER_REQUESTS', DEFAULT_BUDGETS.maxProviderRequests, 1, 1000),
+      tokenBudget: int('AGENT_TOKEN_BUDGET', DEFAULT_BUDGETS.tokenBudget, 64, 100000000),
       maxSteps: int('AGENT_MAX_STEPS', 6, 1, 30),          // tool calls allowed per run
       maxRepairs: int('AGENT_MAX_REPAIRS', 2, 0, 5),       // retries after a malformed model reply
       toolTimeoutMs: int('TOOL_TIMEOUT_MS', 5000, 100, 60000),

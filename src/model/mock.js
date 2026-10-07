@@ -29,6 +29,7 @@ function decide(messages) {
   const observations = messages
     .filter((m) => m.role === 'user' && m.content.startsWith('OBSERVATION'))
     .map((m) => JSON.parse(m.content.slice(m.content.indexOf('{'))));
+  if (/"name"\s*:\s*"query_dataset"/.test(messages[0]?.content || '')) return datasetDemo(goal, observations, messages[0].content);
   const searches = observations.filter((o) => o.tool === 'search_notes' && o.status === 'ok');
   const goalTokens = tokenize(goal);
   const wantsSave = ['luu', 'save', 'draft'].some((w) => goalTokens.includes(w)) || /\bban nhap\b/.test(goalTokens.join(' '));
@@ -78,6 +79,30 @@ function decide(messages) {
   }
   const saveNote = !saveOutcome ? '' : saveOutcome.status === 'ok' ? '\n\nĐã lưu bản nháp.' : '\n\nBản nháp KHÔNG được lưu (bị từ chối hoặc lỗi).';
   return { type: 'final', answer: `Theo ghi chú:\n${summary}${flag}${saveNote}`.slice(0, 2000), source_ids: ids, unresolved: '' };
+}
+
+// Offline presentation of the three shipped examples only. The backend still
+// validates every argument and computes every value; this is not an LLM solver.
+function datasetDemo(goal, observations, system) {
+  const evidence = observations.findLast((o) => o.tool === 'query_dataset' && o.status === 'ok')?.untrusted_data?.results?.[0];
+  if (evidence) {
+    const answer = evidence.query.operation === 'compare'
+      ? `Mon = ${evidence.values[0]}; Tue = ${evidence.values[1]}; Mon ${{ lt: '<', eq: '=', gt: '>' }[evidence.relation]} Tue`
+      : `${evidence.query.operation === 'sum' ? 'Total' : 'Count'} = ${evidence.value}`;
+    return { type: 'final', answer, source_ids: [evidence.source_id], unresolved: '' };
+  }
+  const text = tokenize(goal).join(' '), eq = (field, value) => ({ field, op: 'eq', value });
+  let args;
+  // Dataset names must also be in the trusted, backend-generated tool metadata.
+  if (text.includes('price') && text.includes('stationery') && system.includes('products')) {
+    args = { dataset_id: 'products', operation: 'sum', field: 'price', filters: [eq('category', 'stationery')] };
+  } else if (text.includes('mon') && text.includes('tue') && text.includes('students') && system.includes('classes')) {
+    args = { dataset_id: 'classes', operation: 'compare', field: 'students', filters: [eq('day', 'Mon')], compare_filters: [eq('day', 'Tue')] };
+  } else if (text.includes('day mon') && !text.includes('tue') && system.includes('classes')) {
+    args = { dataset_id: 'classes', operation: 'count', filters: [eq('day', 'Mon')] };
+  }
+  if (args && !observations.length) return { type: 'tool_call', tool: 'query_dataset', arguments: args };
+  return { type: 'final', answer: 'Offline mock supports only the three shipped dataset example goals.', source_ids: [], unresolved: 'Use an example goal or a real model; this mock is not a general dataset solver.' };
 }
 
 /**

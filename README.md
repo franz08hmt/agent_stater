@@ -1,5 +1,7 @@
 # AI Agent Starter
 
+Mục 5 bổ sung danh mục task/model, probe có giới hạn và khôi phục run sau reload; xem [cấu hình UI](#cấu-hình-ui-và-demo-mục-5). Mốc offline: 222 tests, 16 eval ghi chú, 3 demo dataset scripted và 2 demo ngân sách đạt. Ollama vẫn có thể bịa nguồn; grounding và repair giữ nguyên.
+
 Sườn ứng dụng **AI Agent** nhỏ để chuẩn bị kiểm tra giữa kỳ môn *New Technologies in Software Engineering*.
 Một LLM có sẵn nhận mục tiêu, tự chọn công cụ và bước tiếp theo dựa trên kết quả vừa nhận; backend kiểm tra
 và thực thi công cụ, quản lý trạng thái, giới hạn và phê duyệt; giao diện hiển thị nhật ký và kết quả có nguồn.
@@ -8,13 +10,13 @@ Nghiệp vụ mẫu chỉ để kiểm chứng sườn: **tra cứu ghi chú h�
 (`save_draft`, phải được người duyệt). Khi nhận đề, đọc [EXAM_ADAPTATION.md](EXAM_ADAPTATION.md).
 Giải thích để bảo vệ bài: [DEFENSE_NOTES.md](DEFENSE_NOTES.md).
 
-Nhiệm vụ đang chạy nằm ở [`config/task.json`](config/task.json): vai trò, thư mục ghi chú,
-tool được phép, mục tiêu mẫu và nhãn kết quả. Sửa file này rồi **khởi động lại server**;
-backend kiểm tra cấu hình trước khi mở cổng. Xem mục A của `EXAM_ADAPTATION.md` để đổi đề an toàn.
+Danh mục [`config/catalog.json`](config/catalog.json) đăng ký task ghi chú (`config/task.json`), dataset demo và model profile. UI chỉ gửi ID; backend xác thực và chụp cấu hình riêng cho từng run. Sửa cấu hình/dữ liệu rồi **khởi động lại server**; xem `EXAM_ADAPTATION.md` để đổi đề an toàn.
 
 ---
 
 ## 1. Yêu cầu
+
+Xem thêm mục metrics/ngân sách bên dưới khi chuẩn bị giới hạn mạng/quota cho ngày thi.
 
 | Thành phần | Phiên bản | Ghi chú |
 |---|---|---|
@@ -222,7 +224,7 @@ Trình duyệt (public/)  ──HTTP──▶  src/app.js  (validate request, ro
 | `src/tools/` | Schema validator, tool registry (từ chối ngay lúc khởi động tool `write` không có `requiresApproval: true`), 2 tool mẫu |
 | `src/retrieval/keywordSearch.js` | Tìm kiếm **từ khóa BM25** (không phải vector search) |
 | `src/store/fileStore.js` | Lưu JSON cục bộ, ghi nguyên tử, tạo bản nháp đúng 1 lần |
-| `config/` | `task.json` (nhiệm vụ đang bật), kiểm tra cấu hình, giao thức prompt và giới hạn |
+| `config/` | `catalog.json` (task/profile được phép), file task, validation, prompt và giới hạn |
 | `data/notes/` | 7 ghi chú mẫu **giả lập** |
 | `tests/`, `eval/`, `scripts/` | Test tự động, evaluation cases (`eval/checks.js` chấm điểm), smoke test model thật |
 
@@ -287,3 +289,99 @@ Toàn bộ mã nguồn, dữ liệu mẫu, test và tài liệu trong thư mục
 trong Claude Code, theo yêu cầu và dưới sự kiểm tra của sinh viên. Trước khi nộp hoặc bảo vệ, sinh viên cần:
 đọc từng file trong `src/agent/` và `src/tools/`, chạy lại `npm test`, thử sửa một giới hạn và giải thích
 được kết quả. Ghi mục này vào `docs/ai-usage-log.md` của nhóm nếu môn học yêu cầu.
+
+## Metrics và ngân sách mỗi run (mục 4)
+
+Backend lưu `run.metrics` cùng trạng thái run; chụp giới hạn lúc tạo run. **Dialogue & execution** hiển thị requests, token, calls/repairs/retries, thời gian model, thời gian chờ duyệt và tổng thời gian. Active time loại thời gian chờ người duyệt.
+
+| Trường | Ý nghĩa |
+|---|---|
+| `model_calls` | Lượt `model.complete` thực sự khởi chạy, gồm lượt sửa JSON/grounding. |
+| `provider_requests` | Lượt `fetch` HTTP bắt đầu, kể cả lỗi, timeout và gửi lại; mock luôn 0. |
+| `repairs` | Lượt complete khởi chạy để sửa quyết định sai; yêu cầu sửa bị budget chặn chưa tính. |
+| `retries` | Request gửi lại vì mạng/5xx; bị chặn trước gửi chưa tính. |
+| `tokens.reported.input/output/total` | Tổng usage hợp lệ provider; `null` nếu chưa có dữ liệu, không thay bằng 0. |
+| `tokens.estimated.input/output/total` | Dự phòng chưa thay được bằng usage, gồm request đang chạy, lỗi/thiếu usage và mock. |
+| `tokens.budget_used` | Provider reported total + dự phòng còn giữ. |
+| `tokens.status` | `provider reported`, `estimated`, `mixed`, `unavailable`. |
+| `tokens.reported_requests/unavailable_requests/invalid_usage_requests/pending_requests` | Độ bao phủ usage; usage sai thuộc unavailable. Với mock đây là lượt mô phỏng. |
+| `model_ms/provider_ms/active_ms/approval_wait_ms/wall_ms` | Complete gồm backoff / HTTP gồm đọc phản hồi / hoạt động / chờ duyệt / toàn vòng đời; ms. |
+
+Usage chỉ hợp lệ khi cả `prompt_tokens`, `completion_tokens`, `total_tokens` là safe integer không âm và total = input + output. Không suy diễn trường thiếu; cached/reasoning details chưa tách riêng. Provider có quy ước total khác sẽ dùng dự phòng, không tạo usage giả.
+
+```dotenv
+AGENT_MAX_PROVIDER_REQUESTS=12
+AGENT_TOKEN_BUDGET=100000
+MODEL_MAX_OUTPUT_TOKENS=800
+AGENT_MAX_REPAIRS=2
+MODEL_TIMEOUT_MS=30000
+RUN_MAX_MS=120000
+```
+
+Request limit (1–1000) thực thi **cứng** tại adapter trước từng HTTP, gồm retry; 429 không retry, mạng/5xx retry tối đa một lần. Budget stop là `stopped/request_budget` hoặc `stopped/token_budget`, giữ trace/kết quả tool. Quota ngày hoặc quota chung nhiều run của tài khoản/provider chưa được quản lý.
+
+Token budget (64–100000000) là **ước lượng**, không bảo đảm tuyệt đối token bị tính phí. Input dự phòng = byte UTF-8 của JSON messages + 128 + 32 × số messages; đây là heuristic, **không phải tokenizer**. Output dự phòng lấy cap mỗi lượt, có thể giảm tới tối thiểu 64. Không đủ dự phòng thì không khởi chạy complete/request. Usage hợp lệ thay dự phòng; lỗi/thiếu usage giữ toàn bộ dự phòng. Nếu usage vượt ngân sách, dừng trước tool tiếp theo. Cap 64 có thể chưa đủ cho quyết định phức tạp; lỗi định dạng vẫn chịu repair/budget.
+
+Metrics/budgets giữ qua approval/restart. Duyệt khi không đủ ngân sách tiếp tục sẽ dừng **trước ghi**; replay không đếm lại. Legacy có `collection: not_collected`; approval legacy dừng `metrics_unavailable`, cần tạo run mới. Giữ `interrupted`, `task_changed` và hủy approval khi đổi task; không gọi model để khôi phục. Timing bị ngắt có `timing_incomplete`; request đang chạy giữ reservation. Snapshot được lưu atomically lúc request bắt đầu/kết thúc; không bảo đảm kiểm toán hóa đơn nếu process chết trước snapshot đầu tiên.
+
+Khi restart, backend đối chiếu `run.model.provider`, `name`, `is_mock` và identity của profile đã lưu với runtime của **chính run**, gồm profile/endpoint và các tùy chọn model. Model đổi thì run còn hoạt động thành `failed/model_changed`, pending approval bị hủy; nhãn model và counters/token/budget lịch sử giữ nguyên, không đổi `metrics.is_mock`. Run đã kết thúc không bị sửa. Cấu hình không đổi vẫn tiếp tục approval bằng ngân sách ban đầu. Đổi cả task và model ưu tiên `task_changed`; run legacy đang running không có model metadata vẫn `interrupted`, approval thiếu danh tính model không được tiếp tục.
+
+```powershell
+npm run demo:budgets             # fake HTTP: completed 2/12; stopped 1/1, giữ tool đã chạy
+npm run qa:metrics               # Chrome/Edge thật: desktop/mobile, approval, budget alert
+npm run demo:datasets            # scripted mock: 0 HTTP, token mô phỏng
+npm run demo:datasets -- --live  # chỉ endpoint local; đọc verdict và đáp án
+npm run demo:datasets -- --live --only=products --repeat=3  # kiểm tra độ ổn định, không nâng repair
+```
+
+Browser QA dùng DevTools protocol trực tiếp vì không có browser MCP; `CHROME_PATH` chỉ browser local nếu cần. Profile/store tạm, screenshot ở temp được script báo. Live Ollama `qwen3:8b` ngày 2026-10-07: đếm/so sánh đúng, tổng sản phẩm FAIL vì model bịa source và bị backend chặn. Usage hợp lệ ba run: **4278 / 6006 / 3062** tokens, requests **3 / 4 / 2**. Không đánh đồng completion, metrics thu thập được và đáp án đúng.
+
+Thử lại riêng tổng sản phẩm sau sửa P1, cùng goal/config và giới hạn repair: **2/3 PASS**. Lần đầu bỏ qua tool và bịa `products-12345`, bị grounding chặn sau 2 repair (3 requests, 4278 token provider báo). Hai lần sau đều gọi đúng query, đáp án `stationery = 30.30`, trích chính xác `ds-products-db151dcee06f7c46` (mỗi lần 2 requests, 2920 token, 0 repair). Không suy ra độ ổn định từ hai lần đúng; backend không nới grounding hoặc repair. `--only` nhận products/classes, `--repeat` từ 1 đến 5; mặc định vẫn đủ ba ca như trước.
+
+## Cấu hình UI và demo (mục 5)
+
+Trong **Agent**, chọn Task và Model profile, xem Example goals cùng danh sách Tools & allowed data. `study-notes` bật search/save có approval; `datasets-demo` chỉ bật query_dataset. Metadata bảng có cột, số bản ghi và snapshot version; ghi chú có source ID/title/passages (tối đa 40 nguồn hiển thị). Không upload, sửa dữ liệu hoặc gửi toàn bộ bảng lên browser. `save_draft` vẫn chỉ nhận nguồn ghi chú.
+
+Danh mục backend `config/catalog.json` có `default_task_id`, `default_model_profile_id`, `tasks` và `model_profiles`. Task ánh xạ ID tới `config/<file>.json`; nội dung được nạp bằng `loadTaskConfig`, schema và fingerprint cũ. Danh mục tối đa 8 task/10 profile, 24 KiB; file task tối đa 16 KiB. ID không hợp lệ, cấu hình task sai, trùng ID hoặc default không tồn tại làm startup thất bại. Không nạp module từ JSON.
+
+Profile `env` dùng `.env` hiện có; `mock` mô phỏng offline; `ollama-qwen3` dùng endpoint local đã khai báo, không tự tải model. Thêm profile thật ở backend, ví dụ:
+
+```json
+{
+  "id": "exam-local", "label": "Exam local model",
+  "provider": "openai-compatible", "name": "qwen3:8b",
+  "base_url": "http://127.0.0.1:11434/v1/",
+  "requires_key": false, "json_mode": true, "reasoning_effort": "none"
+}
+```
+
+Cloud dùng `api_key_env` tham chiếu biến môi trường và `requires_key: true`; không đặt key literal trong JSON. Profile env chỉ có ID/label/source, không override tùy chọn. Profile khai báo riêng không kế thừa key/endpoint của env profile; cap, temperature và timeout dùng cấu hình chung. Endpoint chỉ HTTP(S), không userinfo/query/hash. Thiếu key/name/endpoint hiển thị unavailable và từ chối run; không chuyển sang mock. Credentials không thuộc identity hay API metadata.
+
+| API | Contract |
+|---|---|
+| `GET /api/catalog` | Default IDs, task/title/examples/labels, metadata tool thực tế và dữ liệu, profile/provider/model/Mock-Live/configured-unavailable/reason. Không key, tên biến secret, prompt, endpoint hoặc đường dẫn máy. |
+| `POST /api/runs` | `{goal, task_id?, model_profile_id?}`; goal-only vẫn dùng default. Chỉ ID đã đăng ký; không nhận path/endpoint/mission/allow-list từ browser. |
+| `POST /api/model-profiles/:id/probe` | Body `{}`. Trả `probe_id`, `checked_at`, `is_mock`, `endpoint_responded`, `protocol_ok`, error và metrics riêng. Không tạo run/tool. |
+| `GET /api/runs/:id` | Trạng thái, kết quả, approval, metrics và metadata cấu hình lịch sử của run. |
+| `GET /api/runs` | Tối đa 50 run gần nhất; chưa có bộ chọn lịch sử trên UI. |
+
+Một manager load store một lần rồi phân nhóm theo task/profile đã lưu. Mỗi runtime dùng đúng registry, retriever, dataset snapshot, model và limits. Run lưu IDs, task fingerprint, model identity (provider/name/mock/profile/endpoint/options, không key), metadata hiển thị và limits/timeout. Đổi select chỉ áp dụng run mới; select bị khóa khi run đang running/chờ duyệt. Dialogue luôn dùng metadata và metrics của chính run.
+
+Restart khôi phục approval đúng cấu hình cũ nếu còn hợp lệ. Mất/unavailable task/profile: `failed/configuration_missing`; task/data đổi: `task_changed`; model identity đổi: `model_changed`. Pending approval bị hủy, không gọi model/ghi; counters/token/budget/nhãn cũ giữ nguyên. Run terminal không ghi lại; replay terminal trả kết quả đã lưu. Running sau crash vẫn `interrupted`, không tự chạy lại. Legacy không có IDs ánh xạ vào defaults rồi kiểm tra fingerprint/provider/name/mock như trước; legacy không có metrics không được tiếp tục approval.
+
+**Check model** là hành động chủ động, không chạy khi mở trang/đổi select. Một probe tối đa 1 HTTP, retry tắt, timeout tối đa 5 giây, output cap 64, input cố định không chứa dữ liệu học tập. Metrics riêng ghi vào audit; thiếu usage giữ null + dự phòng, không ghi 0 token thật. Mock hiển thị simulation, 0 HTTP. Backend configured, endpoint responded và probe protocol valid là ba thông tin khác nhau. Kết quả có thời điểm; probe chỉ chứng minh kết nối/giao thức lúc thử, không chứng minh đúng nghiệp vụ. Ollama cold start có thể vượt 5 giây; timeout không được gọi PASS, có thể kiểm tra lại bằng một lần bấm sau khi model đã warm.
+
+Reload chỉ lưu/đọc `agent-studio.viewed-run` trong localStorage, giá trị duy nhất là run_id. Backend GET + polling phục hồi running/approval/terminal, không gửi lại goal, không tự approve và không gọi LLM do reload. ID sai/mất có thông báo và cho tạo run mới. **New run** xóa lựa chọn run đang xem và goal, giữ lịch sử backend; chọn lại cấu hình mong muốn nếu trang vừa reload.
+
+```powershell
+npm test
+npm run eval
+npm run demo:datasets
+npm run demo:budgets
+npm run qa:metrics
+npm run qa:configuration
+```
+
+Chrome QA dùng fake HTTP và profile/store tạm: selector/tools/data/examples, Mock/Live/unavailable; keyboard/focus, desktop 1280/mobile 390, probe success/503/429/timeout/invalid protocol/thiếu usage; reload running/approval/completed/failed/budget stop, approve/reject/replay và invalid/missing run. Mỗi click probe gửi đúng một HTTP; không cloud. Mock offline chỉ hỗ trợ rule-based ghi chú và ba ví dụ dataset được giao; dùng model thật cho đề mới. Chưa có launcher/deployment, CRUD/preview hàng dữ liệu hoặc cost/quota toàn tài khoản.
+
+Live local mục 5 (2026-10-07): probe đầu timeout 5s, 1 HTTP, usage unavailable (400 estimated). Probe sau hai run dataset thành công với 1 HTTP, **42 input + 6 output = 48 provider tokens**, ~2.2s. Hai trial tổng sản phẩm: **1/2 PASS**, trial đầu bịa `products-12345`, bị chặn sau 2 repair (3 HTTP/4278 tokens); trial sau query đúng, `stationery = 30.30`, source `ds-products-db151dcee06f7c46` (2 HTTP/2920 tokens/0 repair). Không sử dụng cloud; chưa chạy full eval:live trong đợt này. Giữ cả kết quả thất bại làm bằng chứng giới hạn.

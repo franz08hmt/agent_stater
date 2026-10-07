@@ -3,6 +3,8 @@
 // so switching provider is a .env change, not a code change.
 // Docs checked: ai.google.dev/gemini-api/docs/openai, docs.ollama.com/api/openai-compatibility
 
+import { setTimeout as delay } from 'node:timers/promises';
+
 export class ModelError extends Error {
   /** @param {'unavailable'|'rate_limited'|'timeout'|'bad_request'|'bad_response'} kind */
   constructor(kind, message) {
@@ -15,16 +17,28 @@ export class ModelError extends Error {
 // second request cannot succeed but can still count against a daily quota.
 const RETRYABLE = new Set([500, 502, 503, 504]);
 
+function safeDiagnostic(text, messages, apiKey) {
+  if (apiKey) text = text.split(apiKey).join('[redacted]');
+  // An error endpoint may echo its request; scrub conversation before truncating.
+  for (const { content } of messages) {
+    if (!content) continue;
+    for (const value of [content, JSON.stringify(content).slice(1, -1)]) text = text.split(value.replace(/\s+/g, ' ')).join('[redacted request]');
+  }
+  return text;
+}
+
 export function createOpenAICompatibleModel(cfg) {
   const base = cfg.baseUrl.endsWith('/') ? cfg.baseUrl : `${cfg.baseUrl}/`;
   const url = new URL('chat/completions', base);
 
-  async function once(messages, signal) {
+  async function once(messages, signal, requestControl, retry = false) {
+    if (signal?.aborted) throw new ModelError('timeout', 'Model call timed out or was cancelled.');
+    const plan = requestControl?.beforeRequest(messages, cfg.maxOutputTokens);
     const body = {
       model: cfg.name,
       messages,
       temperature: cfg.temperature,
-      max_tokens: cfg.maxOutputTokens,
+      max_tokens: plan?.output ?? cfg.maxOutputTokens,
     };
     if (cfg.jsonMode) body.response_format = { type: 'json_object' };
     if (cfg.reasoningEffort) body.reasoning_effort = cfg.reasoningEffort;
@@ -32,49 +46,66 @@ export function createOpenAICompatibleModel(cfg) {
     const headers = { 'content-type': 'application/json' };
     if (cfg.apiKey) headers.authorization = `Bearer ${cfg.apiKey}`;
 
-    let res;
-    try {
-      res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body), signal });
-    } catch (err) {
+    const serialized = JSON.stringify(body);
+    let res, usage = null;
+    const started = Date.now();
+    // No await between the final gate and fetch: every attempt, including a retry,
+    // starts exactly one reservation and is persisted while the HTTP request is in flight.
+    const pending = fetch(url, { method: 'POST', headers, body: serialized, signal }).catch((err) => {
       if (err.name === 'TimeoutError' || err.name === 'AbortError') throw new ModelError('timeout', 'Model call timed out or was cancelled.');
       throw new ModelError('unavailable', `Model endpoint unreachable (${err.cause?.code || err.cause?.message || err.message}).`);
-    }
-    if (!res.ok) {
-      // Keep a short excerpt for diagnosis. The request is never echoed, and the key is masked in case
-      // a provider repeats it in an error body — this text ends up in the trace and the audit log.
-      const raw = (await res.text().catch(() => '')).replace(/\s+/g, ' ');
-      let excerpt = cfg.apiKey ? raw.split(cfg.apiKey).join('[redacted]') : raw;
-      excerpt = excerpt.slice(0, 240);
-      // A 429 body can say WHICH limit was hit (e.g. a per-day quota vs a per-minute one) and when to
-      // retry. Surface that up front, before the excerpt is cut: it decides whether to wait or to switch.
-      let quota = '';
-      if (res.status === 429) {
-        const id = raw.match(/"quotaId":\s*"([^"]+)"/)?.[1];
-        const delay = raw.match(/"retryDelay":\s*"([^"]+)"/)?.[1];
-        const parts = [id && `quotaId=${id}`, delay && `retryDelay=${delay}`].filter(Boolean);
-        if (parts.length) quota = ` [${parts.join(', ')}]`;
+    });
+    const recorded = requestControl?.requestStarted(plan, retry);
+    try {
+      [res] = await Promise.all([pending, recorded]);
+      if (!res.ok) {
+        // Existing short provider diagnostics; never attach the outgoing body/headers.
+        const raw = (await res.text().catch(() => '')).replace(/\s+/g, ' ');
+        if (signal?.aborted) throw new ModelError('timeout', 'Model call timed out or was cancelled.');
+        let diagnostic = raw;
+        try {
+          const payload = JSON.parse(raw);
+          usage = payload?.usage ?? null;
+          diagnostic = typeof payload?.error === 'string' ? payload.error
+            : typeof payload?.error?.message === 'string' ? payload.error.message : 'Provider error body omitted.';
+        } catch { /* plain text provider error */ }
+        const excerpt = safeDiagnostic(diagnostic, messages, cfg.apiKey).slice(0, 240);
+        let quota = '';
+        if (res.status === 429) {
+          const id = raw.match(/"quotaId":\s*"([A-Za-z0-9_-]{1,120})"/)?.[1];
+          const retryDelay = raw.match(/"retryDelay":\s*"([0-9.]+s)"/)?.[1];
+          const parts = [id && `quotaId=${id}`, retryDelay && `retryDelay=${retryDelay}`].filter(Boolean);
+          if (parts.length) quota = ` [${safeDiagnostic(parts.join(', '), messages, cfg.apiKey)}]`;
+        }
+        const kind = res.status === 429 ? 'rate_limited' : RETRYABLE.has(res.status) ? 'unavailable' : 'bad_request';
+        throw Object.assign(new ModelError(kind, `Model endpoint returned HTTP ${res.status}${quota}: ${excerpt}`), { status: res.status });
       }
-      const kind = res.status === 429 ? 'rate_limited' : RETRYABLE.has(res.status) ? 'unavailable' : 'bad_request';
-      throw Object.assign(new ModelError(kind, `Model endpoint returned HTTP ${res.status}${quota}: ${excerpt}`), { status: res.status });
+      const data = await res.json().catch(() => null);
+      if (signal?.aborted) throw new ModelError('timeout', 'Model call timed out or was cancelled.');
+      usage = data?.usage ?? null;
+      const text = data?.choices?.[0]?.message?.content;
+      if (typeof text !== 'string') throw Object.assign(new ModelError('bad_response', 'Model response had no message content.'), { status: res.status });
+      return { text, usage };
+    } finally {
+      await requestControl?.requestFinished(plan, usage, Date.now() - started);
     }
-    const data = await res.json().catch(() => null);
-    const text = data?.choices?.[0]?.message?.content;
-    if (typeof text !== 'string') throw new ModelError('bad_response', 'Model response had no message content.');
-    return { text, usage: data.usage || null };
   }
 
   return {
     provider: 'openai-compatible',
     name: cfg.name,
     isMock: false,
+    maxOutputTokens: cfg.maxOutputTokens,
+    runtimeConfig: { ...cfg, provider: 'openai-compatible' }, // backend only; never API metadata
     /** One bounded retry for 5xx / network errors; never for timeouts, 429 or other 4xx. */
-    async complete({ messages, signal }) {
+    async complete({ messages, signal, requestControl, retry = true }) {
       try {
-        return await once(messages, signal);
+        return await once(messages, signal, requestControl);
       } catch (err) {
-        if (err.kind !== 'unavailable' || signal?.aborted) throw err;
-        await new Promise((r) => setTimeout(r, 800));
-        return once(messages, signal);
+        if (!retry || err.kind !== 'unavailable' || signal?.aborted) throw err;
+        try { await delay(800, undefined, { signal }); }
+        catch { throw new ModelError('timeout', 'Model call timed out or was cancelled.'); }
+        return once(messages, signal, requestControl, true);
       }
     },
   };

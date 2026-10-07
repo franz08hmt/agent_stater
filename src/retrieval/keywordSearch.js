@@ -67,6 +67,8 @@ export function createRetrieverFromDocs(docs) {
 
   return {
     kind: 'keyword-bm25',
+    sourceCount: docs.length,
+    describe: () => docs.slice(0, 40).map((d) => ({ source_id: d.sourceId, title: d.title.slice(0, 120), passage_count: d.passages.length })),
     has: (sourceId) => ids.has(sourceId),
     async search(query, { limit = 3 } = {}) {
       const terms = [...new Set(tokenize(query))];

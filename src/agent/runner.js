@@ -8,6 +8,7 @@ import { buildSystemPrompt, REPAIR_MESSAGE } from '../../config/prompts.js';
 import { parseDecision, checkGrounding } from './decision.js';
 import { STATUS, transition, createRun, argsHash, callSignature, publicView } from './state.js';
 import { redact } from './redact.js';
+import { planRequest, startRequest, settleRequest, legacyMetrics, closeApprovalWait } from './metrics.js';
 
 export class AgentError extends Error {
   constructor(code, message, httpStatus = 400) {
@@ -47,7 +48,7 @@ function fitObservation(obs, max) {
   return text;
 }
 
-export function createAgentRunner({ model, registry, retriever, store, limits, modelTimeoutMs, task }) {
+export function createAgentRunner({ model, registry, retriever, store, limits, modelTimeoutMs, task, selection = null }) {
   if (!task?.mission || !task?.fingerprint) throw new Error('A validated task config is required for the agent runner.');
   const runs = new Map();
   const locks = new Map();       // run_id -> tail of that run's work queue
@@ -61,7 +62,7 @@ export function createAgentRunner({ model, registry, retriever, store, limits, m
     return next;
   }
 
-  const elapsed = (run) => run.active_ms + (segments.has(run.run_id) ? Date.now() - segments.get(run.run_id) : 0);
+  const elapsed = (run) => (run.active_ms || 0) + (segments.has(run.run_id) ? Date.now() - segments.get(run.run_id) : 0);
   const toolCtx = (run, extra = {}) => ({ run, retriever, store, ...extra });
 
   function trace(run, entry) {
@@ -93,33 +94,86 @@ export function createAgentRunner({ model, registry, retriever, store, limits, m
   }
 
   function finish(run, status, failure) {
+    closeApprovalWait(run.metrics);
     if (failure) run.failure = failure;
     transition(run, status);
     trace(run, { kind: 'system', status, summary: failure ? `${failure.code}: ${failure.message}` : 'run completed' });
   }
 
   async function persist(run) {
+    if (run.metrics?.collection === 'collected') {
+      run.metrics.active_ms = elapsed(run);
+      run.metrics.wall_ms = Math.max(0, Date.now() - Date.parse(run.created_at));
+    }
     await store.saveRun(run);
   }
 
+  function view(run) {
+    const result = publicView(run);
+    if (result.metrics.collection === 'collected') {
+      const m = result.metrics;
+      result.active_ms = elapsed(run);
+      m.active_ms = result.active_ms;
+      if (m.model_started_at != null) m.model_ms += Math.max(0, Date.now() - m.model_started_at);
+      if (m.approval_wait_started_at != null) m.approval_wait_ms += Math.max(0, Date.now() - m.approval_wait_started_at);
+      if ([STATUS.RUNNING, STATUS.AWAITING_APPROVAL].includes(run.status)) m.wall_ms = Math.max(0, Date.now() - Date.parse(run.created_at));
+    }
+    return result;
+  }
+
+  const budgetFailure = (err) => ({ ok: false, status: STATUS.STOPPED, failure: { code: err.code, message: err.message } });
+
   /** Ask the model for one valid decision, repairing malformed replies a bounded number of times. */
   async function askModel(run, controller) {
+    let repairing = false;
     for (;;) {
       const remaining = limits.runMaxMs - elapsed(run);
       if (remaining <= 0) return { ok: false, status: STATUS.STOPPED, failure: { code: 'run_timeout', message: `Run exceeded ${limits.runMaxMs} ms of execution time.` } };
-      const signal = AbortSignal.any([AbortSignal.timeout(Math.min(modelTimeoutMs, remaining)), controller.signal]);
+      const deadlineSignal = AbortSignal.timeout(Math.min(modelTimeoutMs, remaining));
+      const signal = AbortSignal.any([deadlineSignal, controller.signal]);
+      const messages = buildMessages(run);
+      let mockPlan;
+      try { mockPlan = planRequest(run.metrics, messages, model.maxOutputTokens ?? 800); }
+      catch (err) { if (err.kind === 'budget') return budgetFailure(err); throw err; }
       const started = Date.now();
+      run.metrics.model_calls++;
+      if (repairing) run.metrics.repairs++;
+      run.metrics.model_started_at = started;
+      const requestControl = {
+        beforeRequest: (msgs, cap) => planRequest(run.metrics, msgs, cap),
+        requestStarted: (plan, retry) => {
+          startRequest(run.metrics, plan, retry);
+          trace(run, { kind: 'request', status: 'started', summary: `HTTP request ${run.metrics.provider_requests}/${run.metrics.limits.provider_requests}${retry ? ' (retry)' : ''}; reserved ${plan.total} estimated tokens; output cap ${plan.output}` });
+          return persist(run);
+        },
+        requestFinished: async (plan, usage, ms) => {
+          settleRequest(run.metrics, plan, usage, ms);
+          await persist(run);
+        },
+      };
       let text;
       try {
-        ({ text } = await model.complete({ messages: buildMessages(run), signal }));
+        if (model.isMock) startRequest(run.metrics, mockPlan, false);
+        ({ text } = await model.complete({ messages, signal, requestControl }));
       } catch (err) {
         const duration_ms = Date.now() - started;
         if (run.stop_requested) return { ok: false, status: STATUS.STOPPED, failure: { code: 'user_stopped', message: 'Stopped by the user.' } };
-        if (elapsed(run) >= limits.runMaxMs) return { ok: false, status: STATUS.STOPPED, failure: { code: 'run_timeout', message: `Run exceeded ${limits.runMaxMs} ms of execution time.` } };
+        // The timer's identity is authoritative even if Date.now has not advanced
+        // to the boundary yet (rounding/scheduling or a wall-clock adjustment).
+        if (elapsed(run) >= limits.runMaxMs || (deadlineSignal.aborted && remaining <= modelTimeoutMs)) return { ok: false, status: STATUS.STOPPED, failure: { code: 'run_timeout', message: `Run exceeded ${limits.runMaxMs} ms of execution time.` } };
+        if (err.kind === 'budget') return budgetFailure(err);
         const code = { timeout: 'model_timeout', unavailable: 'model_unavailable', rate_limited: 'model_rate_limited', bad_request: 'model_request_rejected', bad_response: 'model_bad_response' }[err.kind] || 'model_error';
         trace(run, { kind: 'decision', status: 'error', duration_ms, summary: err.message });
         return { ok: false, status: STATUS.FAILED, failure: { code, message: err.message } };
+      } finally {
+        run.metrics.model_ms += Date.now() - started;
+        run.metrics.model_started_at = null;
+        if (model.isMock) settleRequest(run.metrics, mockPlan, null, 0);
+        await persist(run);
       }
+      if (run.stop_requested) return { ok: false, status: STATUS.STOPPED, failure: { code: 'user_stopped', message: 'Stopped by the user.' } };
+      if (elapsed(run) >= limits.runMaxMs) return { ok: false, status: STATUS.STOPPED, failure: { code: 'run_timeout', message: `Run exceeded ${limits.runMaxMs} ms of execution time.` } };
+      if (run.metrics.tokens.budget_used > run.metrics.limits.token_budget) return budgetFailure({ code: 'token_budget', message: 'Provider reported usage exceeded the token budget; no further action will execute.' });
       const duration_ms = Date.now() - started;
       const parsed = parseDecision(text, limits);
       let errors = parsed.ok ? [] : parsed.errors;
@@ -134,6 +188,7 @@ export function createAgentRunner({ model, registry, retriever, store, limits, m
         return { ok: false, status: STATUS.FAILED, failure: { code: 'invalid_model_output', message: `Model output still invalid after ${limits.maxRepairs} repair attempt(s): ${errors.join('; ')}` } };
       }
       run.repairs_used += 1;
+      repairing = true;
       run.messages.push({ role: 'assistant', content: String(text).slice(0, 2000) }, { role: 'user', content: REPAIR_MESSAGE(errors, registry.get('save_draft') !== undefined) });
     }
   }
@@ -232,6 +287,7 @@ export function createAgentRunner({ model, registry, retriever, store, limits, m
       run.active_ms += Date.now() - segments.get(run.run_id);
       segments.delete(run.run_id);
       controllers.delete(run.run_id);
+      if (run.status === STATUS.AWAITING_APPROVAL && run.metrics.collection === 'collected') run.metrics.approval_wait_started_at = Date.now();
       await persist(run);
     }
   }
@@ -246,16 +302,33 @@ export function createAgentRunner({ model, registry, retriever, store, limits, m
     model,
 
     /** Reload saved runs. A run that was mid-execution when the server died cannot resume safely. */
-    async init() {
-      for (const run of await store.loadRuns()) {
+    async init(savedRuns) {
+      for (const run of savedRuns ?? await store.loadRuns()) {
+        run.metrics ??= legacyMetrics();
+        if (run.status === STATUS.RUNNING && run.metrics.collection === 'collected') {
+          run.active_ms = Math.max(run.active_ms || 0, run.metrics.active_ms);
+          run.metrics.timing_incomplete = true;
+          run.metrics.tokens.unavailable_requests += run.metrics.tokens.pending_requests;
+          run.metrics.tokens.pending_requests = 0; // retain the unresolved reservation
+        }
+        if (run.metrics.model_started_at != null) { run.metrics.model_started_at = null; run.metrics.timing_incomplete = true; }
         run.retrieved_passages ??= []; // runs saved before this field existed
         const changedTask = task?.fingerprint && run.task_fingerprint !== task.fingerprint;
-        if (changedTask && [STATUS.RUNNING, STATUS.AWAITING_APPROVAL].includes(run.status)) {
-          run.failure = { code: 'task_changed', message: 'The task or its notes changed after this run started. Start a new run; the old approval cannot be used.' };
+        // Never resume old accounting with a different model. A legacy running run
+        // without model metadata still becomes interrupted; an unknown approval fails closed.
+        const changedModel = run.model
+          ? run.model.provider !== model.provider || run.model.name !== model.name || run.model.is_mock !== model.isMock || (run.model_identity != null && run.model_identity !== selection?.identity)
+          : run.status === STATUS.AWAITING_APPROVAL;
+        if ((changedTask || changedModel) && [STATUS.RUNNING, STATUS.AWAITING_APPROVAL].includes(run.status)) {
+          closeApprovalWait(run.metrics);
+          run.failure = changedTask
+            ? { code: 'task_changed', message: 'The task or its notes changed after this run started. Start a new run; the old approval cannot be used.' }
+            : { code: 'model_changed', message: 'The model profile or runtime identity changed after this run started. Start a new run; the old approval cannot be used.' };
           const pending = run.approvals.find((a) => a.approval_id === run.pending_approval);
           if (pending) pending.state = 'cancelled';
           run.pending_approval = null;
           transition(run, STATUS.FAILED);
+          if (!changedTask) trace(run, { kind: 'system', status: STATUS.FAILED, summary: `${run.failure.code}: ${run.failure.message}` });
           await persist(run);
         } else if (run.status === STATUS.RUNNING) {
           run.failure = { code: 'interrupted', message: 'The server restarted while this run was executing.' };
@@ -270,21 +343,21 @@ export function createAgentRunner({ model, registry, retriever, store, limits, m
       const text = typeof goal === 'string' ? goal.trim() : '';
       if (!text) throw new AgentError('invalid_goal', 'Goal must be a non-empty string.');
       if (text.length > limits.maxGoalChars) throw new AgentError('goal_too_long', `Goal must be at most ${limits.maxGoalChars} characters (got ${text.length}).`);
-      const run = createRun({ goal: text, model, taskFingerprint: task?.fingerprint });
+      const run = createRun({ goal: text, model, taskFingerprint: task?.fingerprint, limits, selection });
       run.messages.push({ role: 'user', content: `GOAL: ${text}` });
       runs.set(run.run_id, run);
       trace(run, { kind: 'system', status: 'running', summary: `run started with ${model.isMock ? 'MOCK' : 'real'} model ${model.name}` });
       await persist(run);
       withLock(run.run_id, () => drive(run)); // runs in the background; the UI polls
-      return publicView(run);
+      return view(run);
     },
 
     getRun(runId) {
-      return publicView(requireRun(runId));
+      return view(requireRun(runId));
     },
 
     listRuns() {
-      return [...runs.values()].map(publicView).sort((a, b) => b.created_at.localeCompare(a.created_at));
+      return [...runs.values()].map(view).sort((a, b) => b.created_at.localeCompare(a.created_at));
     },
 
     /**
@@ -307,12 +380,23 @@ export function createAgentRunner({ model, registry, retriever, store, limits, m
         if (a.state !== 'pending') {
           const sameAnswer = (decision === 'approve' && ['executed', 'failed'].includes(a.state)) || (decision === 'reject' && a.state === 'rejected');
           if (!sameAnswer) throw new AgentError('approval_already_decided', `This approval was already ${a.state}.`, 409);
-          return { run: publicView(run), replayed: true };
+          return { run: view(run), replayed: true };
         }
         if (run.status !== STATUS.AWAITING_APPROVAL || run.pending_approval !== a.approval_id) {
           throw new AgentError('not_awaiting_approval', `Run is ${run.status}; nothing to approve.`, 409);
         }
 
+        closeApprovalWait(run.metrics);
+        if (decision === 'approve') {
+          try { planRequest(run.metrics, buildMessages(run), model.maxOutputTokens ?? 800); }
+          catch (err) {
+            if (err.kind !== 'budget') throw err;
+            a.state = 'failed'; a.decided_at = new Date().toISOString(); run.pending_approval = null;
+            finish(run, STATUS.STOPPED, { code: err.code, message: err.message });
+            await persist(run);
+            return { run: view(run), replayed: false };
+          }
+        }
         segments.set(run.run_id, Date.now());
         a.decided_at = new Date().toISOString();
         run.pending_approval = null;
@@ -341,7 +425,7 @@ export function createAgentRunner({ model, registry, retriever, store, limits, m
         transition(run, STATUS.RUNNING);
         await persist(run);
         withLock(run.run_id, () => drive(run)); // continue the loop after this response
-        return { run: publicView(run), replayed: false };
+        return { run: view(run), replayed: false };
       });
     },
 
@@ -359,7 +443,7 @@ export function createAgentRunner({ model, registry, retriever, store, limits, m
           finish(run, STATUS.STOPPED, { code: 'user_stopped', message: 'Stopped by the user while waiting for approval.' });
           await persist(run);
         }
-        return publicView(run);
+        return view(run);
       });
     },
 

@@ -3,6 +3,9 @@
 
 import { applyWorkspaceView } from './workspace-view.js';
 import { latestWriteOutcome } from './approval-outcome.js';
+import { formatRunMetrics } from './run-metrics.js';
+import { setupConfiguration } from './configuration.js';
+import { readRunSession, rememberRun } from './run-session.js';
 
 const $ = (id) => document.getElementById(id);
 const STATUS_TEXT = {
@@ -14,7 +17,8 @@ const STATUS_TEXT = {
 };
 let current = null;
 let pollTimer = null;
-let resultLabels = { unresolved: 'Unresolved' };
+let configuration = null, ready = false, restoring = true, creating = false;
+const storage = { getItem: (key) => window.localStorage.getItem(key), setItem: (key, value) => window.localStorage.setItem(key, value), removeItem: (key) => window.localStorage.removeItem(key) };
 
 function updateCurrentNav(moveFocus = false) {
   const headingId = applyWorkspaceView(document, window.location.hash);
@@ -32,7 +36,7 @@ async function api(path, options = {}) {
     headers: options.body ? { 'content-type': 'application/json' } : undefined,
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+  if (!res.ok) throw Object.assign(new Error(data.message || `HTTP ${res.status}`), { code: data.error });
   return data;
 }
 
@@ -47,39 +51,6 @@ function showError(message) {
   for (const id of ['form-error', 'dialogue-error']) {
     $(id).textContent = message;
     $(id).hidden = !message;
-  }
-}
-
-async function loadHealth() {
-  try {
-    const h = await api('/api/health');
-    const badge = $('model-badge');
-    badge.textContent = h.model.is_mock
-      ? `Mock · ${h.model.name}`
-      : `Live · ${h.model.name}`;
-    badge.className = `badge ${h.model.is_mock ? 'is-mock' : 'is-live'}`;
-    $('steps').dataset.max = h.limits.max_steps;
-    const task = h.task;
-    if (task) {
-      $('profile-title').textContent = task.title;
-      document.querySelector('.avatar-card img').alt = `Robotic cat avatar for ${task.title}`;
-      $('result-title').textContent = task.result_labels.answer;
-      $('sources-title').textContent = task.result_labels.sources;
-      resultLabels = task.result_labels;
-      $('write-policy').textContent = task.allowed_tools.includes('save_draft') ? 'Approval required' : 'Read-only';
-      const samples = document.querySelector('.samples');
-      for (const sample of task.sample_inputs) {
-        const button = el('button');
-        button.type = 'button';
-        button.dataset.goal = sample.goal;
-        button.append(document.createTextNode(sample.label), el('span', undefined, 'icon icon--chevron-right'));
-        button.querySelector('span').setAttribute('aria-hidden', 'true');
-        samples.append(button);
-      }
-      document.querySelector('.policy-note').hidden = !task.allowed_tools.includes('save_draft');
-    }
-  } catch {
-    $('model-badge').textContent = 'Backend unavailable';
   }
 }
 
@@ -103,6 +74,11 @@ async function loadDrafts() {
 
 function render(run) {
   current = run;
+  rememberRun(storage, run.run_id);
+  configuration?.setRun(run);
+  const labels = run.configuration?.task.result_labels ?? { answer: 'Answer', sources: 'Sources', unresolved: 'Unresolved' };
+  $('result-title').textContent = labels.answer; $('sources-title').textContent = labels.sources;
+  $('run-configuration').textContent = `This run: ${run.configuration?.task.title ?? run.task_id ?? 'Legacy task'} · ${run.configuration?.model_profile.label ?? 'Legacy model'} · ${run.model ? `${run.model.is_mock ? 'Mock' : 'Live'} ${run.model.name}` : 'Model not recorded'}`;
   $('dialogue-empty').hidden = true;
   $('run-panel').hidden = false;
   $('run-panel').setAttribute('aria-busy', String(run.status === 'running'));
@@ -111,11 +87,13 @@ function render(run) {
   $('status').textContent = STATUS_TEXT[run.status] || run.status;
   $('status').className = `status is-${run.status}`;
   $('run-id').textContent = run.run_id;
-  $('steps').textContent = `${run.steps_used} / ${$('steps').dataset.max || '?'}`;
+  $('steps').textContent = `${run.steps_used} / ${run.configuration?.limits.max_steps ?? $('steps').dataset.max ?? '?'}`;
   $('elapsed').textContent = `${(run.active_ms / 1000).toFixed(1)} s`;
+  const metrics = formatRunMetrics(run.metrics);
+  for (const key of ['requests', 'tokens', 'calls', 'timing', 'note']) $(`metrics-${key}`).textContent = metrics[key];
 
   const busy = run.status === 'running' || run.status === 'awaiting_approval';
-  $('start').disabled = busy;
+  $('start').disabled = busy || !ready || restoring || creating;
   $('stop').hidden = !busy;
   $('stop-dialogue').hidden = !busy;
   $('new-run').hidden = busy;
@@ -137,10 +115,10 @@ function render(run) {
   if (run.final) {
     $('answer').textContent = run.final.answer;
     $('unresolved').hidden = !run.final.unresolved;
-    $('unresolved').textContent = run.final.unresolved ? `${resultLabels.unresolved}: ${run.final.unresolved}` : '';
+    $('unresolved').textContent = run.final.unresolved ? `${labels.unresolved}: ${run.final.unresolved}` : '';
     const sources = $('sources');
     sources.replaceChildren();
-    if (!run.final.source_ids.length) sources.append(el('li', 'No source cited — this answer is not grounded in a retrieved note.', 'hint'));
+    if (!run.final.source_ids.length) sources.append(el('li', 'No source cited — read the unresolved explanation.', 'hint'));
     for (const id of run.final.source_ids) sources.append(el('li', id));
   }
 
@@ -166,12 +144,15 @@ function render(run) {
 
 function schedulePoll() {
   clearTimeout(pollTimer);
-  if (current?.status !== 'running') return;
+  if (!['running', 'awaiting_approval'].includes(current?.status)) return;
   pollTimer = setTimeout(async () => {
+    const runId = current?.run_id;
+    if (!runId) return;
     try {
-      const { run } = await api(`/api/runs/${current.run_id}`);
+      const { run } = await api(`/api/runs/${runId}`);
+      if (current?.run_id !== runId) return;
       render(run);
-      if (run.status !== 'running') loadDrafts();
+      if (!['running', 'awaiting_approval'].includes(run.status)) loadDrafts().catch((err) => showError(err.message));
     } catch (err) {
       showError(err.message);
     }
@@ -192,15 +173,17 @@ document.querySelector('.samples').addEventListener('click', (event) => {
 
 $('goal-form').addEventListener('submit', async (e) => {
   e.preventDefault();
+  if (!configuration || !ready || creating || restoring || ['running', 'awaiting_approval'].includes(current?.status)) return;
+  creating = true; $('start').disabled = true;
   showError('');
   try {
-    const { run } = await api('/api/runs', { method: 'POST', body: JSON.stringify({ goal: $('goal').value }) });
+    const { run } = await api('/api/runs', { method: 'POST', body: JSON.stringify({ goal: $('goal').value, ...configuration.selected() }) });
     render(run);
     window.location.hash = '#dialogue';
     schedulePoll();
   } catch (err) {
     showError(err.message);
-  }
+  } finally { creating = false; configuration.refresh(); }
 });
 
 async function decide(decision) {
@@ -214,7 +197,7 @@ async function decide(decision) {
       body: JSON.stringify({ decision, args_hash: pending.args_hash }),
     });
     render(run);
-    loadDrafts();
+    loadDrafts().catch((err) => showError(err.message));
     schedulePoll();
   } catch (err) {
     showError(err.message);
@@ -236,18 +219,42 @@ $('stop-dialogue').addEventListener('click', stopRun);
 $('new-run').addEventListener('click', () => {
   clearTimeout(pollTimer);
   current = null;
+  rememberRun(storage, null);
+  configuration?.setRun(null);
   $('run-panel').hidden = true;
   $('dialogue-empty').hidden = false;
   $('stop-dialogue').hidden = true;
   $('goal-preview').hidden = true;
   $('goal-preview').textContent = '';
-  $('start').disabled = false;
+  $('start').disabled = !ready;
   $('new-run').hidden = true;
   $('goal').value = '';
   $('goal-count').textContent = '0';
   showError('');
+  window.location.hash = '#configuration';
   $('goal').focus();
 });
 
-loadHealth();
-loadDrafts();
+async function boot() {
+  try {
+    const health = await api('/api/health'); $('steps').dataset.max = health.limits.max_steps;
+    configuration = await setupConfiguration(api, ({ ready: configured }) => {
+      ready = configured; $('start').disabled = !ready || restoring || creating || ['running', 'awaiting_approval'].includes(current?.status);
+    });
+    const saved = readRunSession(storage);
+    if (saved.invalid) showError('Saved run ID is invalid. You can start a new run.');
+    if (saved.id) {
+      try {
+        const { run } = await api(`/api/runs/${saved.id}`); render(run);
+        window.location.hash = '#dialogue'; schedulePoll();
+      } catch (err) {
+        if (err.code === 'run_not_found') rememberRun(storage, null);
+        showError(`Could not restore the viewed run: ${err.message}. You can start a new run.`);
+      }
+    }
+    await loadDrafts();
+  } catch (err) {
+    $('model-badge').textContent = 'Backend unavailable'; showError(err.message);
+  } finally { restoring = false; configuration?.refresh(); }
+}
+boot();
