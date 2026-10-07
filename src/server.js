@@ -1,22 +1,16 @@
 // Entry point: `npm start`. Loads .env (if present), builds the app, listens.
 
-import { existsSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
-import { loadConfig } from '../config/agent.config.js';
+import { join } from 'node:path';
 import { createApp } from './app.js';
-import { loadCatalog } from '../config/catalog.config.js';
+import { loadEnvironment } from './operations/context.js';
 
-const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-if (existsSync(join(root, '.env'))) process.loadEnvFile(join(root, '.env'));
-
-const config = loadConfig();
-const catalog = await loadCatalog({ root, config });
+const { root, config, catalog, service } = await loadEnvironment();
 const profile = catalog.profiles.get(catalog.defaultProfileId);
 const task = catalog.tasks.get(catalog.defaultTaskId).task;
 const { server } = await createApp({
   config,
   catalog,
+  service,
   varDir: join(root, 'var'),
   publicDir: join(root, 'public'),
 });

@@ -69,7 +69,7 @@ async function readJson(req, maxBytes) {
   }
 }
 
-export async function createApp({ config, model, task, catalog, varDir, publicDir }) {
+export async function createApp({ config, model, task, catalog, varDir, publicDir, service }) {
   if (!catalog) {
     if (!task?.fingerprint || !task?.dataDir || !task?.allowedTools?.length) throw new Error('Validated task config is required before server startup.');
     const modelConfig = model.runtimeConfig ?? { ...config.model, provider: model.isMock ? 'mock' : model.provider, name: model.name };
@@ -106,6 +106,7 @@ export async function createApp({ config, model, task, catalog, varDir, publicDi
       const taskMetadata = catalog.tasks.get(catalog.defaultTaskId).metadata;
       return send(res, 200, {
         ok: true,
+        ...(service ? { service } : {}),
         model: { provider: profile.provider, name: profile.name, is_mock: profile.is_mock },
         limits: { max_steps: config.limits.maxSteps, run_max_ms: config.limits.runMaxMs, max_goal_chars: config.limits.maxGoalChars, max_provider_requests: config.limits.maxProviderRequests, token_budget: config.limits.tokenBudget },
         retrieval: taskMetadata.data.retrieval,

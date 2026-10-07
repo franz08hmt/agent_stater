@@ -9,6 +9,8 @@
   },
   "scripts": {
     "start": "node src/server.js",
+    "exam:start": "node scripts/exam-start.js",
+    "exam:model": "node scripts/exam-model.js",
     "test": "node --test tests/*.test.js",
     "eval": "node eval/run-eval.js",
     "eval:live": "node eval/run-eval.js --live",

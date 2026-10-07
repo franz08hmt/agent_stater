@@ -1,0 +1,40 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
+import { PROJECT_ROOT, supportsNode, loadEnvironment } from '../src/operations/context.js';
+import { inspectPort } from '../src/operations/launcher.js';
+import { ROOT } from './helpers.js';
+
+test('launcher root is script-owned and Node check uses the declared minimum', async () => {
+  assert.equal(PROJECT_ROOT.toLowerCase(), ROOT.toLowerCase());
+  assert.equal(supportsNode('22.12.0', '>=22.12.0'), true);
+  assert.equal(supportsNode('22.11.9', '>=22.12.0'), false);
+  assert.equal(supportsNode('24.0.0', '>=22.12.0'), true);
+  const env = await loadEnvironment({ dotenv: false });
+  assert.equal(env.catalog.defaultTaskId, 'study-notes'); assert.ok(env.service.project_id);
+});
+
+async function server(t, handler) {
+  const s = createServer(handler); await new Promise((r) => s.listen(0, '127.0.0.1', r));
+  t.after(async () => { s.closeAllConnections(); await new Promise((r) => s.close(r)); }); return s;
+}
+test('empty port is available, foreign port is refused without killing its server', async (t) => {
+  const s = await server(t, (_, res) => res.end('foreign app'));
+  const port = s.address().port;
+  assert.equal((await inspectPort({ host: '127.0.0.1', port }, { project_id: 'ours' })).state, 'occupied');
+  assert.equal(await (await fetch(`http://127.0.0.1:${port}`)).text(), 'foreign app');
+  await new Promise((r) => s.close(r));
+  assert.equal((await inspectPort({ host: '127.0.0.1', port }, { project_id: 'ours' })).state, 'free');
+});
+test('only health plus catalog from the same project is reused; stale configuration is explicit', async (t) => {
+  const service = { name: 'ai-agent-starter', project_id: 'ours', configuration_id: 'revision-1' };
+  const s = await server(t, (req, res) => {
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify(req.url === '/api/health' ? { ok: true, service } : { tasks: [], model_profiles: [] }));
+  });
+  const address = { host: '127.0.0.1', port: s.address().port };
+  assert.equal((await inspectPort(address, service)).state, 'running');
+  assert.equal((await inspectPort(address, service)).configuration_matches, true);
+  assert.equal((await inspectPort(address, { ...service, project_id: 'other' })).state, 'occupied');
+  assert.equal((await inspectPort(address, { ...service, configuration_id: 'revision-2' })).configuration_matches, false);
+});
