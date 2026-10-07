@@ -1,5 +1,20 @@
 # Thích ứng khi nhận đề
 
+## Khởi động và diễn tập đổi đề (mục 6)
+
+Quy trình chi tiết, hai đề giả có đáp án và lệnh ghi thời gian: [docs/EXAM_REHEARSAL.md](docs/EXAM_REHEARSAL.md). Không xóa các task/eval cũ khi thêm đề mới.
+
+1. Mở đúng project: `npm run exam:start`; từ terminal khác thư mục dùng `node D:\New-Tech\ai-agent-starter\scripts\exam-start.js`. Launcher xác thực Node >=22.12.0/catalog và health+catalog, foreground/Ctrl+C. Đúng server cùng project thì reuse; configuration stale phải restart terminal gốc. Port owner khác hoặc server cũ thiếu identity: BLOCKED, không tự kill/đổi `.env`.
+2. Chọn profile backend, chủ động `npm run exam:model -- --profile=ollama-qwen3 --action=inspect`, rồi `--action=warm`, rồi `--action=probe`. Inspection là metadata GET, không LLM. Warm tối đa 1 HTTP/64 output/60s, không retry; probe vẫn 5s, cả hai accounting riêng. Thiếu model/service thì người dùng tự xử lý; không tự tải. Startup/mở UI không gọi cloud.
+3. Đề A `rehearsal-tickets`: JSON, team/status, count/compare; đề B `rehearsal-rooms`: CSV, location/capacity, lookup/sum. Schema và ID ở từng `config/rehearsal-*.task.json`, đăng ký trong catalog; default giữ nguyên. Đổi đề chủ yếu thêm data/task/catalog và acceptance cases, không sửa runner. Cộng theo scale khai báo, filters chính xác/phân biệt hoa thường. So sánh số lượng bỏ field; aggregates bỏ limit; lookup rỗng vẫn trích nguồn query.
+4. `npm run exam:rehearsal` chạy 8 acceptance cases scripted qua runner. `npm run exam:smoke` chạy 6 tình huống gồm approval/replay. Model thật: `npm run exam:smoke -- --live --profile=ollama-qwen3 --repeat=3 --max-requests=60`; chọn ca bằng `--only=...`. Repeat 1..5, cap phiên 1..200, kiểm tra trước mọi HTTP/retry; giữ tất cả trial, không ghép cấu hình khác nhau để lấy 3 PASS. Cloud cần chủ động truyền thêm `--cloud` và max request rõ ràng.
+5. Tự diễn tập cả hai đề: `npm run exam:timer -- begin --task=rehearsal-tickets --actor=student`, rồi `mark --id=ID --step=read --event=start|end --note=...`; lặp `map,config,start,acceptance,demo`, cuối cùng `show --id=ID`. Ghi file sửa bằng tay/lỗi. Session đủ bước là REVIEW_REQUIRED, không tự gọi PASS; agent/script time không được tính là student time. **Chưa đo thời gian đổi đề thực tế** trong đợt này.
+6. Xem `npm run exam:report -- --profile=ollama-qwen3`. Report ở `var/exam/` bị Git bỏ qua, có commit/task/data/profile fingerprints, metrics và failure. PASS/FAIL/BLOCKED/REVIEW_REQUIRED/NOT_RUN riêng; report cũ stale nếu cấu hình/dữ liệu/protocol/suite đổi. Reports giữ failure nhưng không key/system prompt/HTTP body/root path. Mốc script có elapsed_ms, không suy ra số phút làm bài.
+
+Trước buổi thi: chạy tests/eval/dataset/budget/browser QA, warm/probe local rồi 3 trial liên tiếp của đúng goal demo với cùng fingerprint; đọc tay answer/source/trace. Bộ chấm xác minh query/evidence/số/dạng đáp án, không bảo đảm mọi ngữ nghĩa. Backend vẫn chặn citation bịa; repair citation chỉ nhắc nguồn hợp lệ của chính run hoặc yêu cầu đọc khi chưa có bằng chứng, không tự thay nguồn. Không tăng maxRepairs/maxSteps/timeout để giấu lỗi. Reports lưu timeout thực tế: đợt M6 dùng `.env` sẵn có 120000ms, khác mặc định 30000ms; không sửa `.env`. HTTP redirect bị từ chối, không âm thầm gửi thêm request ngoài accounting.
+
+Mock UI chỉ có các ví dụ cũ; hai đề mới dùng scripted suite hoặc live đã kiểm chứng. `save_draft` vẫn notes-only; đề ghi từ bảng, join, chuyển/đặt phòng hoặc công thức ngoài count/sum/compare cần thiết kế/test tool mới với approval/idempotency. Xem mục kết quả M6 trong handoff để biết ca live nào đã đạt và phần còn chặn.
+
 ## Ngân sách trước ngày thi (mục 4)
 
 Đặt giới hạn trong `.env` hiện có hoặc biến môi trường phiên chạy; **không chép đè `.env`**. Mặc định `AGENT_MAX_PROVIDER_REQUESTS=12`, `AGENT_TOKEN_BUDGET=100000`, `MODEL_MAX_OUTPUT_TOKENS=800`, `AGENT_MAX_REPAIRS=2`, `MODEL_TIMEOUT_MS=30000`, `RUN_MAX_MS=120000`. Config sai bị từ chối startup. Chạy mock/fake trước, sau đó smoke nhỏ với endpoint local hoặc provider đã được cho phép dùng quota; cân chỉnh theo context/dataset thực tế.

@@ -1,6 +1,25 @@
 # AI Agent Starter
 
-Mục 5 bổ sung danh mục task/model, probe có giới hạn và khôi phục run sau reload; xem [cấu hình UI](#cấu-hình-ui-và-demo-mục-5). Mốc offline: 222 tests, 16 eval ghi chú, 3 demo dataset scripted và 2 demo ngân sách đạt. Ollama vẫn có thể bịa nguồn; grounding và repair giữ nguyên.
+Mục 6 thêm launcher foreground, inspection/warm local có accounting, smoke có giới hạn, hai đề JSON/CSV và nhật ký thời gian đổi đề. Xem [quy trình trước buổi thi](docs/EXAM_REHEARSAL.md). Mốc offline: 253 tests, 16 eval ghi chú, 3 demo dataset scripted và 2 demo ngân sách đạt. LLM vẫn cần kiểm chứng từng goal; grounding và giới hạn repair giữ nguyên.
+
+```powershell
+npm run exam:start
+# Terminal thứ hai; chỉ chủ động gọi model local đã tải
+npm run exam:model -- --profile=ollama-qwen3 --action=inspect
+npm run exam:model -- --profile=ollama-qwen3 --action=warm
+npm run exam:model -- --profile=ollama-qwen3 --action=probe
+npm run exam:rehearsal
+npm run exam:smoke -- --live --profile=ollama-qwen3 --repeat=3 --max-requests=60
+npm run exam:report -- --profile=ollama-qwen3
+```
+
+`exam:start` xác thực Node/catalog, kiểm tra đúng cổng, tái sử dụng server nhận diện được cùng project hoặc chạy foreground/Ctrl+C. Từ thư mục khác dùng `node D:\New-Tech\ai-agent-starter\scripts\exam-start.js`. Cổng có owner không xác minh được: BLOCKED, người dùng tự dừng đúng server; không kill hoặc tự đổi `.env`. Warm tối đa 1 HTTP/64 output/60s, retry tắt; probe vẫn 5s. Startup không gọi LLM/cloud. Server running, profile configured, model responded và live cases PASS được báo riêng.
+
+Task bổ sung: `rehearsal-tickets` (6 ticket JSON) và `rehearsal-rooms` (5 phòng CSV), read-only. `exam:rehearsal` có 8 acceptance cases qua runner thật, gồm tập rỗng/forbidden input. `exam:smoke` có 6 tình huống ghi chú/tổng/so sánh/thiếu bằng chứng/approve/reject. Dùng `--only`, `--repeat=1..5`, `--max-requests=1..200` để giới hạn phiên; cap áp dụng trước retry và không thay budget từng run. Cloud chỉ được gọi qua smoke khi chủ động truyền `--live --cloud --profile=ID --max-requests=N`; đợt này không dùng cloud.
+
+Reports append-only ở `var/exam/` (Git ignored), có task/data/profile/protocol/suite fingerprints, timestamp/commit, quyết định/tool/nguồn, metrics và tất cả trial thất bại. `exam:report -- --id=ID` xác định stale/commit_changed; readiness loại stale khỏi bằng chứng hiện tại và giữ PASS/FAIL/BLOCKED/REVIEW_REQUIRED/NOT_RUN. Không lưu credentials, system prompt, HTTP body hoặc đường dẫn root. Ba trial liên tiếp chỉ chứng minh các case/dạng đáp án đã kiểm tra; nội dung ngữ nghĩa rộng hơn cần đọc tay.
+
+`exam:timer` ghi start/end cho `read,map,config,start,acceptance,demo`, lỗi và phần sửa bằng tay; xem [hai đề và hướng dẫn timing](docs/EXAM_REHEARSAL.md). **Chưa đo thời gian đổi đề thực tế** trên sinh viên; thời gian script không phải thời gian đổi đề. Mock UI không giải hai task mới; scripted evaluation chỉ chứng minh backend. `save_draft` chưa lưu nguồn dataset; đề yêu cầu ghi từ bảng hoặc join/đặt phòng cần tool mới, không chỉ sửa mission.
 
 Sườn ứng dụng **AI Agent** nhỏ để chuẩn bị kiểm tra giữa kỳ môn *New Technologies in Software Engineering*.
 Một LLM có sẵn nhận mục tiêu, tự chọn công cụ và bước tiếp theo dựa trên kết quả vừa nhận; backend kiểm tra
@@ -382,6 +401,6 @@ npm run qa:metrics
 npm run qa:configuration
 ```
 
-Chrome QA dùng fake HTTP và profile/store tạm: selector/tools/data/examples, Mock/Live/unavailable; keyboard/focus, desktop 1280/mobile 390, probe success/503/429/timeout/invalid protocol/thiếu usage; reload running/approval/completed/failed/budget stop, approve/reject/replay và invalid/missing run. Mỗi click probe gửi đúng một HTTP; không cloud. Mock offline chỉ hỗ trợ rule-based ghi chú và ba ví dụ dataset được giao; dùng model thật cho đề mới. Chưa có launcher/deployment, CRUD/preview hàng dữ liệu hoặc cost/quota toàn tài khoản.
+Chrome QA dùng fake HTTP và profile/store tạm: selector/tools/data/examples, Mock/Live/unavailable; keyboard/focus, desktop 1280/mobile 390, probe success/503/429/timeout/invalid protocol/thiếu usage; reload running/approval/completed/failed/budget stop, approve/reject/replay và invalid/missing run. Mỗi click probe gửi đúng một HTTP; không cloud. Mock offline chỉ hỗ trợ rule-based ghi chú và ba ví dụ dataset được giao; dùng model thật cho đề mới. Launcher có từ mục 6; chưa có deployment, CRUD/preview hàng dữ liệu hoặc cost/quota toàn tài khoản.
 
 Live local mục 5 (2026-10-07): probe đầu timeout 5s, 1 HTTP, usage unavailable (400 estimated). Probe sau hai run dataset thành công với 1 HTTP, **42 input + 6 output = 48 provider tokens**, ~2.2s. Hai trial tổng sản phẩm: **1/2 PASS**, trial đầu bịa `products-12345`, bị chặn sau 2 repair (3 HTTP/4278 tokens); trial sau query đúng, `stationery = 30.30`, source `ds-products-db151dcee06f7c46` (2 HTTP/2920 tokens/0 repair). Không sử dụng cloud; chưa chạy full eval:live trong đợt này. Giữ cả kết quả thất bại làm bằng chứng giới hạn.
