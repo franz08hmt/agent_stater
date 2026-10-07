@@ -51,7 +51,9 @@ export function createOpenAICompatibleModel(cfg) {
     const started = Date.now();
     // No await between the final gate and fetch: every attempt, including a retry,
     // starts exactly one reservation and is persisted while the HTTP request is in flight.
-    const pending = fetch(url, { method: 'POST', headers, body: serialized, signal }).catch((err) => {
+    // Following a redirect would send another HTTP without passing the budget gate.
+    // A provider endpoint must respond directly; 3xx is an explicit non-retryable error.
+    const pending = fetch(url, { method: 'POST', headers, body: serialized, signal, redirect: 'manual' }).catch((err) => {
       if (err.name === 'TimeoutError' || err.name === 'AbortError') throw new ModelError('timeout', 'Model call timed out or was cancelled.');
       throw new ModelError('unavailable', `Model endpoint unreachable (${err.cause?.code || err.cause?.message || err.message}).`);
     });

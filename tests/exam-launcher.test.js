@@ -16,6 +16,9 @@ test('launcher root is script-owned and Node check uses the declared minimum', a
   assert.equal(supportsNode('24.0.0', '>=22.12.0'), true);
   const env = await loadEnvironment({ dotenv: false });
   assert.equal(env.catalog.defaultTaskId, 'study-notes'); assert.ok(env.service.project_id);
+  assert.deepEqual(env.evidenceContext.limits, env.config.limits);
+  assert.equal(env.evidenceContext.model_timeout_ms, env.config.model.timeoutMs);
+  assert.equal(env.evidenceContext.profiles.find((p) => p.id === 'ollama-qwen3').timeout_ms, env.catalog.profiles.get('ollama-qwen3').config.timeoutMs);
 });
 
 async function server(t, handler) {

@@ -2,6 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { inspectLocalModel, warmProfile } from '../src/operations/localModel.js';
+import { createOpenAICompatibleModel } from '../src/model/openaiCompatible.js';
+import { harness } from './helpers.js';
 
 async function fixture(t, reply = {}) {
   let requests = 0; const reads = [];
@@ -9,7 +11,9 @@ async function fixture(t, reply = {}) {
     res.setHeader('content-type', 'application/json');
     if (req.method === 'GET') { reads.push(req.url); return res.end(JSON.stringify({ models: req.url === '/api/tags' ? [{ name: 'qwen3:8b' }] : [] })); }
     requests++; let raw = ''; for await (const c of req) raw += c;
-    assert.ok(!raw.includes('search_notes')); assert.ok(JSON.parse(raw).max_tokens <= 64);
+    if (!reply.runner) assert.ok(!raw.includes('search_notes'));
+    assert.ok(JSON.parse(raw).max_tokens <= 64);
+    if (reply.redirect && req.url !== '/redirected') { res.writeHead(307, { location: '/redirected' }); res.end(); return; }
     if (reply.delay) await new Promise((r) => setTimeout(r, reply.delay));
     res.writeHead(reply.status ?? 200);
     res.end(JSON.stringify(reply.status ? { error: 'simulated' } : { choices: [{ message: { content: '{"ok":true}' } }], usage: reply.usage }));
@@ -44,4 +48,20 @@ test('warm refuses cloud, mock, unavailable and invalid timeout before HTTP', as
     await assert.rejects(warmProfile(profile));
   }
   await assert.rejects(warmProfile(h.profile, { timeoutMs: Infinity })); assert.equal(h.requests(), 0);
+});
+
+test('warm does not follow an HTTP redirect into a second unaccounted request', async (t) => {
+  const h = await fixture(t, { redirect: true }); const warm = await warmProfile(h.profile);
+  assert.equal(h.requests(), 1); assert.equal(warm.metrics.provider_requests, 1); assert.equal(warm.metrics.retries, 0);
+  assert.equal(warm.error.code, 'bad_request');
+});
+
+test('runner request budget cannot be bypassed by an HTTP redirect; no tools or writes execute', async (t) => {
+  const p = await fixture(t, { redirect: true, runner: true });
+  const h = await harness({ model: createOpenAICompatibleModel({ ...p.profile.config, maxOutputTokens: 64 }), limits: { maxProviderRequests: 1 } });
+  t.after(h.cleanup); const run = await h.run('Explain HTTP 401.');
+  assert.equal(p.requests(), 1); assert.equal(run.metrics.provider_requests, 1); assert.equal(run.metrics.retries, 0);
+  assert.equal(run.status, 'failed'); assert.equal(run.failure.code, 'model_request_rejected');
+  assert.equal(run.steps_used, 0); assert.equal((await h.store.listDrafts()).length, 0);
+  assert.equal(run.metrics.tokens.reported.total, null); assert.ok(run.metrics.tokens.estimated.total > 0);
 });

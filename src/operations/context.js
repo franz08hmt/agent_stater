@@ -36,10 +36,11 @@ export async function loadEnvironment({ root = PROJECT_ROOT, dotenv = true } = {
   } catch { /* Git is optional at operation time. */ }
   const suiteIdentity = hash((await Promise.all(['src/operations/cases.js', 'src/operations/suite.js'].map((f) => existsSync(join(root, f)) ? readFile(join(root, f), 'utf8') : 'not-added'))).join('\n'));
   const evidenceContext = { commit, working_tree_modified: dirty, configuration_id: service.configuration_id, protocol_identity: protocol, suite_identity: suiteIdentity,
-    environment: { node: process.versions.node, platform: process.platform, port: config.server.port },
+    environment: { node: process.versions.node, platform: process.platform, port: config.server.port }, limits: { ...config.limits }, model_timeout_ms: config.model.timeoutMs,
     tasks: [...catalog.tasks.values()].map(({ task }) => ({ id: task.id, fingerprint: task.fingerprint,
       datasets: task.datasets.map((d) => ({ id: d.id, version: d.version, records: d.rows.length })) })),
-    profiles: [...catalog.profiles.values()].map((p) => ({ ...p.metadata, identity: p.identity, output_cap: p.config.maxOutputTokens, reasoning: p.config.reasoningEffort || 'default' })),
+    profiles: [...catalog.profiles.values()].map((p) => ({ ...p.metadata, identity: p.identity, output_cap: p.config.maxOutputTokens, reasoning: p.config.reasoningEffort || 'default',
+      temperature: p.config.temperature, json_mode: p.config.jsonMode, timeout_ms: p.config.timeoutMs })),
   };
   return { root, config, catalog, service, evidenceContext };
 }
