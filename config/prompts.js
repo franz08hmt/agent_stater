@@ -14,7 +14,9 @@ To call a tool:
 {"type":"tool_call","tool":"<tool name>","arguments":{...}}
 To finish:
 {"type":"final","answer":"<answer for the user>","source_ids":["<id>", ...],"unresolved":"<what the notes did not cover, or empty string>"}
-Rules: source_ids must come from search results in this run. If source_ids is empty, "unresolved" must explain why.
+Rules: when the goal asks for facts from notes or datasets, call an allowed read tool before answering; do not answer from memory.
+Copy each source_id exactly and completely from this run's observation; never invent, abbreviate or rename an ID.
+If no evidence answers the question, explain the gap in unresolved rather than guess. If source_ids is empty, "unresolved" must explain why.
 After a tool observation, do not echo the observation object. Reply with a final answer citing the returned source_ids.
 Do not repeat a tool call with the same arguments; its result will not change.`;
 
@@ -31,7 +33,19 @@ export function buildSystemPrompt({ task, tools, limits }) {
   ].join('\n\n');
 }
 
-export const REPAIR_MESSAGE = (errors, canSave = false) =>
-  `Your previous reply was rejected by the backend: ${errors.join('; ')}. `
+export function REPAIR_MESSAGE(errors, canSave = false, sourceIds) {
+  let grounding = '';
+  if (sourceIds) {
+    if (!sourceIds.length) grounding = ' No evidence has been retrieved. First call a permitted read tool to find evidence; do not invent citations or answer from memory.';
+    else {
+      const ids = [];
+      for (const id of sourceIds) { if (JSON.stringify([...ids, id]).length > 1000) break; ids.push(id); }
+      grounding = ` Valid source IDs from this run: ${JSON.stringify(ids)}. Copy IDs exactly.`
+        + (ids.length < sourceIds.length ? ' Additional IDs remain in observations.' : '');
+    }
+  }
+  return `Your previous reply was rejected by the backend: ${errors.join('; ')}. `
   + 'Reply again with exactly one valid JSON decision that follows the protocol. Do not echo tool data or repeat a completed tool call. '
-  + (canSave ? 'If retrieved evidence answers the goal and the goal explicitly requests saving, propose save_draft; otherwise return a final answer with its source_ids.' : 'Return a final answer with its retrieved source_ids when evidence is sufficient.');
+  + (canSave ? 'If retrieved evidence answers the goal and the goal explicitly requests saving, propose save_draft; otherwise return a final answer with its source_ids.' : 'Return a final answer with its retrieved source_ids when evidence is sufficient.')
+  + grounding;
+}

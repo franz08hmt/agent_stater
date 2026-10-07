@@ -189,7 +189,8 @@ export function createAgentRunner({ model, registry, retriever, store, limits, m
       }
       run.repairs_used += 1;
       repairing = true;
-      run.messages.push({ role: 'assistant', content: String(text).slice(0, 2000) }, { role: 'user', content: REPAIR_MESSAGE(errors, registry.get('save_draft') !== undefined) });
+      run.messages.push({ role: 'assistant', content: String(text).slice(0, 2000) }, { role: 'user', content: REPAIR_MESSAGE(errors, registry.get('save_draft') !== undefined,
+        parsed.ok && parsed.decision.type === 'final' ? run.retrieved_source_ids : undefined) });
     }
   }
 
