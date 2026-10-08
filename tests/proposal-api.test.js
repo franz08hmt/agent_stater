@@ -20,7 +20,7 @@ test('HTTP proposal run keeps evidence private, rejects bad hash, reloads pendin
   const c = PROPOSAL_CASES[0], task = await loadTaskConfig({ root: ROOT, file: join(ROOT, 'config/proposal-tickets.task.json') });
   const dir = await mkdtemp(join(tmpdir(), 'proposal-api-')); t.after(() => rm(dir, { recursive: true, force: true }));
   const config = { model: { provider: 'mock', name: 'scripted-mock', timeoutMs: 2000 }, limits: LIMITS, server: { maxBodyBytes: 16384 } };
-  const app = await createApp({ config, task, model: createScriptedModel([(messages) => scriptedProposalDecision(c, messages)]), varDir: dir, publicDir: join(ROOT, 'public') });
+  const app = await createApp({ config, task, model: createScriptedModel([(messages) => scriptedProposalDecision(c, messages, task.datasets)]), varDir: dir, publicDir: join(ROOT, 'public') });
   await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
   t.after(() => new Promise((resolve) => app.server.close(resolve)));
   const url = `http://127.0.0.1:${app.server.address().port}`, post = (path, body) => fetch(url + path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });

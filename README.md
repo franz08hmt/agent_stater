@@ -1,6 +1,6 @@
 # AI Agent Starter
 
-Đợt 2 bổ sung proposal nội bộ từ dataset với business rules, lookup evidence, approval/hash và chống ghi trùng. **316 tests**, 16 eval ghi chú và các demo scripted đạt; browser thật kiểm chứng approve/reject/replay/reload/error và desktop/mobile. Live Ollama có một trial đạt cho tạo ticket proposal và một trial đạt cho chặn capacity; chưa đủ chứng minh ổn định 3 lần. Xem [contract và cách đổi policy](docs/DATASET_PROPOSALS.md), [quy trình trước buổi thi](docs/EXAM_REHEARSAL.md) và phần kết quả cuối handoff. Grounding/budgets/repair/timeout giữ nguyên.
+Đợt 2 bổ sung proposal nội bộ từ dataset với business rules, lookup evidence, approval/hash và chống ghi trùng. Sau sửa P2 cột ID của demo/grader: **318 tests**, 16 eval ghi chú và các demo scripted đạt; browser thật kiểm chứng approve/reject/replay/reload/error và desktop/mobile. Live Ollama trước sửa grader có một trial đạt cho tạo ticket proposal và một trial đạt cho chặn capacity; chưa đủ chứng minh ổn định 3 lần và không chạy lại trong lượt P2 này. Xem [contract và cách đổi policy](docs/DATASET_PROPOSALS.md), [quy trình trước buổi thi](docs/EXAM_REHEARSAL.md) và phần kết quả cuối handoff. Grounding/budgets/repair/timeout giữ nguyên.
 
 ```powershell
 npm run exam:start

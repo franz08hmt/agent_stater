@@ -23,9 +23,12 @@ export const PROPOSAL_CASES = [ticket('ticket-approve', 'T2', 'closed', 'approve
   ticket('ticket-blocked', 'T3', 'open', 'approve', true), room('room-approve', 'R4', 'B202'), room('room-blocked', 'R3', 'B201', true)];
 export const proposalObservations = (messages) => messages.filter((m) => m.content.startsWith('OBSERVATION'))
   .map((m) => JSON.parse(m.content.slice(m.content.indexOf('{'))));
-export function scriptedProposalDecision(c, messages) {
+export function scriptedProposalDecision(c, messages, datasets) {
   const observations = proposalObservations(messages), evidence = observations.flatMap((o) => o.untrusted_data?.results || []);
-  const next = c.references.find((ref) => !evidence.some((e) => e.dataset_id === ref.dataset_id && e.rows?.some(({ record }) => record.id === ref.record_id)));
+  const idColumn = (datasetId) => datasets.find((d) => d.id === datasetId).idColumn;
+  const lookupFor = (ref) => evidence.find((e) => e.dataset_id === ref.dataset_id
+    && e.rows?.some(({ record }) => record[idColumn(ref.dataset_id)] === ref.record_id));
+  const next = c.references.find((ref) => !lookupFor(ref));
   const proposal = observations.findLast((o) => o.tool === 'create_proposal');
   if (proposal) {
     const answer = proposal.status === 'ok' ? 'Proposal saved; changes not applied.'
@@ -33,9 +36,9 @@ export function scriptedProposalDecision(c, messages) {
     return { type: 'final', answer, source_ids: evidence.map((e) => e.source_id), unresolved: '' };
   }
   if (next) return { type: 'tool_call', tool: 'query_dataset', arguments: { dataset_id: next.dataset_id, operation: 'lookup',
-    filters: [{ field: 'id', op: 'eq', value: next.record_id }], limit: 5 } };
+    filters: [{ field: idColumn(next.dataset_id), op: 'eq', value: next.record_id }], limit: 5 } };
   return { type: 'tool_call', tool: 'create_proposal', arguments: { action: c.action,
-    references: c.references.map((ref) => ({ ...ref, source_id: evidence.find((e) => e.dataset_id === ref.dataset_id && e.rows.some(({ record }) => record.id === ref.record_id)).source_id })),
+    references: c.references.map((ref) => ({ ...ref, source_id: lookupFor(ref).source_id })),
     changes: c.changes, reason: 'Requested internal proposal; original data remains unchanged.' } };
 }
 const result = (status, reason) => ({ status, reason });
@@ -64,9 +67,11 @@ export async function gradeProposal(c, run, stored, task, proposals, replayed) {
       || p.args_hash !== a.args_hash || p.applied !== false || p.action !== c.action || JSON.stringify(p.changes) !== JSON.stringify(c.changes)
       || obs?.untrusted_data.proposal_id !== p.proposal_id || a.result?.proposal_id !== p.proposal_id) return result('FAIL', 'Stored proposal differs from approved action/changes/hash.');
     for (const ref of c.references) {
+      const data = task.datasets.find((d) => d.id === ref.dataset_id);
       if (!p.references.some((r) => r.role === ref.role && r.dataset_id === ref.dataset_id && r.record_id === ref.record_id
-        && r.dataset_version === task.datasets.find((d) => d.id === ref.dataset_id).version
-        && evidence.some((e) => e.source_id === r.source_id && e.rows.some(({ record }) => record.id === ref.record_id)))) return result('FAIL', 'Stored proposal reference differs from actual lookup evidence.');
+        && r.dataset_version === data.version
+        && evidence.some((e) => e.query?.operation === 'lookup' && e.dataset_id === data.id && e.dataset_version === data.version
+          && e.source_id === r.source_id && e.rows.some(({ record }) => record[data.idColumn] === ref.record_id)))) return result('FAIL', 'Stored proposal reference differs from actual lookup evidence.');
     }
   }
   const expected = approved ? 'Proposal saved; changes not applied.' : 'Proposal not saved.';
@@ -84,7 +89,7 @@ export async function runProposalSuite({ env, cases = PROPOSAL_CASES, live = fal
     const entry = env.catalog.tasks.get(c.taskId), dir = await mkdtemp(join(tmpdir(), 'proposal-suite-'));
     try {
       const store = await createFileStore({ root: dir }), decisions = [];
-      const base = live ? profile.model : createScriptedModel([(messages) => scriptedProposalDecision(c, messages)]);
+      const base = live ? profile.model : createScriptedModel([(messages) => scriptedProposalDecision(c, messages, entry.task.datasets)]);
       const model = { ...base, async complete(args) {
         const control = args.requestControl;
         const reply = await base.complete({ ...args, requestControl: { ...control,

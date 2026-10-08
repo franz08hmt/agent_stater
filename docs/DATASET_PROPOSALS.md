@@ -61,7 +61,7 @@ Khai báo task:
 
 Đây là phần thêm vào task đầy đủ có data/mission/examples/result labels. `proposal_policies` tùy chọn để task cũ tiếp tục chạy. Task chỉ đọc không tự có quyền ghi. Startup từ chối policy/action không đăng ký, role/mapping sai, cột thiếu/sai kiểu, ticket status không biết, tên phòng đích trùng, hoặc thiếu query_dataset/create_proposal permission.
 
-Chỉ cần đổi config/data/catalog nếu giữ luật và canonical fields: ticket `status:string`; class `room:string, students:number`; target `room:string, capacity:number`. ID column vẫn do dataset khai báo. JSON không ánh xạ tùy ý field/module/code. Cột mới, transition khác, kiểm tra lịch/quyền hoặc action mới cần sửa policy code rõ ràng tại `src/proposals/policies.js`, schema/check/bind validations và tests; thêm case vào suite, không sửa agent loop. Không tạo DSL. Task fingerprint proposal gồm bytes policy module và snapshot dữ liệu.
+Chỉ cần đổi config/data/catalog nếu giữ luật và canonical fields: ticket `status:string`; class `room:string, students:number`; target `room:string, capacity:number`. ID column do `id_column` của từng dataset khai báo, không bắt buộc tên `id`; scripted demo và grader đều dùng metadata `idColumn` đã xác thực của task (ví dụ ticket_id/class_code/room_code). JSON không ánh xạ tùy ý field/module/code. Cột mới, transition khác, kiểm tra lịch/quyền hoặc action mới cần sửa policy code rõ ràng tại `src/proposals/policies.js`, schema/check/bind validations và tests; thêm case vào suite, không sửa agent loop. Không tạo DSL. Task fingerprint proposal gồm bytes policy module và snapshot dữ liệu.
 
 ## Approval, lưu đúng một lần và restart
 
