@@ -49,7 +49,7 @@ test('only health plus catalog from the same project is reused; stale configurat
 test('foreground launcher starts and verifies its own server from a temporary project root', { timeout: 20000 }, async (t) => {
   const root = await mkdtemp(join(tmpdir(), 'agent-launch-test-'));
   t.after(() => rm(root, { recursive: true, force: true }));
-  for (const name of ['src', 'config', 'data', 'eval', 'package.json']) await cp(join(ROOT, name), join(root, name), { recursive: true });
+  for (const name of ['src', 'config', 'data', 'eval', 'scripts', 'templates', 'package.json']) await cp(join(ROOT, name), join(root, name), { recursive: true });
   const s = await server(t, (_, res) => res.end('unused'));
   const port = s.address().port; await new Promise((r) => s.close(r));
   const env = await loadEnvironment({ root, dotenv: false }); env.config.server = { ...env.config.server, host: '127.0.0.1', port };

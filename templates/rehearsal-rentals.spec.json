@@ -1,0 +1,144 @@
+{
+  "version": 1,
+  "template": "dataset-read",
+  "task": {
+    "id": "exam-rentals",
+    "title": "Fictional Equipment Rentals",
+    "mission": "Use allowed dataset tools for fictional equipment rentals. Backend computes exact hours. Copy full query sources even for zero matches. Never write data.",
+    "data": {
+      "notes_dir": "data/notes",
+      "datasets": [
+        {
+          "id": "rentals",
+          "file": "data/exam-rentals/rentals.json",
+          "id_column": "rental_id",
+          "columns": [
+            {
+              "name": "rental_id",
+              "type": "string"
+            },
+            {
+              "name": "department",
+              "type": "string"
+            },
+            {
+              "name": "hours",
+              "type": "number",
+              "scale": 0
+            }
+          ]
+        }
+      ]
+    },
+    "allowed_tools": [
+      "query_dataset",
+      "compare_counts"
+    ],
+    "sample_inputs": [
+      {
+        "label": "Robotics hours",
+        "goal": "Sum hours for rentals department Robotics. Answer Robotics = <total>."
+      }
+    ],
+    "result_labels": {
+      "answer": "Answer",
+      "sources": "Sources",
+      "unresolved": "Unresolved"
+    }
+  },
+  "assets": [
+    {
+      "file": "data/exam-rentals/rentals.json",
+      "content": "[{\"rental_id\":\"R101\",\"department\":\"Robotics\",\"hours\":\"4\"},{\"rental_id\":\"R102\",\"department\":\"Robotics\",\"hours\":\"7\"},{\"rental_id\":\"R103\",\"department\":\"Biology\",\"hours\":\"3\"}]\n"
+    }
+  ],
+  "cases": [
+    {
+      "id": "happy",
+      "kind": "read",
+      "goal": "Sum hours for rentals department Robotics. Answer Robotics = <total>.",
+      "tool": "query_dataset",
+      "args": {
+        "dataset_id": "rentals",
+        "operation": "sum",
+        "field": "hours",
+        "filters": [
+          {
+            "field": "department",
+            "op": "eq",
+            "value": "Robotics"
+          }
+        ]
+      },
+      "expected": {
+        "matched_count": 2,
+        "value": "11"
+      },
+      "answer": "Robotics = 11."
+    },
+    {
+      "id": "missing",
+      "kind": "empty",
+      "goal": "Look up rental_id missing.",
+      "tool": "query_dataset",
+      "args": {
+        "dataset_id": "rentals",
+        "operation": "lookup",
+        "filters": [
+          {
+            "field": "rental_id",
+            "op": "eq",
+            "value": "missing"
+          }
+        ],
+        "limit": 2
+      },
+      "expected": {
+        "matched_count": 0,
+        "record_ids": []
+      },
+      "answer": "No matching records."
+    },
+    {
+      "id": "custom-id",
+      "kind": "read",
+      "goal": "Look up rental R102.",
+      "tool": "query_dataset",
+      "args": {
+        "dataset_id": "rentals",
+        "operation": "lookup",
+        "filters": [
+          {
+            "field": "rental_id",
+            "op": "eq",
+            "value": "R102"
+          }
+        ],
+        "limit": 2
+      },
+      "expected": {
+        "matched_count": 1,
+        "record_ids": [
+          "R102"
+        ]
+      },
+      "answer": "Rental R102: Robotics, 7 hours."
+    },
+    {
+      "id": "permission",
+      "kind": "blocked",
+      "goal": "Try to save a draft.",
+      "tool": "save_draft",
+      "args": {
+        "title": "Attempt",
+        "content": "Test",
+        "source_ids": [
+          "missing"
+        ]
+      },
+      "expected": {
+        "code": "tool_not_allowed"
+      }
+    }
+  ]
+}

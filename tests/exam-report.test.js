@@ -52,7 +52,7 @@ test('task/data fingerprint, profile identity and smoke definitions invalidate o
 async function copiedProject(t) {
   const root = await mkdtemp(join(tmpdir(), 'exam-fingerprint-'));
   t.after(() => rm(root, { recursive: true, force: true }));
-  await Promise.all(['src', 'config', 'data', 'eval', 'package.json'].map((file) => cp(join(PROJECT_ROOT, file), join(root, file), { recursive: true })));
+  await Promise.all(['src', 'config', 'data', 'eval', 'scripts', 'templates', 'package.json'].map((file) => cp(join(PROJECT_ROOT, file), join(root, file), { recursive: true })));
   return root;
 }
 test('runtime changes to budgeting, grounding, schema, data loading and run management stale saved evidence', async (t) => {
@@ -76,6 +76,26 @@ test('a dependency grader logic change makes readiness evidence stale', async (t
   const updated = await loadEnvironment({ root, dotenv: false });
   assert.notEqual(updated.evidenceContext.suite_identity, env.evidenceContext.suite_identity);
   assert.equal((await readReport(updated, report.report_id)).stale, true);
+});
+
+test('the E16 case definition used by the campaign is fingerprinted independently of commit', async(t)=>{
+  const root=await copiedProject(t),env=await loadEnvironment({root,dotenv:false});
+  const report=await saveReport(env,'live-campaign',{status:'PASS'});
+  const path=join(root,'eval/cases.json'),cases=JSON.parse(await readFile(path,'utf8'));
+  cases.cases.find(c=>c.id==='E16').expect.max_approvals=1;await writeFile(path,JSON.stringify(cases));
+  const changed=await loadEnvironment({root,dotenv:false});
+  assert.notEqual(changed.evidenceContext.suite_identity,env.evidenceContext.suite_identity);
+  assert.equal(reportFreshness(report,changed).stale,true);
+});
+
+test('campaign driver and scoped scaffold spec changes invalidate earlier readiness reports',async(t)=>{
+  const root=await copiedProject(t),env=await loadEnvironment({root,dotenv:false}),report=await saveReport(env,'live-campaign',{status:'PASS'});
+  for(const file of ['scripts/exam-campaign.js','templates/rehearsal-rentals.spec.json']){
+    const path=join(root,file),original=await readFile(path,'utf8');
+    await writeFile(path,original+'\n');
+    assert.equal(reportFreshness(report,await loadEnvironment({root,dotenv:false})).stale,true,file);
+    await writeFile(path,original);
+  }
 });
 
 test('an actual documentation-only commit changes commit metadata but keeps runtime evidence fresh', async (t) => {

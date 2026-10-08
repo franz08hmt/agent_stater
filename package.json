@@ -28,6 +28,10 @@
     "qa:scaffold": "node scripts/qa-scaffold-browser.js",
     "qa:metrics": "node scripts/qa-metrics-browser.js",
     "qa:configuration": "node scripts/qa-configuration-browser.js",
-    "qa:exam": "node scripts/qa-exam-browser.js"
+    "qa:exam": "node scripts/qa-exam-browser.js",
+    "exam:campaign": "node scripts/exam-campaign.js",
+    "exam:package": "node scripts/exam-package.js",
+    "exam:restore-check": "node scripts/exam-restore-check.js",
+    "qa:rehearsal": "node scripts/qa-agent-rehearsal.js"
   }
 }

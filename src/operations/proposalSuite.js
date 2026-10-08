@@ -21,6 +21,8 @@ const room = (id, target, name, blocked = false) => ({ id, taskId: 'proposal-roo
   changes: { room: name }, decision: 'approve', blocked, rule: 'capacity' });
 export const PROPOSAL_CASES = [ticket('ticket-approve', 'T2', 'closed', 'approve'), ticket('ticket-reject', 'T2', 'closed', 'reject'),
   ticket('ticket-blocked', 'T3', 'open', 'approve', true), room('room-approve', 'R4', 'B202'), room('room-blocked', 'R3', 'B201', true)];
+// Additional verification only; keeps the existing five-case demo contract.
+export const ROOM_REJECT_CASE = { ...room('room-reject', 'R4', 'B202'), decision: 'reject' };
 export const proposalObservations = (messages) => messages.filter((m) => m.content.startsWith('OBSERVATION'))
   .map((m) => JSON.parse(m.content.slice(m.content.indexOf('{'))));
 export function scriptedProposalDecision(c, messages, datasets) {
