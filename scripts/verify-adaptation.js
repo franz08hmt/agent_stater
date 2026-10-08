@@ -16,7 +16,7 @@ import { gradeProposal, proposalObservations } from '../src/operations/proposalS
 import { sanitizeEvidence } from '../src/operations/reports.js';
 
 const args = process.argv.slice(2);
-if (args.some(a => a !== '--live' && !/^--cap=(?:[1-9]|[1-3][0-9]|4[0-8])$/.test(a))) throw new Error('Only --live and --cap=1..48 are supported; fixed local profile ollama-qwen3.');
+if (args.some(a => !['--live','--only=read-vi-vi'].includes(a) && !/^--cap=(?:[1-9]|[1-3][0-9]|4[0-8])$/.test(a))) throw new Error('Use --live, --cap=1..48, optional --only=read-vi-vi; fixed local profile ollama-qwen3.');
 const live = args.includes('--live'), cap = Number(args.find(a => a.startsWith('--cap='))?.slice(6) || 48);
 const env = await loadEnvironment(), directory = join(env.root, 'var', 'adaptation-kit-20261008', `verification-${randomUUID()}`);
 await mkdir(directory, { recursive: false });
@@ -56,7 +56,7 @@ try {
       ...spec.cases.filter(c => c.kind === 'proposal' && ['approve', 'insufficient'].includes(c.id)).map(c => ({ ...c, id: `asset-${c.id}`, task_id: spec.task.id })),
     ];
     // IDs in the authored asset manifest are authoritative; never derive expected from tool output.
-    for (const c of cases.filter(c => c.goal)) {
+    for (const c of cases.filter(c => c.goal && (!args.includes('--only=read-vi-vi') || c.id === 'read-vi-vi'))) {
       if (campaign.session.used >= cap) { results.push({ id: c.id, status: 'NOT_RUN', reason: 'Campaign cap exhausted.' }); continue; }
       const run = await app.runner.startRun(c.goal, { task_id: c.task_id, model_profile_id: 'ollama-qwen3' }); await app.runner.idle(run.run_id);
       let view = app.runner.getRun(run.run_id), replayed = false;

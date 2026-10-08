@@ -32,7 +32,7 @@ Sau final mở **Rephrase this result / Diễn đạt lại kết quả này** v
 - `Translate the previous answer into English.`
 - `Rephrase the previous answer in Vietnamese.`
 
-API `POST /api/runs/:id/followups` chỉ nhận `{ "request": "..." }`; `GET` cùng URL đọc trạng thái. Cần đúng run terminal có final, task/snapshot và profile identity còn khớp. Legacy thiếu identity bị chặn. Yêu cầu nghiệp vụ mới phải tạo run mới. Không gọi tools, approval, lưu draft/proposal hoặc apply. Context chỉ gồm goal/final gốc, literals từ evidence đã trả và outcome đã xác nhận, tối đa 6.000 ký tự; không chuyển cả dataset/prompt lên browser.
+API `POST /api/runs/:id/followups` chỉ nhận `{ "request": "..." }`; `GET` cùng URL đọc trạng thái. Cần đúng run terminal có final, task/snapshot và profile identity còn khớp. Legacy thiếu identity bị chặn. Yêu cầu nghiệp vụ mới phải tạo run mới. Không gọi tools, approval, lưu draft/proposal hoặc apply. Context chỉ gồm final gốc, literals từ evidence đã trả và outcome đã xác nhận, tối đa 6.000 ký tự; không chuyển cả dataset/prompt lên browser. Không gửi lại goal gốc để chỉ dẫn ngôn ngữ cũ không cạnh tranh với yêu cầu dịch mới. Với outcome hữu hạn, chỉ câu đúng ngôn ngữ follow-up được chấp nhận; văn xuôi vẫn cần đọc tay.
 
 Kết quả riêng trong `var/followups/<run_id>.json`, giữ nguyên final/trace/metrics/run lịch sử. Mỗi run có ngân sách follow-up riêng: tối đa **3 complete / 3 HTTP / 20.000 token dự phòng**, output tối đa 800 (không vượt profile), timeout min(profile timeout, 30 giây), **không retry hoặc repair**. Model thật đi qua gate trước HTTP; usage thiếu giữ reservation, không coi 0. Metrics trong mỗi kết quả là snapshot **tích lũy của phiên follow-up**, không cộng vào run gốc và không cộng lặp các snapshot để tính tổng.
 

@@ -30,6 +30,8 @@ test('follow-up binds original final, persists separate accounting, never rewrit
   const restarted = createFollowups({ catalog: f.catalog, store: f.store }); await restarted.init();
   assert.equal((await restarted.get(f.run.run_id)).results.length, 1);
   assert.equal(f.model.calls.length, 1);
+  const context = JSON.parse(f.model.calls[0][1].content);
+  assert.equal(Object.hasOwn(context, 'original_goal'), false, 'old goal language is irrelevant to explicit follow-up translation');
 });
 
 test('new business goal, nonfinal run, unknown context and changed identity are blocked before inference', async (t) => {
@@ -48,6 +50,8 @@ test('follow-up rejects changed numbers, missing IDs, fake source, tool calls an
   const writing = { final: { answer: 'Proposal not saved.', source_ids: ['http-status'] }, approvals: [{ result_kind: 'proposal', state: 'rejected' }] };
   assert.throws(() => validateFollowup(response('Đã lưu đề xuất; chưa áp dụng thay đổi.'), writing), /outcome/i);
   assert.equal(validateFollowup(response('Không lưu đề xuất.'), writing).status, 'PASS');
+  assert.throws(() => validateFollowup(response('Không lưu đề xuất.'), writing, { language: 'English' }), /outcome|language/i);
+  assert.equal(validateFollowup(response('Proposal not saved.'), writing, { language: 'English' }).status, 'PASS');
   const enumRun = { ...input, final: { ...input.final, answer: 'CAM1: 2 available; status open.' }, messages: [{ content: 'OBSERVATION ' + JSON.stringify({ status: 'ok', untrusted_data: { results: [{ rows: [{ record: { asset_code: 'CAM1', status: 'open' } }] }] } }) }] };
   assert.throws(() => validateFollowup(response('CAM1: còn 2; trạng thái mở.'), enumRun), /enum/);
   assert.equal(validateFollowup(response('CAM1: còn 2; trạng thái open.'), enumRun).status, 'REVIEW_REQUIRED');
