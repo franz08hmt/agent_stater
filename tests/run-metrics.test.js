@@ -15,6 +15,7 @@ async function provider(t, replies, options = {}) {
     let raw = ''; for await (const chunk of req) raw += chunk;
     bodies.push(JSON.parse(raw));
     const reply = replies[bodies.length - 1] ?? { text: final('Done') };
+    reply.onReceived?.();
     if (reply.waitFor) await reply.waitFor;
     if (reply.delay) await new Promise((r) => setTimeout(r, reply.delay));
     if (reply.disconnect) { req.socket.destroy(); return; }
@@ -182,18 +183,28 @@ test('unexpectedly high reported usage stops before a proposed tool can execute'
   assert.equal(r.failure.code, 'token_budget'); assert.equal(r.steps_used, 0); assert.equal(r.trace.some((e) => e.kind === 'tool'), false);
 });
 
-test('in-flight request accounting is persisted; restart retains unknown reservation', async (t) => {
-  // Hold the response until the durable in-flight snapshot has been observed.
-  // A fixed 300ms sleep can expire under a busy full-suite run before the reader.
-  const response = Promise.withResolvers(); t.after(() => response.resolve());
-  const h = await setup(t, [{ waitFor: response.promise, text: final('Done'), usage }]);
-  const started = await h.runner.startRun('test');
-  let saved;
-  for (let i = 0; i < 100; i++) {
-    saved = (await h.store.loadRuns())[0];
-    if (saved?.metrics.provider_requests === 1) break;
-    await new Promise((resolve) => setTimeout(resolve, 5));
-  }
+test('in-flight request accounting is persisted; restart retains unknown reservation', { timeout: 10000 }, async (t) => {
+  const response = Promise.withResolvers(), received = Promise.withResolvers();
+  const saveEntered = Promise.withResolvers(), allowSave = Promise.withResolvers(), snapshotSaved = Promise.withResolvers();
+  let h, started;
+  t.after(async () => { allowSave.resolve(); response.resolve(); if (started) await h.runner.idle(started.run_id); });
+  // Fixture deadline exceeds the TEST deadline, so only our response gate can
+  // complete this request during the assertions. Production deadlines unchanged.
+  h = await setup(t, [{ onReceived: received.resolve, waitFor: response.promise, text: final('Done'), usage }],
+    { runMaxMs: 30000 }, { modelTimeoutMs: 20000 });
+  const saveRun = h.store.saveRun;
+  h.store.saveRun = async (run) => {
+    const pending = run.metrics.provider_requests === 1 && run.metrics.tokens.pending_requests === 1;
+    if (pending) { saveEntered.resolve(); await allowSave.promise; }
+    await saveRun(run);
+    if (pending) snapshotSaved.resolve(); // atomic rename has completed
+  };
+  started = await h.runner.startRun('test');
+  await Promise.all([saveEntered.promise, received.promise]);
+  assert.equal(h.bodies.length, 1, 'HTTP is actually in flight while persistence is held');
+  assert.equal((await h.store.loadRuns())[0].metrics.provider_requests, 0, 'old snapshot until atomic save completes');
+  allowSave.resolve(); await snapshotSaved.promise;
+  const saved = (await h.store.loadRuns())[0];
   assert.equal(saved.metrics.provider_requests, 1); assert.equal(saved.metrics.tokens.pending_requests, 1);
   response.resolve();
   await h.runner.idle(started.run_id);

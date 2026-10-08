@@ -52,7 +52,7 @@ test('task/data fingerprint, profile identity and smoke definitions invalidate o
 async function copiedProject(t) {
   const root = await mkdtemp(join(tmpdir(), 'exam-fingerprint-'));
   t.after(() => rm(root, { recursive: true, force: true }));
-  await Promise.all(['src', 'config', 'data', 'package.json'].map((file) => cp(join(PROJECT_ROOT, file), join(root, file), { recursive: true })));
+  await Promise.all(['src', 'config', 'data', 'eval', 'package.json'].map((file) => cp(join(PROJECT_ROOT, file), join(root, file), { recursive: true })));
   return root;
 }
 test('runtime changes to budgeting, grounding, schema, data loading and run management stale saved evidence', async (t) => {
@@ -68,10 +68,20 @@ test('runtime changes to budgeting, grounding, schema, data loading and run mana
   }
   assert.equal((await readReport(await loadEnvironment({ root, dotenv: false }), report.report_id)).stale, false);
 });
+test('a dependency grader logic change makes readiness evidence stale', async (t) => {
+  const root = await copiedProject(t), env = await loadEnvironment({ root, dotenv: false });
+  const report = await saveReport(env, 'rehearsal', { status: 'PASS' });
+  const path = join(root, 'eval/checks.js'), code = await readFile(path, 'utf8');
+  await writeFile(path, code.replace("tool.access !== 'read'", "tool.access === 'write'"));
+  const updated = await loadEnvironment({ root, dotenv: false });
+  assert.notEqual(updated.evidenceContext.suite_identity, env.evidenceContext.suite_identity);
+  assert.equal((await readReport(updated, report.report_id)).stale, true);
+});
+
 test('an actual documentation-only commit changes commit metadata but keeps runtime evidence fresh', async (t) => {
   const root = await copiedProject(t);
   const git = (...args) => execFileSync('git', ['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', ...args], { cwd: root, stdio: 'ignore' });
-  git('init'); git('add', 'src', 'config', 'data', 'package.json'); git('commit', '-m', 'Fixture runtime');
+  git('init'); git('add', 'src', 'config', 'data', 'eval', 'package.json'); git('commit', '-m', 'Fixture runtime');
   const env = await loadEnvironment({ root, dotenv: false }), report = await saveReport(env, 'smoke', { status: 'PASS' });
   await mkdir(join(root, 'docs')); await writeFile(join(root, 'docs', 'knowledge.md'), '# Documentation only\n');
   git('add', 'docs/knowledge.md'); git('commit', '-m', 'Fixture documentation');

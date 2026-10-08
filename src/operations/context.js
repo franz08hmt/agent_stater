@@ -9,6 +9,9 @@ import { loadCatalog } from '../../config/catalog.config.js';
 
 export const PROJECT_ROOT = resolve(fileURLToPath(new URL('../../', import.meta.url)));
 export const hash = (value) => createHash('sha256').update(typeof value === 'string' ? value : JSON.stringify(value)).digest('hex');
+// Direct grader dependencies outside the src/config runtime tree are explicit.
+// File names participate in the hash; stable ordering avoids filesystem order.
+const GRADER_FILES = ['eval/checks.js', 'src/operations/cases.js', 'src/operations/suite.js'].sort();
 export function supportsNode(version, range) {
   if (!/^>=\d+\.\d+\.\d+$/.test(range)) throw new Error('Unsupported package Node engine range.');
   const current = version.replace(/^v/, '').split('.').map(Number), min = range.slice(2).split('.').map(Number);
@@ -50,7 +53,7 @@ export async function loadEnvironment({ root = PROJECT_ROOT, dotenv = true } = {
     commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
     dirty = execFileSync('git', ['status', '--porcelain', '--untracked-files=all'], { cwd: root, encoding: 'utf8' }).trim().split('\n').some((line) => line && !line.slice(3).startsWith('.agents/'));
   } catch { /* Git is optional at operation time. */ }
-  const suiteIdentity = hash((await Promise.all(['src/operations/cases.js', 'src/operations/suite.js'].map((f) => existsSync(join(root, f)) ? readFile(join(root, f), 'utf8') : 'not-added'))).join('\n'));
+  const suiteIdentity = hash(await Promise.all(GRADER_FILES.map(async (file) => [file, hash(await readFile(join(root, file), 'utf8'))])));
   const evidenceContext = { commit, working_tree_modified: dirty, configuration_id: service.configuration_id, protocol_identity: protocol, runtime_identity: protocol, suite_identity: suiteIdentity,
     environment: { node: process.versions.node, platform: process.platform, port: config.server.port }, limits: { ...config.limits }, model_timeout_ms: config.model.timeoutMs,
     tasks: [...catalog.tasks.values()].map(({ task }) => ({ id: task.id, fingerprint: task.fingerprint,
