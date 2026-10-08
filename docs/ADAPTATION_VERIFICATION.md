@@ -16,6 +16,12 @@ Nhánh `feature/adaptation-kit-i18n-20261008`, từ `34ec8a1`. Checkpoints `8d66
 
 Logs riêng: `var/adaptation-kit-20261008/`; screenshot TEMP được in trong từng log. 1366×768: Run khoảng y646–688, Approve/Reject y471–515, trong viewport. Toggle/reload không thêm model/probe/write; goal, args/hash, sources, final/history giữ nguyên. Follow-up reload chỉ GET, New run không trộn context. QA cũ chọn EN và thêm đúng một key locale vào whitelist.
 
+Báo cáo tổng mới **adaptation-closeout-b29851c3-e9bc-4372-88a7-a735edf3bbdf** có danh sách 63 file, task/data/profile identities, counters và freshness từng evidence. Configuration identity `c43a959c87fdfce17bb1b56d641df4cb96356d647ccf38d34da06b94edcbef23`; runtime `4245e9107f24011ab9a2c5bae77fc33b1122ad202723195480ce38aff665421c`; grader `345c9229bece8f1a7025edcca81272392c711e6040e8770ce3ba1a9f451f02d1`. Docs-only commit làm commit_changed, không stale. Overall **REVIEW_REQUIRED**, technical/offline/browser PASS, fresh live NOT_RUN, student NOT_RUN. Đọc bằng:
+
+```powershell
+npm run exam:report -- --id=adaptation-closeout-b29851c3-e9bc-4372-88a7-a735edf3bbdf
+```
+
 Eval cũ ghi tên cố định `var/eval-mock.json`; các lượt đầu đã thay file đó theo hành vi cũ. Đã đổi sang `var/evaluations/eval-<mode>-<UUID>.json` với wx, không ghi đè tiếp. Readiness lịch sử nguyên trạng; kết quả cuối trước sửa được sao lưu riêng.
 
 ## Live local — không ghép candidate

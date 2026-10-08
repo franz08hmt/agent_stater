@@ -30,9 +30,11 @@ Phiếu độc lập một trang: [EXAM_REQUIREMENT_WORKSHEET.md](EXAM_REQUIREME
 
 `src/business/assetAvailability.js` dùng decimalUnits/BigInt; `check_asset_availability` gọi lại query_dataset lookup, không sao chép lọc/provenance. Arguments `{dataset_id,record_id,quantity}`; integer 1–20. Kết quả có rows/query/snapshot/source, available/requested/eligible. Policy `asset-loan`, action `asset_loan`, subject có available:number scale0, changes chỉ quantity; tồn đủ mới hợp lệ. ID column mẫu là asset_code. Không giảm tồn kho, booking hoặc xác nhận đã mượn.
 
-`templates/asset-loan.spec.json` có expected 3 available/2 requested/eligible true, missing, invalid, approve1/reject0/replay, quantity4 bị chặn. Test triển khai trong project/catalog/store tạm; catalog thật giữ 6 task. Khi chủ động đăng ký một task mới:
+`templates/asset-loan.spec.json` có expected 3 available/2 requested/eligible true, missing, invalid, approve1/reject0/replay, quantity4 bị chặn. Test triển khai trong project/catalog/store tạm; catalog thật giữ 6 task.
 
 Fingerprint policy có thêm business helper, nên pending run dùng policy fingerprint cũ có thể bị hủy với `task_changed` khi restart; tạo run mới dưới cấu hình đã kiểm chứng. Completed history giữ nguyên; không chạy lại model, reset metrics/budget hoặc sửa approval cũ để tiếp tục. Đây là invalidation cấu hình theo cơ chế hiện có, không migration dữ liệu.
+
+Khi chủ động đăng ký một task mới:
 
 ```powershell
 npm run exam:scaffold -- --spec=templates/asset-loan.spec.json --register
