@@ -5,7 +5,9 @@
     { "id": "study-notes", "file": "config/task.json" },
     { "id": "datasets-demo", "file": "config/datasets-demo.task.json" },
     { "id": "rehearsal-tickets", "file": "config/rehearsal-tickets.task.json" },
-    { "id": "rehearsal-rooms", "file": "config/rehearsal-rooms.task.json" }
+    { "id": "rehearsal-rooms", "file": "config/rehearsal-rooms.task.json" },
+    { "id": "proposal-tickets", "file": "config/proposal-tickets.task.json" },
+    { "id": "proposal-rooms", "file": "config/proposal-rooms.task.json" }
   ],
   "model_profiles": [
     { "id": "env", "label": "Environment model", "source": "env" },

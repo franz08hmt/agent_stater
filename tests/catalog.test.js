@@ -10,7 +10,7 @@ import { join } from 'node:path';
 test('catalog loads validated notes/datasets, env and explicit mock without probing', async () => {
   const catalog = await loadCatalog({ root: ROOT, config: loadConfig() });
   const meta = catalog.metadata();
-  assert.deepEqual(meta.tasks.map((t) => t.id), ['study-notes', 'datasets-demo', 'rehearsal-tickets', 'rehearsal-rooms']);
+  assert.deepEqual(meta.tasks.map((t) => t.id), ['study-notes', 'datasets-demo', 'rehearsal-tickets', 'rehearsal-rooms', 'proposal-tickets', 'proposal-rooms']);
   assert.equal(meta.default_task_id, TASK.id); assert.equal(meta.default_model_profile_id, 'env');
   const tables = meta.tasks[1];
   assert.deepEqual(tables.tools.map((t) => t.name), ['query_dataset']);

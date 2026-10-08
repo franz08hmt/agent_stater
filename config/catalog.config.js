@@ -51,7 +51,7 @@ export async function buildCatalog({ tasks, profiles, defaultTaskId, defaultProf
   const taskMap = new Map(), profileMap = new Map();
   for (const task of tasks) {
     if (!task?.fingerprint || !task.allowedTools?.length || taskMap.has(task.id)) throw new Error('Catalog tasks must be validated and unique.');
-    const registry = createConfiguredToolRegistry(task.allowedTools, task.datasets);
+    const registry = createConfiguredToolRegistry(task.allowedTools, task.datasets, task);
     const retriever = await createKeywordRetriever({ dir: task.dataDir });
     const tools = registry.describe().map(({ name, access, requires_approval, description }) => ({ name, access, requires_approval, description }));
     const metadata = { id: task.id, title: task.title, allowed_tools: [...task.allowedTools], tools,

@@ -9,6 +9,7 @@ import { parseDecision, checkGrounding } from './decision.js';
 import { STATUS, transition, createRun, argsHash, callSignature, publicView } from './state.js';
 import { redact } from './redact.js';
 import { planRequest, startRequest, settleRequest, legacyMetrics, closeApprovalWait } from './metrics.js';
+import { reconcileProposal } from '../proposals/reconcile.js';
 
 export class AgentError extends Error {
   constructor(code, message, httpStatus = 400) {
@@ -178,6 +179,9 @@ export function createAgentRunner({ model, registry, retriever, store, limits, m
       const parsed = parseDecision(text, limits);
       let errors = parsed.ok ? [] : parsed.errors;
       if (parsed.ok && parsed.decision.type === 'final') errors = checkGrounding(parsed.decision, run.retrieved_source_ids);
+      if (parsed.ok && parsed.decision.type === 'final') {
+        for (const tool of registry.describe()) errors.push(...(registry.get(tool.name).checkFinal?.(parsed.decision, run) || []));
+      }
       if (!errors.length) {
         const d = parsed.decision;
         trace(run, { kind: 'decision', status: 'ok', duration_ms, tool_name: d.type === 'tool_call' ? d.tool : undefined, summary: d.type === 'final' ? 'final answer' : `proposed ${d.tool}` });
@@ -189,7 +193,7 @@ export function createAgentRunner({ model, registry, retriever, store, limits, m
       }
       run.repairs_used += 1;
       repairing = true;
-      run.messages.push({ role: 'assistant', content: String(text).slice(0, 2000) }, { role: 'user', content: REPAIR_MESSAGE(errors, registry.get('save_draft') !== undefined,
+      run.messages.push({ role: 'assistant', content: String(text).slice(0, 2000) }, { role: 'user', content: REPAIR_MESSAGE(errors, registry.describe().filter((t) => t.access === 'write').map((t) => t.name),
         parsed.ok && parsed.decision.type === 'final' ? run.retrieved_source_ids : undefined) });
     }
   }
@@ -198,10 +202,20 @@ export function createAgentRunner({ model, registry, retriever, store, limits, m
     const started = Date.now();
     run.steps_used += 1;
     run.executed_calls.push(signature);
-    let status = 'ok', result = null, error = null;
+    let status = 'ok', result = null, error = null, writeOutcome = null;
+    const toolController = new AbortController();
+    const stopSignal = controllers.get(run.run_id)?.signal;
+    const signal = stopSignal ? AbortSignal.any([toolController.signal, stopSignal]) : toolController.signal;
     try {
       const budget = Math.max(1, Math.min(limits.toolTimeoutMs, limits.runMaxMs - elapsed(run)));
-      result = await withTimeout(tool.execute(args, toolCtx(run, extra)), budget, tool.name);
+      const timer = setTimeout(() => toolController.abort(), budget);
+      try { result = await withTimeout(tool.execute(args, toolCtx(run, { ...extra, signal })), budget, tool.name); }
+      finally { clearTimeout(timer); }
+      if (tool.captureEvidence) {
+        const evidence = tool.captureEvidence(args, result);
+        if (run.record_evidence.length + evidence.length > limits.maxSteps) throw new Error('Record evidence limit exceeded.');
+        run.record_evidence.push(...evidence);
+      }
       for (const r of result?.results || []) {
         if (r.source_id && !run.retrieved_source_ids.includes(r.source_id)) run.retrieved_source_ids.push(r.source_id);
         // Passage-level record ("source§n"): lets an evaluation prove WHICH passage reached the model.
@@ -209,12 +223,14 @@ export function createAgentRunner({ model, registry, retriever, store, limits, m
         if (ref && !run.retrieved_passages.includes(ref)) run.retrieved_passages.push(ref);
       }
     } catch (err) {
+      toolController.abort();
       status = err.code === 'TIMEOUT' ? 'timeout' : 'error';
       error = err.message;
+      if (tool.resultKind === 'proposal') writeOutcome = status === 'timeout' ? 'unknown' : err.writeOutcome || 'unknown';
     }
     trace(run, { kind: 'tool', tool_name: tool.name, arguments: args, status, duration_ms: Date.now() - started, summary: summarize(tool.name, status, result, error) });
-    observe(run, status === 'ok' ? { tool: tool.name, status, untrusted_data: result } : { tool: tool.name, status, error });
-    return { status, result };
+    observe(run, status === 'ok' ? { tool: tool.name, status, untrusted_data: result } : { tool: tool.name, status, error, ...(writeOutcome ? { write_outcome: writeOutcome } : {}) });
+    return { status, result, writeOutcome };
   }
 
   /** Run the loop until the run leaves the "running" status. Always called under the run's lock. */
@@ -263,6 +279,7 @@ export function createAgentRunner({ model, registry, retriever, store, limits, m
           const approval = {
             approval_id: `apr_${randomUUID().replaceAll('-', '')}`,
             tool: d.tool,
+            ...(check.tool.resultKind ? { result_kind: check.tool.resultKind } : {}),
             arguments: d.arguments,
             args_hash: argsHash(run.run_id, d.tool, d.arguments),
             signature,
@@ -305,6 +322,16 @@ export function createAgentRunner({ model, registry, retriever, store, limits, m
     /** Reload saved runs. A run that was mid-execution when the server died cannot resume safely. */
     async init(savedRuns) {
       for (const run of savedRuns ?? await store.loadRuns()) {
+        run.record_evidence ??= [];
+        const interruptedWrite = run.approvals.find((a) => a.result_kind === 'proposal' && (a.state === 'executing' || a.write_outcome === 'unknown'));
+        if (interruptedWrite) {
+          await reconcileProposal(run, interruptedWrite, store);
+          run.pending_approval = null;
+          if ([STATUS.RUNNING, STATUS.AWAITING_APPROVAL].includes(run.status)) {
+            finish(run, STATUS.FAILED, { code: 'interrupted', message: 'Server restarted during a proposal write; store outcome reconciled without re-execution.' });
+          }
+          await persist(run);
+        }
         run.metrics ??= legacyMetrics();
         if (run.status === STATUS.RUNNING && run.metrics.collection === 'collected') {
           run.active_ms = Math.max(run.active_ms || 0, run.metrics.active_ms);
@@ -393,12 +420,14 @@ export function createAgentRunner({ model, registry, retriever, store, limits, m
           catch (err) {
             if (err.kind !== 'budget') throw err;
             a.state = 'failed'; a.decided_at = new Date().toISOString(); run.pending_approval = null;
+            if (a.result_kind === 'proposal') a.write_outcome = 'not_saved';
             finish(run, STATUS.STOPPED, { code: err.code, message: err.message });
             await persist(run);
             return { run: view(run), replayed: false };
           }
         }
         segments.set(run.run_id, Date.now());
+        const controller = new AbortController(); controllers.set(run.run_id, controller);
         a.decided_at = new Date().toISOString();
         run.pending_approval = null;
         if (decision === 'reject') {
@@ -412,18 +441,29 @@ export function createAgentRunner({ model, registry, retriever, store, limits, m
           const check = registry.check(a.tool, a.arguments, toolCtx(run)); // rules re-checked at execution time
           if (!check.ok) {
             a.state = 'failed';
+            if (a.result_kind === 'proposal') a.write_outcome = 'not_saved';
             run.steps_used += 1;
             run.executed_calls.push(a.signature);
             observe(run, { tool: a.tool, status: 'rejected', code: check.code, errors: check.errors });
           } else {
+            if (check.tool.resultKind === 'proposal') {
+              a.state = 'executing'; a.write_outcome = 'unknown';
+              await persist(run); // durable intent before the only proposal side effect
+            }
             const r = await executeTool(run, check.tool, a.arguments, a.signature, { idempotencyKey: a.approval_id });
             a.state = r.status === 'ok' ? 'executed' : 'failed';
             a.result = r.result;
+            if (check.tool.resultKind === 'proposal') a.write_outcome = r.status === 'ok' ? 'confirmed' : r.writeOutcome;
           }
         }
         run.active_ms += Date.now() - segments.get(run.run_id);
         segments.delete(run.run_id);
+        controllers.delete(run.run_id);
         transition(run, STATUS.RUNNING);
+        if (run.stop_requested) {
+          finish(run, STATUS.STOPPED, { code: 'user_stopped', message: 'Stopped; inspect the recorded write outcome.' });
+          await persist(run); return { run: view(run), replayed: false };
+        }
         await persist(run);
         withLock(run.run_id, () => drive(run)); // continue the loop after this response
         return { run: view(run), replayed: false };
@@ -432,7 +472,7 @@ export function createAgentRunner({ model, registry, retriever, store, limits, m
 
     async stopRun(runId) {
       const run = requireRun(runId);
-      if (run.status === STATUS.RUNNING) {
+      if (run.status === STATUS.RUNNING || run.approvals.some((a) => a.state === 'executing')) {
         run.stop_requested = true;
         controllers.get(runId)?.abort();
       }

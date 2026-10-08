@@ -3,6 +3,7 @@
 import { createAgentRunner, AgentError } from './runner.js';
 import { STATUS, publicView, transition, argsHash } from './state.js';
 import { closeApprovalWait, legacyMetrics } from './metrics.js';
+import { reconcileProposal } from '../proposals/reconcile.js';
 
 export function createRunManager({ catalog, store, limits, modelTimeoutMs }) {
   const owners = new Map(), runtimes = new Map(), historical = new Map();
@@ -29,6 +30,15 @@ export function createRunManager({ catalog, store, limits, modelTimeoutMs }) {
     async init() {
       const batches = new Map();
       for (const run of await store.loadRuns()) {
+        const interruptedWrite = run.approvals.find((a) => a.result_kind === 'proposal' && (a.state === 'executing' || a.write_outcome === 'unknown'));
+        if (interruptedWrite) {
+          await reconcileProposal(run, interruptedWrite, store); run.pending_approval = null;
+          if ([STATUS.RUNNING, STATUS.AWAITING_APPROVAL].includes(run.status)) {
+            run.failure = { code: 'interrupted', message: 'Proposal write reconciled after restart; no automatic retry.' };
+            closeApprovalWait(run.metrics); transition(run, STATUS.FAILED);
+          }
+          await store.saveRun(run);
+        }
         const active = [STATUS.RUNNING, STATUS.AWAITING_APPROVAL].includes(run.status);
         if (!active) { run.metrics ??= legacyMetrics(); historical.set(run.run_id, run); continue; }
         const taskId = run.task_id ?? catalog.defaultTaskId, profileId = run.model_profile_id ?? catalog.defaultProfileId;

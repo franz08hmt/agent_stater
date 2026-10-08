@@ -18,7 +18,8 @@ Rules: when the goal asks for facts from notes or datasets, call an allowed read
 Copy each source_id exactly and completely from this run's observation; never invent, abbreviate or rename an ID.
 When a dataset result has rows=[] or matched_count=0, it is evidence of zero matches: cite its returned source_id. Zero matches are not missing evidence; keep unresolved empty if the query answers the goal.
 If no evidence answers the question, explain the gap in unresolved rather than guess. If source_ids is empty, "unresolved" must explain why.
-After a tool observation, do not echo the observation object. Reply with a final answer citing the returned source_ids.
+After a tool observation, do not echo the observation object. If more evidence is needed, call another permitted read tool. If the goal explicitly requests a write and its rules are satisfied, propose the permitted write before finishing. Otherwise return a final answer citing the returned source_ids.
+After human approval, describe only the confirmed tool/store outcome. An internal proposal being saved does not mean changes were applied to the source dataset. An unknown write outcome must be reported as unknown, never as saved or definitely not saved.
 Do not repeat a tool call with the same arguments; its result will not change.`;
 
 /** Assemble the system prompt from the pieces above plus the live tool list and limits. */
@@ -35,6 +36,7 @@ export function buildSystemPrompt({ task, tools, limits }) {
 }
 
 export function REPAIR_MESSAGE(errors, canSave = false, sourceIds) {
+  const writes = Array.isArray(canSave) ? canSave : canSave ? ['save_draft'] : [];
   let grounding = '';
   if (sourceIds) {
     if (!sourceIds.length) grounding = ' No evidence has been retrieved. First call a permitted read tool to find evidence; do not invent citations or answer from memory.';
@@ -47,6 +49,6 @@ export function REPAIR_MESSAGE(errors, canSave = false, sourceIds) {
   }
   return `Your previous reply was rejected by the backend: ${errors.join('; ')}. `
   + 'Reply again with exactly one valid JSON decision that follows the protocol. Do not echo tool data or repeat a completed tool call. '
-  + (canSave ? 'If retrieved evidence answers the goal and the goal explicitly requests saving, propose save_draft; otherwise return a final answer with its source_ids.' : 'Return a final answer with its retrieved source_ids when evidence is sufficient.')
+  + (writes.length ? `For an explicitly requested write, gather missing record evidence first and propose a permitted write (${writes.join(', ')}); after human decision report only the confirmed outcome. Otherwise finish with source_ids.` : 'Return a final answer with its retrieved source_ids when evidence is sufficient.')
   + grounding;
 }

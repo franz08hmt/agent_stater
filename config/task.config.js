@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { validate } from '../src/tools/schema.js';
 import { BUILTIN_TOOLS } from '../src/tools/registry.js';
 import { datasetsSchema, loadDatasets } from '../src/data/datasets.js';
+import { proposalPoliciesSchema, bindPolicies, POLICY_FINGERPRINT } from '../src/proposals/policies.js';
 
 const MAX_FILE_BYTES = 16 * 1024;
 const KNOWN_TOOLS = Object.keys(BUILTIN_TOOLS);
@@ -21,6 +22,7 @@ const schema = {
       datasets: datasetsSchema,
     } },
     allowed_tools: { type: 'array', minItems: 1, maxItems: KNOWN_TOOLS.length, uniqueItems: true, items: { type: 'string', enum: KNOWN_TOOLS } },
+    proposal_policies: proposalPoliciesSchema,
     sample_inputs: { type: 'array', minItems: 1, maxItems: 6, items: { type: 'object', additionalProperties: false, required: ['label', 'goal'], properties: {
       label: { type: 'string', minLength: 1, maxLength: 45 }, goal: { type: 'string', minLength: 1, maxLength: 500 },
     } } },
@@ -45,6 +47,10 @@ export async function validateTaskConfig(raw, root) {
   let datasets;
   try { datasets = await loadDatasets(raw.data.datasets, root); }
   catch (err) { invalid(err.message); }
+  let proposalPolicies;
+  try { proposalPolicies = bindPolicies(raw.proposal_policies, datasets); } catch (err) { invalid(err.message); }
+  if (raw.allowed_tools.includes('create_proposal') && (!raw.allowed_tools.includes('query_dataset') || !proposalPolicies.length)) invalid('create_proposal requires query_dataset and registered proposal policies.');
+  if (proposalPolicies.length && !raw.allowed_tools.includes('create_proposal')) invalid('proposal policies require create_proposal permission.');
 
   const rel = raw.data.notes_dir;
   if (!/^data\/[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*$/.test(rel)) invalid('data.notes_dir must be a project-local directory under data/ with no traversal or absolute path.');
@@ -57,6 +63,7 @@ export async function validateTaskConfig(raw, root) {
   const files = (await readdir(dir)).filter((name) => name.endsWith('.md')).sort();
   if (!files.length) invalid('data.notes_dir must contain at least one .md note.');
   const digest = createHash('sha256').update(JSON.stringify(raw));
+  if (proposalPolicies.length) digest.update(POLICY_FINGERPRINT);
   for (const dataset of datasets) digest.update(dataset.id).update(dataset.version);
   for (const name of files) {
     const note = join(dir, name);
@@ -65,7 +72,7 @@ export async function validateTaskConfig(raw, root) {
   }
   return {
     id: raw.id, title: raw.title.trim(), mission: raw.mission.trim(),
-    dataDir: dir, allowedTools: [...raw.allowed_tools], datasets,
+    dataDir: dir, allowedTools: [...raw.allowed_tools], datasets, proposalPolicies,
     sampleInputs: raw.sample_inputs.map((x) => ({ label: x.label.trim(), goal: x.goal.trim() })),
     resultLabels: { ...raw.result_labels }, fingerprint: digest.digest('hex'),
   };
@@ -77,5 +84,9 @@ export async function loadTaskConfig({ root, file = join(root, 'config', 'task.j
   let raw;
   try { raw = JSON.parse(await readFile(file, 'utf8')); }
   catch (err) { invalid(`could not parse JSON: ${err.message}`); }
-  return validateTaskConfig(raw, root);
+  const task = await validateTaskConfig(raw, root);
+  task.verifyCurrent = async () => {
+    try { return (await loadTaskConfig({ root, file })).fingerprint === task.fingerprint; } catch { return false; }
+  };
+  return task;
 }

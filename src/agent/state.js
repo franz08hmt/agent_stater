@@ -50,6 +50,7 @@ export function createRun({ goal, model, taskFingerprint = null, limits = {}, se
     trace: [],              // what the UI shows: actions and observations, no model reasoning
     retrieved_source_ids: [],
     retrieved_passages: [], // "source§paragraph" for every passage a tool returned
+    record_evidence: [],    // bounded lookup record IDs only, internal proposal authorization
     executed_calls: [],     // signatures of calls already made, for repeat detection
     approvals: [],          // every write proposal and what happened to it
     pending_approval: null, // approval_id currently blocking the run
@@ -77,6 +78,6 @@ export const callSignature = (tool, args) => `${tool}:${canonicalJson(args)}`;
 
 /** What the API returns: everything except the raw model conversation. */
 export function publicView(run) {
-  const { messages, task_fingerprint, model_identity, runtime_settings, ...rest } = run;
+  const { messages, record_evidence, task_fingerprint, model_identity, runtime_settings, ...rest } = run;
   return structuredClone(rest);
 }
