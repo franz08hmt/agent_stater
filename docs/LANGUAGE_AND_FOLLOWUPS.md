@@ -13,6 +13,8 @@ Không có selector ngôn ngữ trả lời hoặc trường HTTP `answer_langua
 
 BM25 vẫn tìm từ khóa, không embedding. Model cần đặt query theo từ khóa trong notes. Quyền ghi vẫn kiểm goal gốc, bỏ phần trích dẫn và chặn phủ định. Proposal dùng grammar `Create a proposal ...` / `Tạo đề xuất ...`; mission/data không cấp quyền.
 
+Draft chỉ nhận mệnh lệnh đầu câu (`Save ...`, `Lưu ...`, `Please write a draft ...`, `Hãy tạo bản nháp ...`) hoặc câu tóm tắt/tổng hợp có mệnh lệnh ghi sau `and/then/và/rồi`: `Tóm tắt HTTP và lưu bản nháp.`. `Explain how to save a draft.`, `Giải thích từ lưu và bản nháp.` hay `Tóm tắt HTTP và không lưu bản nháp.` không cấp quyền. Backend normalize dấu để đối chiếu grammar nhưng giữ nguyên goal đã lưu; không dùng tokenizer BM25 cho authorization vì nó loại conjunction/negation. Cách nói ngoài grammar bị chặn, cần viết lại goal rõ ràng; không suy quyền từ văn bản model dịch.
+
 Proposal final phải là đúng một câu tương đương outcome backend:
 
 | Outcome | EN | VI |

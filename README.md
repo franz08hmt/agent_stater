@@ -2,6 +2,8 @@
 
 **Cập nhật 08/10/2026:** [Bộ dụng cụ thích nghi đề](docs/ADAPTATION_KIT.md), [UI VI/EN và diễn đạt lại](docs/LANGUAGE_AND_FOLLOWUPS.md), [kiểm chứng mới](docs/ADAPTATION_VERIFICATION.md). Một selector đổi UI; goal quyết định answer, không answer_language selector. Follow-up chỉ diễn đạt lại run đang xem, không tool/ghi hoặc sửa lịch sử. Catalog giữ nguyên.
 
+Runtime `d3ca6f3`: **414 tests / 16 eval**, demos/scripted và Chrome QA đạt. save_draft kiểm mệnh lệnh ghi trên goal gốc, không coi việc nhắc save/lưu là quyền. Live của bản cuối **NOT_RUN**: cả 48 HTTP local của đợt đã dùng trên các runtime trước; báo cáo live cũ stale, giữ failures và chưa streak3. Student rehearsal chưa đo. Xem receipt mới, không dùng số liệu candidate lịch sử bên dưới làm bằng chứng cho checkout mới.
+
 Bộ dụng cụ thích nghi: [bảng phân tích đề, mẫu tool/policy và ví dụ thiết bị](docs/ADAPTATION_KIT.md). Ví dụ `asset_code`/`asset-loan` chỉ đăng ký khi chủ động scaffold; catalog/data cũ giữ nguyên. Các checkpoint mới có thể làm evidence runtime cũ stale, không thay verdict lịch sử.
 
 Source offline **c7c09a3** đã kiểm tra phục hồi: 189 file/checksum đúng, health/catalog/UI assets và read/proposal approve/replay đạt, 0 model HTTP, không npm install/Internet. ZIP/manifest/receipt chính xác trong [candidate report](docs/EXAM_CANDIDATE.md); overall vẫn **FAIL** vì live/student chưa đủ, không suy từ package PASS rằng đã READY.

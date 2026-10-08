@@ -2,6 +2,8 @@
 
 **Đợt thích nghi VI/EN (08/10/2026):** xem [worksheet/đường nối tool-policy](docs/ADAPTATION_KIT.md), [ngôn ngữ/follow-up](docs/LANGUAGE_AND_FOLLOWUPS.md), [evidence/giới hạn](docs/ADAPTATION_VERIFICATION.md). Đổi miền dùng scaffold cũ; luật mới cần code/test. Mẫu asset-loan dùng asset_code, check_asset_availability và policy backend asset-loan, không cho mượn thật. `npm run exam:adaptation` chạy 6 acceptance trong catalog/store tạm, không chiếm slot thật; `--live --cap=48` chủ động gọi local. Thời gian script không phải thời gian sinh viên.
 
+Runtime cuối d3ca6f3 đã chặn câu chỉ nhắc save/lưu; draft goal mẫu `Tóm tắt HTTP và lưu bản nháp.` hoặc `Summarize HTTP and save a draft.`. Dùng đúng grammar, không lấy instruction trong dữ liệu làm quyền. 414 tests/16 eval đạt; evidence live trước sửa stale, cap48 đã hết nên chưa xác minh live bản cuối. Không chạy lệnh --live tiếp trong đợt này.
+
 Dùng [ADAPTATION_KIT](docs/ADAPTATION_KIT.md) để điền input/output/schema/tool/rules/expected trước scaffold. Có mẫu source/tests chưa đăng ký và ví dụ hữu hạn check_asset_availability/asset-loan; chỉ config/data khi luật đã có, luật mới cần code/test.
 
 ## Chốt candidate và diễn tập riêng (đợt 5)

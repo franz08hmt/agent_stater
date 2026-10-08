@@ -1,12 +1,12 @@
 # Kiểm chứng adaptation kit + VI/EN — 08/10/2026
 
-Nhánh `feature/adaptation-kit-i18n-20261008`, từ `34ec8a1`. Checkpoints `8d662ff` (kit), `dce8458` (UI), `8fcfc58` (follow-up), `bb79ede` (QA/campaign), `f4442ab`, `15cd8c0`, **`e46f4b5` (backend runtime cuối)**. UI copy/probe loading (`e04e0f3`) và docs/mobile sau đó không đổi backend runtime/grader. Catalog thật giữ 6 task; .env/data/run cũ không đổi, chưa push. `.agents/` và `EXAM_AGENT_CONTINUATION_HANDOFF.md` của thao tác khác giữ ngoài commit.
+Nhánh `feature/adaptation-kit-i18n-20261008`, từ `34ec8a1`. Checkpoints `8d662ff` (kit), `dce8458` (UI), `8fcfc58` (follow-up), `bb79ede` (QA/campaign), `f4442ab`, `15cd8c0`, `e46f4b5` (runtime được thử live cuối). **Runtime cuối `d3ca6f3`** siết quyền save_draft: nhắc từ save/lưu không phải yêu cầu ghi. Bản sửa đầu dùng tokenizer retrieval làm mất `and/và/không`; regression tests bắt lỗi và đã thay bằng normalization giữ conjunction/negation, kiểm grammar mệnh lệnh hữu hạn, không thay tokenizer BM25. Test bao phủ direct/summary imperative, quoted/negated/narrative/question, và runner lookup rồi chặn approval/ghi. UI probe-loading được sửa ở `e04e0f3`. Catalog thật giữ 6 task; .env/data/run cũ không đổi, chưa push. `.agents/` và `EXAM_AGENT_CONTINUATION_HANDOFF.md` của thao tác khác giữ ngoài commit.
 
 ## Offline và Chrome thật
 
 | Kiểm chứng | Kết quả |
 |---|---|
-| npm test / eval | 413/413; 16/16, không skip |
+| npm test / eval | 414/414; 16/16, không skip |
 | dataset / budget / proposal demo | 3/3; 2/2; 5/5 |
 | smoke / rehearsal mock | 6/6; 8/8 |
 | Thiết bị scaffold tạm | 6/6, asset_code, approve/reject/replay và data unchanged |
@@ -34,7 +34,7 @@ Evidence đầy đủ và không sửa trial cũ:
 - `verification-8b6abc60-bd1b-4a6c-bb36-fbecfa09093d` (15cd8c0).
 - `verification-f981a1ef-e8e5-41f0-839f-63a69eb49bc3` (e46f4b5).
 
-Sửa runtime làm evidence cũ stale; chỉ đổi docs sau e46f4b5 là commit_changed, không stale. **Chưa streak3 trên candidate cuối**, chưa full ma trận/proposal fresh vì hết cap. Room/unknown live NOT_RUN. Giữ FAIL/BLOCKED tickets-empty/ticket-reject/E16 lịch sử; một trial ticket-reject mới không chứng minh hết lỗi hoặc injection robustness.
+Sửa save authorization ở **d3ca6f3 làm cả ba evidence live trên stale**. Runtime cuối **live NOT_RUN / bị chặn bởi cap đã hết**, không gọi thêm HTTP để săn PASS. Docs-only commit sau runtime vẫn là commit_changed, không stale. Chưa có streak3 hoặc full ma trận/proposal fresh trên runtime cuối. Room/unknown live NOT_RUN. Giữ FAIL/BLOCKED tickets-empty/ticket-reject/E16 lịch sử; một trial ticket-reject mới không chứng minh hết lỗi hoặc injection robustness.
 
 ## Giới hạn và thao tác
 

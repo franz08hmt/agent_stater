@@ -32,6 +32,8 @@ Phiếu độc lập một trang: [EXAM_REQUIREMENT_WORKSHEET.md](EXAM_REQUIREME
 
 `templates/asset-loan.spec.json` có expected 3 available/2 requested/eligible true, missing, invalid, approve1/reject0/replay, quantity4 bị chặn. Test triển khai trong project/catalog/store tạm; catalog thật giữ 6 task. Khi chủ động đăng ký một task mới:
 
+Fingerprint policy có thêm business helper, nên pending run dùng policy fingerprint cũ có thể bị hủy với `task_changed` khi restart; tạo run mới dưới cấu hình đã kiểm chứng. Completed history giữ nguyên; không chạy lại model, reset metrics/budget hoặc sửa approval cũ để tiếp tục. Đây là invalidation cấu hình theo cơ chế hiện có, không migration dữ liệu.
+
 ```powershell
 npm run exam:scaffold -- --spec=templates/asset-loan.spec.json --register
 npm run exam:scaffold -- --spec=templates/asset-loan.spec.json --apply --register
