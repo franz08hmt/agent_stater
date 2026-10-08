@@ -36,3 +36,13 @@ test('write outcome uses the latest decided save_draft approval', () => {
     status: 'not-saved',
   });
 });
+
+test('proposal UI outcome requires a confirmed store result and preserves unknown write states', () => {
+  const approval = { tool: 'create_proposal', result_kind: 'proposal', state: 'pending' };
+  assert.equal(latestWriteOutcome([approval]), null);
+  assert.match(latestWriteOutcome([{ ...approval, state: 'executing' }]).message, /unknown/);
+  assert.match(latestWriteOutcome([{ ...approval, state: 'failed', write_outcome: 'unknown' }]).message, /unknown/);
+  assert.match(latestWriteOutcome([{ ...approval, state: 'executed' }]).message, /unknown/);
+  assert.match(latestWriteOutcome([{ ...approval, state: 'rejected' }]).message, /not saved/);
+  assert.match(latestWriteOutcome([{ ...approval, state: 'executed', result: { proposal_id: 'apr_one' } }]).message, /saved.*not applied/i);
+});

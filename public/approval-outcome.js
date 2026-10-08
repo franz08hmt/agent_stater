@@ -8,6 +8,12 @@ const OUTCOMES = {
 export function latestWriteOutcome(approvals) {
   for (let i = approvals.length - 1; i >= 0; i -= 1) {
     const approval = approvals[i];
+    if (approval.result_kind === 'proposal') {
+      if (approval.state === 'pending') continue;
+      if (approval.state === 'executed' && approval.result?.proposal_id) return { message: 'Proposal saved. Changes not applied.', status: 'saved' };
+      if (approval.state === 'executing' || approval.state === 'executed' || approval.write_outcome === 'unknown') return { message: 'Proposal outcome unknown. Check saved proposals or reconcile after restart.', status: 'unknown' };
+      return { message: 'Proposal not saved.', status: 'not-saved' };
+    }
     if (approval.tool === 'save_draft' && OUTCOMES[approval.state]) return OUTCOMES[approval.state];
   }
   return null;

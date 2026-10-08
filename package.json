@@ -21,6 +21,8 @@
     "smoke:live": "node scripts/smoke-live.js",
     "demo:datasets": "node scripts/demo-datasets.js",
     "demo:budgets": "node scripts/demo-budgets.js",
+    "demo:proposals": "node scripts/demo-proposals.js",
+    "qa:proposals": "node scripts/qa-proposals-browser.js",
     "qa:metrics": "node scripts/qa-metrics-browser.js",
     "qa:configuration": "node scripts/qa-configuration-browser.js"
   }

@@ -91,6 +91,12 @@ export async function createApp({ config, model, task, catalog, varDir, publicDi
     if (parts[0] !== 'api') return send(res, 404, { error: 'not_found', message: 'Not found.' });
 
     if (req.method === 'GET' && url.pathname === '/api/catalog') return send(res, 200, catalog.metadata());
+    if (req.method === 'GET' && url.pathname === '/api/proposals') {
+      if ([...url.searchParams.keys()].some((key) => key !== 'limit') || url.searchParams.getAll('limit').length > 1) throw new AgentError('invalid_limit', 'Only a single limit parameter is accepted.');
+      const raw = url.searchParams.get('limit') ?? '20';
+      if (!/^[1-9][0-9]?$/.test(raw) || Number(raw) > 50) throw new AgentError('invalid_limit', 'Proposal limit must be 1..50.');
+      return send(res, 200, { proposals: await store.listProposals(Number(raw)), limit: Number(raw) });
+    }
     if (req.method === 'POST' && parts[1] === 'model-profiles' && parts[2] && parts[3] === 'probe' && parts.length === 4) {
       const body = await readJson(req, config.server.maxBodyBytes);
       if (Object.keys(body).length) throw new AgentError('invalid_probe', 'Probe accepts an empty object only.');

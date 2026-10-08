@@ -60,6 +60,10 @@
       <section class="drafts-card" aria-labelledby="drafts-title">
         <h3 id="drafts-title" tabindex="-1"><span class="icon icon--document-text" aria-hidden="true"></span>Saved drafts</h3>
         <ul id="drafts"><li class="hint">No drafts yet. <a href="#configuration">Open Agent</a> to create one.</li></ul>
+        <h3 id="proposals-title"><span class="icon icon--document-text" aria-hidden="true"></span>Saved proposals</h3>
+        <p class="hint">Internal records only. Changes are not applied.</p>
+        <p id="proposals-error" class="hint" role="status" hidden></p>
+        <ul id="proposals"><li class="hint">No proposals yet.</li></ul>
       </section>
     </section>
 
@@ -139,6 +143,7 @@
           <section id="approval" class="approval" aria-labelledby="approval-title" hidden>
             <h4 id="approval-title">Write approval required</h4>
             <p>Tool: <code id="approval-tool"></code>. Review the exact arguments.</p>
+            <div id="approval-summary"></div>
             <pre id="approval-args"></pre>
             <p class="hint">Argument hash: <code id="approval-hash"></code></p>
             <p class="actions"><button type="button" id="approve" class="primary"><span class="button-label">Approve write</span><span class="button-end"><span class="icon icon--check-circle" aria-hidden="true"></span></span></button><button type="button" id="reject" class="danger">Reject</button></p>

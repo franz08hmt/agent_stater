@@ -72,6 +72,20 @@ async function loadDrafts() {
   }
 }
 
+async function loadProposals() {
+  const list = $('proposals'); $('proposals-error').hidden = true;
+  try {
+    const { proposals } = await api('/api/proposals?limit=20'); list.replaceChildren();
+    if (!proposals.length) list.append(el('li', 'No proposals yet.', 'hint'));
+    for (const p of proposals) {
+      const li = el('li');
+      li.append(el('strong', p.action), el('span', `Changes: ${JSON.stringify(p.changes)}`), el('span', p.reason));
+      for (const r of p.references) li.append(el('span', `${r.role}: ${r.dataset_id} / ${r.record_id} · ${r.source_id} · snapshot ${r.dataset_version}`, 'hint'));
+      li.append(el('span', `${p.proposal_id} · ${p.created_at} · Not applied`, 'hint')); list.append(li);
+    }
+  } catch (err) { $('proposals-error').hidden = false; $('proposals-error').textContent = `Proposals unavailable: ${err.message}`; }
+}
+
 function render(run) {
   current = run;
   rememberRun(storage, run.run_id);
@@ -103,7 +117,15 @@ function render(run) {
   if (pending) {
     $('approval-tool').textContent = pending.tool;
     $('approval-args').textContent = JSON.stringify(pending.arguments, null, 2);
-    $('approval-hash').textContent = `${pending.args_hash.slice(0, 16)}…`;
+    $('approval-hash').textContent = pending.args_hash;
+    $('approval-hash').title = pending.args_hash;
+    $('approval-summary').replaceChildren();
+    if (pending.result_kind === 'proposal') {
+      const a = pending.arguments, summary = $('approval-summary');
+      summary.append(el('p', `Action: ${a.action}`));
+      for (const ref of a.references) summary.append(el('p', `${ref.role}: ${ref.dataset_id} / ${ref.record_id} · ${ref.source_id}`));
+      summary.append(el('p', `Proposed changes: ${JSON.stringify(a.changes)}`), el('p', `Reason: ${a.reason}`), el('p', 'Internal proposal only; source data will not be changed.', 'hint'));
+    }
   }
 
   const writeOutcome = latestWriteOutcome(run.approvals);
@@ -152,7 +174,7 @@ function schedulePoll() {
       const { run } = await api(`/api/runs/${runId}`);
       if (current?.run_id !== runId) return;
       render(run);
-      if (!['running', 'awaiting_approval'].includes(run.status)) loadDrafts().catch((err) => showError(err.message));
+      if (!['running', 'awaiting_approval'].includes(run.status)) { loadDrafts().catch((err) => showError(err.message)); loadProposals(); }
     } catch (err) {
       showError(err.message);
     }
@@ -198,6 +220,7 @@ async function decide(decision) {
     });
     render(run);
     loadDrafts().catch((err) => showError(err.message));
+    loadProposals();
     schedulePoll();
   } catch (err) {
     showError(err.message);
@@ -253,6 +276,7 @@ async function boot() {
       }
     }
     await loadDrafts();
+    await loadProposals();
   } catch (err) {
     $('model-badge').textContent = 'Backend unavailable'; showError(err.message);
   } finally { restoring = false; configuration?.refresh(); }
