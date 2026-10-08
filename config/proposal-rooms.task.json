@@ -70,12 +70,12 @@
     },
     {
       "label": "Insufficient capacity",
-      "goal": "Create a proposal to move class c01 to room B201 (room ID R3). If capacity is insufficient, explain why and do not save."
+      "goal": "Create a proposal to move class c01 to room B201 (room ID R3). Let the backend check capacity and report the actual outcome."
     }
   ],
   "result_labels": {
     "answer": "Proposal outcome",
-    "sources": "Ticket evidence",
+    "sources": "Class and room evidence",
     "unresolved": "Missing evidence"
   },
   "proposal_policies": [

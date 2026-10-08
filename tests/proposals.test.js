@@ -9,7 +9,7 @@ import { createAgentRunner } from '../src/agent/runner.js';
 import { createScriptedModel } from '../src/model/mock.js';
 import { createFileStore } from '../src/store/fileStore.js';
 import { ROOT, LIMITS, final } from './helpers.js';
-import { POLICIES } from '../src/proposals/policies.js';
+import { POLICIES, proposalRequested } from '../src/proposals/policies.js';
 
 const originalFiles = ['tickets.json', 'classes.csv', 'rooms.csv', 'proposal-classes.csv', 'proposal-rooms.csv'];
 async function originals() { return Promise.all(originalFiles.map((f) => readFile(join(ROOT, 'data/datasets', f), 'utf8'))); }
@@ -30,6 +30,7 @@ export function proposalDecision(messages, room = false) {
 }
 export async function proposalHarness(t, { room = false, goal, mutate, subject, target, root = ROOT, limit, limits = {}, replies, model } = {}) {
   const task = await loadTaskConfig({ root, file: join(root, `config/proposal-${room ? 'rooms' : 'tickets'}.task.json`) });
+  assert.ok(task.sampleInputs.every(({ goal }) => proposalRequested(goal)), 'UI examples must authorize the requested backend proposal check');
   const registry = createConfiguredToolRegistry(task.allowedTools, task.datasets, task);
   const dir = await mkdtemp(join(tmpdir(), 'proposal-test-')), store = await createFileStore({ root: dir });
   t.after(() => rm(dir, { recursive: true, force: true }));

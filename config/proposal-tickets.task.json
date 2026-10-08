@@ -42,7 +42,7 @@
     },
     {
       "label": "Blocked closed transition",
-      "goal": "Create a proposal to change ticket T3 status to open. If the backend blocks it, explain the invalid transition and do not save."
+      "goal": "Create a proposal to change ticket T3 status to open. Let the backend check the transition and report the actual outcome."
     }
   ],
   "result_labels": {
