@@ -2,6 +2,7 @@ import { mkdtemp, cp, readFile, mkdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { loadEnvironment } from '../src/operations/context.js';
 import { loadCatalog } from '../config/catalog.config.js';
 import { scaffoldProject } from '../src/scaffold/apply.js';
@@ -31,7 +32,10 @@ try {
   await writeFile(join(directory, 'offline.json'), JSON.stringify(offline, null, 2));
   if (offline.status !== 'PASS') throw new Error('Independent asset acceptance failed.');
   if (live) {
-    if (env.evidenceContext.working_tree_modified) throw new Error('Commit the reviewed runtime before live verification.');
+    // A concurrent author's untracked documentation is retained, never committed
+    // here. Refuse executable/data edits while recording the full dirty flag.
+    const executableChanges = execFileSync('git', ['status', '--porcelain', '--untracked-files=all', '--', 'src', 'config', 'data', 'eval', 'scripts/verify-adaptation.js', 'templates/asset-loan.spec.json'], { cwd: env.root, encoding: 'utf8' }).trim();
+    if (executableChanges) throw new Error('Commit the reviewed runtime/data before live verification.');
     const catalog = await loadCatalog({ root: temporary, config: env.config }), profile = catalog.profiles.get('ollama-qwen3');
     localEndpoint(profile); inspection = await inspectLocalModel(profile);
     if (inspection.status !== 'PASS') throw new Error('Local model unavailable; no model request sent.');
