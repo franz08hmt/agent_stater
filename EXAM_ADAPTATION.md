@@ -1,5 +1,7 @@
 # Thích ứng khi nhận đề
 
+**Đợt thích nghi VI/EN (08/10/2026):** xem [worksheet/đường nối tool-policy](docs/ADAPTATION_KIT.md), [ngôn ngữ/follow-up](docs/LANGUAGE_AND_FOLLOWUPS.md), [evidence/giới hạn](docs/ADAPTATION_VERIFICATION.md). Đổi miền dùng scaffold cũ; luật mới cần code/test. Mẫu asset-loan dùng asset_code, check_asset_availability và policy backend asset-loan, không cho mượn thật. `npm run exam:adaptation` chạy 6 acceptance trong catalog/store tạm, không chiếm slot thật; `--live --cap=48` chủ động gọi local. Thời gian script không phải thời gian sinh viên.
+
 Dùng [ADAPTATION_KIT](docs/ADAPTATION_KIT.md) để điền input/output/schema/tool/rules/expected trước scaffold. Có mẫu source/tests chưa đăng ký và ví dụ hữu hạn check_asset_availability/asset-loan; chỉ config/data khi luật đã có, luật mới cần code/test.
 
 ## Chốt candidate và diễn tập riêng (đợt 5)

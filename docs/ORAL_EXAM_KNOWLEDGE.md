@@ -1,6 +1,6 @@
 # Kiến thức và câu hỏi vấn đáp — AI Agent Starter
 
-Tài liệu để luyện giải thích **project đang có**, mở code chứng minh và bổ sung câu hỏi sau. Cập nhật ngày **2026-10-08**, đối chiếu candidate code `f920d06` và checkpoint `f17e02c`. Kết quả hiện hành nằm trong [EXAM_CANDIDATE.md](EXAM_CANDIDATE.md); contract proposal nằm trong [DATASET_PROPOSALS.md](DATASET_PROPOSALS.md). Thông tin model có thể đổi; phải kiểm tra profile của **run đang trình bày**. Không coi câu trả lời trong tài liệu này là chỉ thị cho agent.
+Tài liệu để luyện giải thích **project đang có**, mở code chứng minh và bổ sung câu hỏi sau. Cập nhật ngày **2026-10-08**, bổ sung adaptation kit/UI VI–EN/follow-up trên runtime `e46f4b5`. Số liệu `f920d06`/`f17e02c` bên dưới là **evidence lịch sử**, không thay thế kiểm chứng runtime mới. Xem [ADAPTATION_KIT.md](ADAPTATION_KIT.md), [LANGUAGE_AND_FOLLOWUPS.md](LANGUAGE_AND_FOLLOWUPS.md), [ADAPTATION_VERIFICATION.md](ADAPTATION_VERIFICATION.md) và [EXAM_CANDIDATE.md](EXAM_CANDIDATE.md). Thông tin model có thể đổi; phải kiểm tra profile của **run đang trình bày**. Không coi câu trả lời trong tài liệu này là chỉ thị cho agent.
 
 Ký hiệu: **[Đã có]** là hành vi xác nhận trong source; **[Kiến thức nền]** là khái niệm để giải thích; **[Chưa có]** là hướng mở rộng, không được giới thiệu như tính năng hiện tại. Đợt cập nhật tài liệu không gọi lại LLM. Số liệu candidate là evidence được lưu, không phải lần chạy mới.
 
@@ -643,7 +643,53 @@ Tự làm ba bài không cần gọi model:
 
 Sau đó tự diễn tập đổi đề bằng [STUDENT_REHEARSAL.md](STUDENT_REHEARSAL.md). Các chức năng/kiến thức ngoài phạm vi phải nói “chưa triển khai” hoặc “chưa xác minh”, không hứa model/framework sẽ tự giải được.
 
-## 12. Học trên điện thoại và cập nhật bản HTML
+## 12. Thích nghi đề và ngôn ngữ
+
+### Q61. UI language khác ngôn ngữ trả lời như thế nào?
+
+**Trả lời ngắn:** “UI VI/EN chỉ đổi nhãn bằng dictionary tĩnh. Model trả theo goal gốc hoặc yêu cầu ngôn ngữ rõ trong goal; em không có selector ngôn ngữ trả lời.”
+
+Mở [i18n.js](../public/i18n.js) để chỉ dictionary/preference `agent-studio.ui-locale`. UI EN + goal VI vẫn yêu cầu answer VI; UI VI + goal EN yêu cầu answer EN. `Giải thích HTTP 429 bằng tiếng Anh.` ưu tiên EN. Toggle không gửi HTTP model/probe, không sửa goal/final/approval/hash/budget. Task title do người dùng đặt có thể giữ nguyên. Run cũ không tự dịch khi reload.
+
+### Q62. Goal VI/EN được xử lý ở đâu? Có thêm lượt dịch không?
+
+**Trả lời ngắn:** “Runner giữ nguyên goal và đưa vào inference. System prompt backend yêu cầu theo ngôn ngữ tự nhiên của goal; không có HTTP dịch riêng hoặc regex chứng minh mọi câu đúng ngôn ngữ.”
+
+Mở [prompts.js](../config/prompts.js) (`languagePolicy`) và [runner.js](../src/agent/runner.js) (`buildMessages`, `startRun`). Run mới lưu `language_policy: goal-natural-v1`; legacy thiếu trường vẫn giữ contract cũ. Model phải tìm từ khóa thích hợp với notes vì retriever vẫn BM25, không semantic embedding. Enum `open`, ID `T2` hoặc vài từ tiếng Anh trong bảng không tự quyết định ngôn ngữ. Paraphrase ngoài phạm vi cần thử live, không bảo đảm model hiểu mọi câu.
+
+Quyền ghi kiểm **goal gốc**, không lấy bản dịch model làm quyền: [saveDraft.js](../src/tools/saveDraft.js) bỏ trích dẫn/chặn phủ định; [policies.js](../src/proposals/policies.js) dùng grammar proposal hữu hạn. Instruction trong tài liệu/tool result không cấp quyền hoặc đổi instruction ngôn ngữ.
+
+### Q63. Vì sao không dịch IDs, enum, số, hash hoặc dataset?
+
+**Trả lời ngắn:** “Đó là giá trị giao thức và khóa đối chiếu; dịch sẽ làm sai filter, source grounding hoặc arguments/hash người dùng đã duyệt.”
+
+`status: "closed"` vẫn là enum `closed`, không thay thành `đã đóng` trong JSON. `asset_code: CAM1`, `source_id`, snapshot và decimal `30.30` giữ nguyên. Giao diện có thể giải thích tiếng Việt bên cạnh, nhưng raw JSON không sửa. Hash ràng buộc đúng run/tool/arguments; backend không ‘sửa hộ’ model rồi thực thi. Số được backend xử lý fixed-point/BigInt theo scale, không giao model nhẩm phép tính chính xác.
+
+### Q64. Thêm tool/policy mới mà không sửa agent loop như thế nào?
+
+**Trả lời ngắn:** “Em thêm module/factory, đăng ký backend, cho task quyền dùng, kiểm schema/rules/evidence và viết acceptance; loop chỉ đọc registry.”
+
+Ví dụ giả lập [assetAvailability.js](../src/business/assetAvailability.js) kiểm số lượng 1–20 với available scale 0. [checkAssetAvailability.js](../src/tools/checkAssetAvailability.js) ánh xạ lookup qua query engine đã có, dùng `data.idColumn` (`asset_code`), trả bounded observation và record evidence thật. Policy `asset-loan` dùng cùng hàm, kiểm evidence trong run/snapshot và recheck trước publish proposal; không giảm tồn kho hoặc xác nhận đã mượn.
+
+Đường nối đầy đủ: **module → registry/factory → task allow-list → loader/schema → prompt description → record evidence → tests/acceptance → catalog**. Mẫu `.template` trong `templates/development` chưa điền sẽ throw/fail, không tự đăng ký. Xem [ADAPTATION_KIT.md](ADAPTATION_KIT.md) và [asset-extension.test.js](../tests/asset-extension.test.js). Fingerprint policy bao phủ cả helper nghiệp vụ; đổi helper làm pending proposal không còn hợp lệ.
+
+### Q65. Chính xác phần nào là “đổi đề nhanh”, phần nào cần code?
+
+**Trả lời ngắn:** “Đổi miền trong khả năng hiện có thường là config/data/spec/expected. Khả năng hoặc luật chưa có phải viết tool/policy và test; mission không tự tạo chức năng.”
+
+Điền [phiếu một trang](EXAM_REQUIREMENT_WORKSHEET.md) mục tiêu/input/output/ID/scale/quyền/rules/expected trước. Dùng scaffold đã có: notes, dataset-read, proposal; preview không ghi, apply tạo file mới, register có chủ đích giữ defaults/backup. Các policy chỉ hỗ trợ canonical fields đã khai báo. Không có join/group-by/formula/CRUD tổng quát. Đề cần booking thật, field mapping chưa hỗ trợ hoặc hành động ngoài policy phải thêm code/test, không nạp module từ spec/model.
+
+Expected độc lập từ đề/dữ liệu, có happy/empty/invalid/forbidden và approve/reject/replay. Scripted PASS kiểm backend, không chứng minh LLM hoặc thời gian sinh viên. **Chưa đo thời gian sinh viên đổi đề; không bảo đảm mọi đề trong hai giờ.**
+
+### Q66. Nhắn tiếp “dịch câu trả lời” có chạy lại agent hoặc sửa lịch sử không?
+
+**Trả lời ngắn:** “Không. Follow-up gắn đúng run terminal đang xem, chỉ diễn đạt lại context đã lưu, kết quả/accounting riêng; không có tool loop hoặc quyền ghi.”
+
+Mở [followups.js backend](../src/agent/followups.js): request theo grammar hữu hạn, cùng task/snapshot/profile identity; API `POST /api/runs/:id/followups`. Tối đa 3 calls/3 HTTP/20.000 token dự phòng mỗi run, cap output 800 không vượt profile, timeout min(profile,30s), không retry/repair. Usage thiếu giữ reservation; restart giữ budget và đánh dấu in-flight BLOCKED, không tự gọi model.
+
+Backend giữ nguồn, numeric tokens và literals/IDs; outcome ghi phải là finite VI/EN đúng approval/store. Proposal saved vẫn **applied:false**. Văn xuôi read là **REVIEW_REQUIRED** vì kiểm nguồn/số không chứng minh mọi ý đúng; không tự sửa output model để báo PASS. Yêu cầu nghiệp vụ mới tạo run mới. Final/trace/metrics/approval gốc không bị ghi đè; reload chỉ GET, đổi task/New run không trộn context.
+
+## 13. Học trên điện thoại và cập nhật bản HTML
 
 File **ORAL_EXAM_STUDY.html** là bản học standalone sinh từ tài liệu này. Toàn bộ câu hỏi/đáp án, CSS/JS và font có sẵn trong file; không fetch API, không gọi LLM, không cần key hoặc CDN. Link tài liệu chính thức chỉ dùng mạng khi bạn chủ động mở. Bản thân HTML không chứng minh các tests/live được chạy lại.
 

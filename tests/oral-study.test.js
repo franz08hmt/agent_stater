@@ -37,10 +37,15 @@ test('renderer gives tables scroll regions, preserves lists and embeds local ref
   assert.equal(normalizeSearch('Trích xuất ĐỎ'), normalizeSearch('trich xuat do'));
 });
 
-test('documentation has sixty unique questions and keeps current limitations explicit', async () => {
+test('documentation preserves stable legacy questions, adds language/adaptation knowledge and keeps limitations explicit', async () => {
   const md = await readFile(new URL('../docs/ORAL_EXAM_KNOWLEDGE.md', import.meta.url), 'utf8');
   const parsed = parseStudy(md);
-  assert.equal(parsed.questions.length, 60);
+  assert.equal(parsed.questions.length, [...md.matchAll(/^### Q\d+\./gm)].length);
+  assert.equal(new Set(parsed.questions.map(q => q.id)).size, parsed.questions.length);
+  for (let i = 1; i <= 60; i++) assert.ok(parsed.questions.some(q => q.id === `q${i}`), `legacy q${i}`);
+  assert.match(parsed.questions.find(q => q.id === 'q61').body, /không có selector/);
+  assert.match(parsed.questions.find(q => q.id === 'q64').body, /asset_code/);
+  assert.match(parsed.questions.find(q => q.id === 'q66').body, /REVIEW_REQUIRED/);
   assert.match(parsed.questions.find(q => q.id === 'q14').body, /không có embedding model/);
   assert.match(parsed.questions.find(q => q.id === 'q49').body, /42 PASS, 8 FAIL, 1 BLOCKED/);
   assert.match(parsed.questions.find(q => q.id === 'q56').body, /không cập nhật trọng số/);

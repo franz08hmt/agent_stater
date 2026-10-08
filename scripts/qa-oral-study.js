@@ -4,8 +4,10 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createStudyServer } from './study/server.js';
 import { browserQa, until } from './browserQa.js';
+import { parseStudy } from './study/render.js';
 
 const html = await readFile(new URL('../docs/ORAL_EXAM_STUDY.html', import.meta.url), 'utf8');
+const questionCount = parseStudy(await readFile(new URL('../docs/ORAL_EXAM_KNOWLEDGE.md', import.meta.url), 'utf8')).questions.length;
 const server = createStudyServer(html);
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const url = `http://127.0.0.1:${server.address().port}/`, browser = await browserQa();
@@ -24,14 +26,14 @@ async function search(value) {
 }
 async function navigate(destination) {
   await send('Page.navigate', { url: destination });
-  await until(() => read('document.readyState === "complete" && document.getElementById("result-count")?.textContent.includes("60")'), 'study ready');
+  await until(() => read(`document.readyState === "complete" && document.querySelectorAll('.question').length===${questionCount} && document.getElementById('result-count')?.textContent.includes('${questionCount}')`), 'study ready');
   await read('document.fonts.ready');
 }
 try {
   await navigate(url);
   await send('Emulation.setFocusEmulationEnabled', { enabled: true });
   await send('Page.bringToFront');
-  assert.equal(await read(visible), 60);
+  assert.equal(await read(visible), questionCount);
   assert.equal(await read('document.querySelectorAll("h1").length'), 1);
   assert.equal(await read('(()=>{const ids=[...document.querySelectorAll("[id]")].map(e=>e.id);return new Set(ids).size===ids.length})()'), true);
   for (const width of [320, 390, 768, 1366, 1920]) {
@@ -48,9 +50,9 @@ try {
   assert.equal(await read('document.getElementById("quiz-answer").hidden'), true);
   assert.match(await read('document.getElementById("quiz-question").textContent'), /free/);
   await click('#reveal'); assert.equal(await read('document.getElementById("quiz-answer").hidden'), false);
-  await click('#quiz-known'); assert.match(await read('document.getElementById("progress-label").textContent'), /1 \/ 60/);
+  await click('#quiz-known'); assert.match(await read('document.getElementById("progress-label").textContent'), new RegExp(`1 / ${questionCount}`));
   await send('Page.reload');
-  await until(() => read('document.getElementById("progress-label")?.textContent.startsWith("1 / 60")'), 'progress reload');
+  await until(() => read(`document.getElementById("progress-label")?.textContent.startsWith("1 / ${questionCount}")`), 'progress reload');
   await click('#essential'); await click('#unlearned'); assert.equal(await read(visible), 25);
   await click('#unlearned'); await click('#essential'); await search('Code nào là LLM');
   await click('#q23 summary');
@@ -61,8 +63,8 @@ try {
   assert.equal(await read('document.getElementById("source-dialog").open'), true);
   await browser.screenshot('study-source', 390, { height: 844, fullPage: false });
   await key('Escape'); assert.equal(await read('document.getElementById("source-dialog").open'), false);
-  await click('#reset'); await click('#cancel-reset'); assert.match(await read('document.getElementById("progress-label").textContent'), /1 \/ 60/);
-  await click('#reset'); await click('#confirm-reset'); assert.match(await read('document.getElementById("progress-label").textContent'), /0 \/ 60/);
+  await click('#reset'); await click('#cancel-reset'); assert.match(await read('document.getElementById("progress-label").textContent'), new RegExp(`1 / ${questionCount}`));
+  await click('#reset'); await click('#confirm-reset'); assert.match(await read('document.getElementById("progress-label").textContent'), new RegExp(`0 / ${questionCount}`));
   await search(''); await click('#quiz-mode');
   const before = await read('document.getElementById("quiz-question").textContent');
   await click('#next'); assert.notEqual(await read('document.getElementById("quiz-question").textContent'), before);
@@ -77,7 +79,7 @@ try {
   assert.equal(await read('document.getElementById("q23").open'), !wasOpen, 'Enter toggles native accordion');
   await search('');
   await click('#chapter-select'); await key('Home'); for (let i = 0; i < 4; i++) await key('ArrowDown'); await key('Enter');
-  assert.ok(await read(visible) < 60, 'chapter filter');
+  assert.ok(await read(visible) < questionCount, 'chapter filter');
   results.push('mobile filters/search, quiz/reveal/navigation, progress/reload/reset, source viewer/Escape, native keyboard, responsive 320–1920');
   const external = browser.responses.filter(r => /^https?:/.test(r.url) && !r.url.startsWith(url));
   assert.equal(external.length, 0, 'no external dependency or agent API');
@@ -90,7 +92,7 @@ try {
   await send('Page.addScriptToEvaluateOnNewDocument', { source: 'Object.defineProperty(window,"localStorage",{get(){throw new Error("Storage blocked test");}});' });
   await navigate(url); await click('#q1 summary'); await click('#q1 .mark');
   assert.match(await read('document.getElementById("storage-note").textContent'), /không cho lưu/);
-  assert.match(await read('document.getElementById("progress-label").textContent'), /1 \/ 60/);
+  assert.match(await read('document.getElementById("progress-label").textContent'), new RegExp(`1 / ${questionCount}`));
   results.push('blocked localStorage fallback');
   assert.equal(browser.errors.length, 0);
   const report = { status: 'PASS', results, provider_requests: 0, external_requests: 0, artifacts: browser.artifacts };

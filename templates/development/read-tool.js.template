@@ -11,5 +11,8 @@ export function createFillTool(validatedDatasets) {
       throw new Error('UNCONFIGURED: implement finite business validation.');
     },
     async execute() { throw new Error('UNCONFIGURED: implement bounded output/provenance using existing engine.'); },
+    // Only needed when this read returns actual lookup records for proposals.
+    // Reuse query engine captureEvidence; aggregates never authorize records.
+    captureEvidence() { throw new Error('UNCONFIGURED: declare exact returned page IDs + source + snapshot, or omit this hook for non-record tools.'); },
   };
 }

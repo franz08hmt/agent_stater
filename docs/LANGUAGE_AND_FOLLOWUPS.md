@@ -36,4 +36,13 @@ API `POST /api/runs/:id/followups` chỉ nhận `{ "request": "..." }`; `GET` c�
 
 Kết quả riêng trong `var/followups/<run_id>.json`, giữ nguyên final/trace/metrics/run lịch sử. Mỗi run có ngân sách follow-up riêng: tối đa **3 complete / 3 HTTP / 20.000 token dự phòng**, output tối đa 800 (không vượt profile), timeout min(profile timeout, 30 giây), **không retry hoặc repair**. Model thật đi qua gate trước HTTP; usage thiếu giữ reservation, không coi 0. Metrics trong mỗi kết quả là snapshot **tích lũy của phiên follow-up**, không cộng vào run gốc và không cộng lặp các snapshot để tính tổng.
 
-Backend kiểm protocol, exact nguồn, numeric literals/IDs/literals đã có và finite outcome. Văn xuôi read nhận `REVIEW_REQUIRED` vì các guard không chứng minh mọi ngữ nghĩa; đọc tay trước demo. Sai số/nguồn/outcome bị FAIL, không tự sửa thành đáp án chuẩn. Restart không chạy lại inference; in-flight thành BLOCKED/interrupted, giữ request và reservation. Reload chỉ GET; New run xóa ngữ cảnh đang xem, không xóa lịch sử. Một server process cho một storage root.
+Backend kiểm protocol, exact nguồn, numeric literals/IDs/literals đã có và finite outcome. Yêu cầu rút gọn phải có ít ký tự hơn final gốc, không được coi copy nguyên câu là thành công; đây vẫn chưa phải bằng chứng chất lượng ngữ nghĩa. Văn xuôi read nhận `REVIEW_REQUIRED` vì các guard không chứng minh mọi ngữ nghĩa; đọc tay trước demo. Sai số/nguồn/outcome bị FAIL, không tự sửa thành đáp án chuẩn. Restart không chạy lại inference; in-flight thành BLOCKED/interrupted, giữ request và reservation. Reload chỉ GET; New run xóa ngữ cảnh đang xem, không xóa lịch sử. Một server process cho một storage root.
+
+## Checklist và lỗi thường gặp
+
+1. Chọn UI locale, task/model trước Run; probe chỉ khi chủ động. UI locale không được gửi trong POST run.
+2. Goal dùng đúng IDs/enum/giá trị trong dữ liệu, kèm yêu cầu ngôn ngữ nếu cần. Đọc lại answer và source ngay cả khi run completed.
+3. Proposal VI: `Tạo đề xuất đổi status của ticket T2 thành closed.`; EN: `Create a proposal to change ticket T2 status to closed.`. Thiết bị VI: `Tạo đề xuất mượn 2 đơn vị CAM1.`; EN: `Create a proposal to borrow 2 units of CAM1.`; cần đúng task đã đăng ký.
+4. Reload giữ run/locale; không tự gửi lại goal hoặc duyệt. Arguments/hash/raw IDs không dịch.
+5. Nhắn tiếp dùng đúng một câu theo grammar trên. `invalid_followup` → nghiệp vụ mới cần New run; `followup_budget` → không reset/reload để né ngân sách; `configuration_changed` → không dùng runtime mới để tiếp tục ngữ cảnh cũ.
+6. `REVIEW_REQUIRED` → kiểm số, nhóm, nguồn, ngôn ngữ và ý nghĩa bằng tay. Model có thể thêm đơn vị tiền, dịch nhãn dataset hoặc không rút gọn; không coi các câu đó là PASS tự động.

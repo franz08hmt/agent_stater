@@ -1,5 +1,6 @@
 // Paste a completed declaration into the code-owned policy registry.
 // Never load this file or a module path from task/spec/model input.
+// Register with a code-owned key: POLICIES['FILL_POLICY_ID'] = completed declaration.
 export const fillPolicy = {
   action: 'FILL_ACTION', roles: { subject: { FILL_FIELD: 'number' } },
   changes: { type: 'object', additionalProperties: false, required: ['FILL_CHANGE'],

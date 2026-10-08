@@ -1,5 +1,7 @@
 # AI Agent Starter
 
+**Cập nhật 08/10/2026:** [Bộ dụng cụ thích nghi đề](docs/ADAPTATION_KIT.md), [UI VI/EN và diễn đạt lại](docs/LANGUAGE_AND_FOLLOWUPS.md), [kiểm chứng mới](docs/ADAPTATION_VERIFICATION.md). Một selector đổi UI; goal quyết định answer, không answer_language selector. Follow-up chỉ diễn đạt lại run đang xem, không tool/ghi hoặc sửa lịch sử. Catalog giữ nguyên.
+
 Bộ dụng cụ thích nghi: [bảng phân tích đề, mẫu tool/policy và ví dụ thiết bị](docs/ADAPTATION_KIT.md). Ví dụ `asset_code`/`asset-loan` chỉ đăng ký khi chủ động scaffold; catalog/data cũ giữ nguyên. Các checkpoint mới có thể làm evidence runtime cũ stale, không thay verdict lịch sử.
 
 Source offline **c7c09a3** đã kiểm tra phục hồi: 189 file/checksum đúng, health/catalog/UI assets và read/proposal approve/replay đạt, 0 model HTTP, không npm install/Internet. ZIP/manifest/receipt chính xác trong [candidate report](docs/EXAM_CANDIDATE.md); overall vẫn **FAIL** vì live/student chưa đủ, không suy từ package PASS rằng đã READY.
@@ -172,9 +174,9 @@ body HTTP ≤ 16 KB.
 
 ```powershell
 npm test            # 68 automated tests, chạy offline (mock + server HTTP cục bộ), vài giây
-npm run eval        # 16 evaluation cases với mock → var\eval-mock.json
+npm run eval        # 16 evaluation cases với mock → var\evaluations\eval-mock-<UUID>.json
 npm run smoke:live  # CHỈ khi .env trỏ tới model thật: 1 lời gọi thô + 3 run đầy đủ
-npm run eval:live   # các case "policy" và "input" với model thật → var\eval-live.json
+npm run eval:live   # các case "policy" và "input" với model thật → var\evaluations\eval-live-<UUID>.json
 npm run eval:live -- --only=E10,E11,E16   # chỉ chạy một số case (tiết kiệm quota)
 ```
 

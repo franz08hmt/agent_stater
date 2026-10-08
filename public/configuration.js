@@ -1,5 +1,5 @@
 // Selection for NEW runs. Historical configuration is rendered separately in Dialogue.
-import { t as translate, currentLocale } from './i18n.js';
+import { t as translate, currentLocale, TOOL_HINTS } from './i18n.js';
 const $ = (id) => document.getElementById(id);
 const setText = (id, value) => { if ($(id).textContent !== value) $(id).textContent = value; };
 const node = (tag, text) => { const n = document.createElement(tag); if (text != null) n.textContent = text; return n; };
@@ -49,7 +49,9 @@ export async function setupConfiguration(api, onChange) {
     if (renderedTaskId !== `${t.id}:${currentLocale()}`) {
       const tools = $('task-tools'); tools.replaceChildren();
       for (const tool of t.tools) {
-        const item = node('li'); item.append(node('strong', `${tool.name} · ${tool.access}${tool.requires_approval ? ` · ${translate('approval required')}` : ''}`), node('p', tool.description)); tools.append(item);
+        const item = node('li'); item.append(node('strong', `${tool.name} · ${tool.access}${tool.requires_approval ? ` · ${translate('approval required')}` : ''}`));
+        if (currentLocale() === 'vi' && TOOL_HINTS[tool.name]) item.append(node('p', translate(TOOL_HINTS[tool.name])));
+        item.append(node('p', tool.description)); tools.append(item); // full backend contract remains verbatim
       }
       const data = $('task-data'); data.replaceChildren();
       if (t.data.notes.length) {

@@ -1,5 +1,7 @@
 # Bộ dụng cụ thích nghi đề thi
 
+Phiếu độc lập một trang: [EXAM_REQUIREMENT_WORKSHEET.md](EXAM_REQUIREMENT_WORKSHEET.md). Hướng dẫn dưới đây giải thích các điểm mở rộng và cách kiểm chứng.
+
 Điền bảng này trước khi sửa code. Dữ liệu mẫu là giả lập; thời gian sinh viên đổi đề **chưa đo**.
 
 | Mục cần quyết định | Nội dung của đề (tự điền) |

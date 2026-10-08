@@ -21,6 +21,7 @@ try {
   try {
     await send('Page.navigate',{url:app.url+'/#configuration'}); await ready();
     await choose('ui-locale','vi'); assert.equal(await read('document.documentElement.lang'),'vi');
+    assert.match(await text('task-tools'),/Tra cứu ghi chú.*BM25/);
     await click('#exam-mode'); assert.match(await text('start'),/Chạy agent/);
     for(const [w,h] of [[1366,768],[1920,1080],[390,844],[320,740]]) await measure(w,h,['#goal','#start']);
     await choose('model-select','http');
