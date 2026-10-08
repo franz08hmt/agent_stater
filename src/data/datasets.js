@@ -78,9 +78,15 @@ function parseCsv(text) {
   return records;
 }
 
-async function readDataset(root, file) {
+async function readDataset(root, file, virtualFiles) {
   if (!/^data\/(?:[A-Za-z0-9_-]+\/)*[A-Za-z0-9_-]+\.(?:json|csv)$/.test(file)) {
     throw new Error('file path must be a JSON/CSV file under data/ without traversal');
+  }
+  // Backend-owned scaffold preview overlay; never accepted from task JSON/API.
+  if (virtualFiles?.has(file)) {
+    const bytes = Buffer.from(virtualFiles.get(file), 'utf8');
+    if (bytes.length > DATASET_LIMITS.maxFileBytes) throw new Error(`file exceeds ${DATASET_LIMITS.maxFileBytes} bytes`);
+    return { text: new TextDecoder('utf-8', { fatal: true }).decode(bytes).replace(/^\uFEFF/, ''), bytes };
   }
   let path = resolve(root);
   const parts = file.split('/');
@@ -111,7 +117,7 @@ async function readDataset(root, file) {
   } finally { await handle.close(); }
 }
 
-export async function loadDatasets(definitions = [], root) {
+export async function loadDatasets(definitions = [], root, virtualFiles) {
   const errors = validate(datasetsSchema, definitions);
   if (errors.length) throw new Error(`Invalid datasets: ${errors.join('; ')}`);
   const ids = new Set();
@@ -124,7 +130,7 @@ export async function loadDatasets(definitions = [], root) {
       if (new Set(names).size !== names.length) throw new Error('duplicate column names');
       if (!def.columns.some((c) => c.name === def.id_column && c.type === 'string')) throw new Error('id_column must name a string column');
       if (def.columns.some((c) => c.type === 'string' && c.scale !== undefined)) throw new Error('scale is only allowed on number columns');
-      const { text, bytes } = await readDataset(root, def.file);
+      const { text, bytes } = await readDataset(root, def.file, virtualFiles);
       let raw;
       if (def.file.endsWith('.json')) {
         try {

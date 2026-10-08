@@ -1,7 +1,7 @@
 // Backend-owned allow-list. Never accept files, endpoints, credentials or code from HTTP.
 import { createHash } from 'node:crypto';
 import { readFile, lstat } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { validate } from '../src/tools/schema.js';
 import { loadTaskConfig } from './task.config.js';
 import { createModel } from '../src/model/index.js';
@@ -21,16 +21,19 @@ const catalogSchema = { type: 'object', additionalProperties: false, required: [
   model_profiles: { type: 'array', minItems: 1, maxItems: 10, items: profileSchema },
 } };
 
-export async function loadCatalog({ root, config, file = join(root, 'config/catalog.json') }) {
+export async function loadCatalog({ root, config, file = join(root, 'config/catalog.json'), virtualFiles, resolveCredentials = true }) {
   if (!(await lstat(join(root, 'config'))).isDirectory()) throw new Error('Catalog config directory must not be a symlink.');
-  const info = await lstat(file);
-  if (!info.isFile() || info.size > 24576) throw new Error('Catalog must be a regular JSON file under 24 KiB.');
-  const raw = JSON.parse(await readFile(file, 'utf8'));
+  const text = virtualFiles?.get(relative(root, file).replaceAll('\\', '/'));
+  if (text === undefined) {
+    const info = await lstat(file);
+    if (!info.isFile() || info.size > 24576) throw new Error('Catalog must be a regular JSON file under 24 KiB.');
+  } else if (Buffer.byteLength(text) > 24576) throw new Error('Catalog preview exceeds 24 KiB.');
+  const raw = JSON.parse(text ?? await readFile(file, 'utf8'));
   const errors = validate(catalogSchema, raw);
   if (errors.length) throw new Error(`Invalid catalog: ${errors.join('; ')}`);
   const tasks = [];
   for (const def of raw.tasks) {
-    const task = await loadTaskConfig({ root, file: join(root, def.file) });
+    const task = await loadTaskConfig({ root, file: join(root, def.file), virtualFiles });
     if (task.id !== def.id) throw new Error('Catalog task ID must match the validated task ID.');
     tasks.push(task);
   }
@@ -41,7 +44,7 @@ export async function loadCatalog({ root, config, file = join(root, 'config/cata
     }
     if (!def.provider) throw new Error('Model profile must declare provider or source=env.');
     return { id: def.id, label: def.label, requiresKey: def.requires_key,
-      config: { ...config.model, provider: def.provider, name: def.name || '', baseUrl: def.base_url || '', apiKey: def.api_key_env ? process.env[def.api_key_env] || '' : '',
+      config: { ...config.model, provider: def.provider, name: def.name || '', baseUrl: def.base_url || '', apiKey: resolveCredentials && def.api_key_env ? process.env[def.api_key_env] || '' : '',
         jsonMode: def.json_mode ?? true, reasoningEffort: def.reasoning_effort ?? '' } };
   });
   return buildCatalog({ tasks, profiles, defaultTaskId: raw.default_task_id, defaultProfileId: raw.default_model_profile_id });

@@ -2,7 +2,7 @@
 // grants unregistered tools, or allows paths outside ./data.
 import { createHash } from 'node:crypto';
 import { readFile, readdir, lstat } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { validate } from '../src/tools/schema.js';
 import { BUILTIN_TOOLS } from '../src/tools/registry.js';
 import { datasetsSchema, loadDatasets } from '../src/data/datasets.js';
@@ -10,7 +10,7 @@ import { proposalPoliciesSchema, bindPolicies, POLICY_FINGERPRINT } from '../src
 
 const MAX_FILE_BYTES = 16 * 1024;
 const KNOWN_TOOLS = Object.keys(BUILTIN_TOOLS);
-const schema = {
+export const taskConfigSchema = {
   type: 'object', additionalProperties: false,
   required: ['id', 'title', 'mission', 'data', 'allowed_tools', 'sample_inputs', 'result_labels'],
   properties: {
@@ -36,8 +36,8 @@ const schema = {
 
 function invalid(message) { throw new Error(`Invalid config/task.json: ${message}`); }
 
-export async function validateTaskConfig(raw, root) {
-  const errors = validate(schema, raw);
+export async function validateTaskConfig(raw, root, virtualFiles) {
+  const errors = validate(taskConfigSchema, raw);
   if (errors.length) invalid(errors.join('; ').replace('allowed_tools: items must be unique', 'allowed_tools: duplicate tools'));
   if (new Set(raw.sample_inputs.map((x) => x.label.toLowerCase())).size !== raw.sample_inputs.length) invalid('sample_inputs: duplicate labels');
   if (raw.allowed_tools.includes('save_draft') && !raw.allowed_tools.includes('search_notes')) invalid('save_draft requires search_notes for grounded drafts.');
@@ -45,7 +45,7 @@ export async function validateTaskConfig(raw, root) {
     if (raw.allowed_tools.includes(tool) && !raw.data.datasets?.length) invalid(`${tool} requires at least one allowed dataset in data.datasets.`);
   }
   let datasets;
-  try { datasets = await loadDatasets(raw.data.datasets, root); }
+  try { datasets = await loadDatasets(raw.data.datasets, root, virtualFiles); }
   catch (err) { invalid(err.message); }
   let proposalPolicies;
   try { proposalPolicies = bindPolicies(raw.proposal_policies, datasets); } catch (err) { invalid(err.message); }
@@ -54,19 +54,22 @@ export async function validateTaskConfig(raw, root) {
 
   const rel = raw.data.notes_dir;
   if (!/^data\/[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*$/.test(rel)) invalid('data.notes_dir must be a project-local directory under data/ with no traversal or absolute path.');
+  const virtualNotes = [...(virtualFiles?.keys() || [])].filter((file) => file.startsWith(`${rel}/`) && !file.slice(rel.length + 1).includes('/') && file.endsWith('.md'));
   let dir = root;
   for (const part of rel.split('/')) {
     dir = join(dir, part);
-    const info = await lstat(dir).catch(() => invalid(`data.notes_dir: ${rel} does not exist.`));
-    if (!info.isDirectory() || info.isSymbolicLink()) invalid(`data.notes_dir: ${part} must be a real directory, not a link.`);
+    const info = await lstat(dir).catch((err) => { if (err.code === 'ENOENT' && virtualNotes.length) return null; invalid(`data.notes_dir: ${rel} does not exist.`); });
+    if (info && (!info.isDirectory() || info.isSymbolicLink())) invalid(`data.notes_dir: ${part} must be a real directory, not a link.`);
   }
-  const files = (await readdir(dir)).filter((name) => name.endsWith('.md')).sort();
+  const diskFiles = await readdir(dir).catch((err) => { if (err.code === 'ENOENT' && virtualNotes.length) return []; throw err; });
+  const files = [...new Set([...diskFiles.filter((name) => name.endsWith('.md')), ...virtualNotes.map((file) => file.slice(rel.length + 1))])].sort();
   if (!files.length) invalid('data.notes_dir must contain at least one .md note.');
   const digest = createHash('sha256').update(JSON.stringify(raw));
   if (proposalPolicies.length) digest.update(POLICY_FINGERPRINT);
   for (const dataset of datasets) digest.update(dataset.id).update(dataset.version);
   for (const name of files) {
     const note = join(dir, name);
+    if (virtualFiles?.has(`${rel}/${name}`)) { digest.update(name).update(Buffer.from(virtualFiles.get(`${rel}/${name}`), 'utf8')); continue; }
     if (!(await lstat(note)).isFile()) invalid(`data.notes_dir: ${name} must be a regular file, not a symlink.`);
     digest.update(name).update(await readFile(note));
   }
@@ -78,13 +81,18 @@ export async function validateTaskConfig(raw, root) {
   };
 }
 
-export async function loadTaskConfig({ root, file = join(root, 'config', 'task.json') }) {
-  const info = await lstat(file).catch(() => invalid(`missing task file: ${file}`));
-  if (!info.isFile() || info.size > MAX_FILE_BYTES) invalid(`task file must be a regular JSON file under ${MAX_FILE_BYTES} bytes.`);
+export async function loadTaskConfig({ root, file = join(root, 'config', 'task.json'), virtualFiles }) {
+  const key = relative(root, file).replaceAll('\\', '/'), text = virtualFiles?.get(key);
+  if (text !== undefined) {
+    if (!/^config\/[A-Za-z0-9_.-]+\.json$/.test(key) || Buffer.byteLength(text) > MAX_FILE_BYTES) invalid('Invalid preview task file.');
+  } else {
+    const info = await lstat(file).catch(() => invalid(`missing task file: ${file}`));
+    if (!info.isFile() || info.size > MAX_FILE_BYTES) invalid(`task file must be a regular JSON file under ${MAX_FILE_BYTES} bytes.`);
+  }
   let raw;
-  try { raw = JSON.parse(await readFile(file, 'utf8')); }
+  try { raw = JSON.parse(text ?? await readFile(file, 'utf8')); }
   catch (err) { invalid(`could not parse JSON: ${err.message}`); }
-  const task = await validateTaskConfig(raw, root);
+  const task = await validateTaskConfig(raw, root, virtualFiles);
   task.verifyCurrent = async () => {
     try { return (await loadTaskConfig({ root, file })).fingerprint === task.fingerprint; } catch { return false; }
   };
