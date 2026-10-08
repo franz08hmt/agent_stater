@@ -1,5 +1,15 @@
 # Thích ứng khi nhận đề
 
+## Chốt candidate và diễn tập riêng (đợt 5)
+
+- Quy trình vận hành một trang: [EXAM_DAY_CHECKLIST](docs/EXAM_DAY_CHECKLIST.md). Quy trình phục hồi nguồn offline: [EXAM_RECOVERY](docs/EXAM_RECOVERY.md). Evidence mới và các failure: [EXAM_CANDIDATE](docs/EXAM_CANDIDATE.md).
+- Mẫu mới `templates/rehearsal-rentals.spec.json`: JSON khóa `rental_id`, phép sum hours, lookup theo khóa, zero matches và cổng write bị chặn. Expected 11/đúng R102/0/tool_not_allowed xác định từ đề; không lấy tool output làm expected. Chỉ tạo/register trong bản sao, không chiếm slot catalog thật. [Bài tự diễn tập](docs/STUDENT_REHEARSAL.md) hướng dẫn đổi số liệu/goal/expected bằng tay và timer read/map/config/start/acceptance/demo; thời gian sinh viên vẫn chưa đo.
+- `npm run qa:rehearsal` là **AGENT REHEARSAL**: scaffold preview/apply/register → acceptance → browser Exam mode → read/proposal approve/reject/replay/reload. Scripted model, 0 model HTTP; không actor=student, không live evidence. Task tạm giữ scope/fingerprint riêng.
+- `npm run exam:campaign -- --profile=ollama-qwen3 --repeat=3 --cap=160`: chọn profile local đã xác thực; warm/probe tách accounting, rồi notes/dataset/draft, count/empty, ticket/room proposal, scaffold và E16. Repeat 1..3, cap 1..160; retry/repair cũng tiêu cap tại adapter. Không tải model, cloud hoặc tăng giới hạn run. Cap hết → NOT_RUN. Chuỗi PASS xét từng case/identity trong cùng campaign; failure và phần cần đọc tay được giữ.
+- Fingerprint grader bao gồm eval/checks.js, eval/cases.json, driver campaign và spec rehearsal dùng trong live; mọi src/config JS vẫn thuộc runtime fingerprint. Sửa docs không stale chỉ vì commit khác. Kiểm tra report cũ bằng `exam:report -- --id=...`, không dùng PASS stale cho đề/model mới.
+- Đóng gói sau checkpoint sạch bằng `npm run exam:package`, rồi `npm run exam:restore-check -- --id=<ID vừa in>`. Không đưa `.env`, history hoặc model weights vào ZIP; không overwrite artifact. Restore mock không cần cài dependency/Internet, nhưng LLM thật vẫn cần Ollama/model cài sẵn.
+- Ba trial đúng của một goal không chứng minh mọi đề chưa biết. Proposal chỉ lưu nội bộ; không đổi nguồn/booking. Dataset save_draft, join/group-by/công thức/action/policy mới vẫn cần code và tests; đợt chốt không mở rộng nghiệp vụ.
+
 ## Demo bằng Exam mode (đợt 4)
 
 Sau acceptance và restart, bấm **Exam mode** trên header, chọn task/profile, nhập Goal hoặc example rồi Run. Desktop trên 960px đặt cấu hình và kết quả cạnh nhau; mobile xếp Configure → Result. Overview/Agent/Dialogue cùng workbench trong Exam, hash vẫn xác định mục điều hướng/focus; Saved drafts mở danh sách draft/proposal riêng. Bấm lại để về Standard (mặc định).
