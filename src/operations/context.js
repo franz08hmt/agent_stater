@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
@@ -21,13 +21,29 @@ export function configurationIdentity(catalog, config, protocolIdentity = '') {
     profiles: [...catalog.profiles.values()].map((e) => [e.id, e.identity, e.metadata.status]),
     limits: config.limits, timeout: config.model.timeoutMs, protocol: protocolIdentity });
 }
+
+// Hash the backend/config module tree, including new modules, rather than a
+// hand-picked protocol subset. Documentation and Git commit IDs are not runtime.
+async function runtimeIdentity(root, nodeEngine) {
+  async function modules(directory) {
+    const files = [];
+    for (const entry of await readdir(join(root, directory), { withFileTypes: true })) {
+      const relative = `${directory}/${entry.name}`;
+      if (entry.isSymbolicLink()) throw new Error('Runtime fingerprint requires regular project files, not symlinks.');
+      if (entry.isDirectory()) files.push(...await modules(relative));
+      else if (entry.isFile() && entry.name.endsWith('.js')) files.push(relative);
+    }
+    return files;
+  }
+  const files = [...await modules('src'), ...await modules('config')].sort();
+  return hash({ node_engine: nodeEngine, modules: await Promise.all(files.map(async (file) => [file, hash(await readFile(join(root, file), 'utf8'))])) });
+}
 export async function loadEnvironment({ root = PROJECT_ROOT, dotenv = true } = {}) {
   const pkg = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
   if (!supportsNode(process.versions.node, pkg.engines.node)) throw new Error(`Node ${pkg.engines.node} required; current ${process.versions.node}.`);
   if (dotenv && existsSync(join(root, '.env'))) process.loadEnvFile(join(root, '.env'));
   const config = loadConfig(), catalog = await loadCatalog({ root, config });
-  const protocol = hash((await Promise.all(['config/prompts.js', 'src/agent/runner.js', 'src/tools/queryDataset.js', 'src/model/openaiCompatible.js', 'src/model/probe.js']
-    .map((file) => readFile(join(root, file), 'utf8')))).join('\n'));
+  const protocol = await runtimeIdentity(root, pkg.engines.node);
   const service = { name: pkg.name, project_id: hash(root.toLowerCase()), configuration_id: configurationIdentity(catalog, config, protocol) };
   let commit = 'unknown', dirty = null;
   try {
@@ -35,7 +51,7 @@ export async function loadEnvironment({ root = PROJECT_ROOT, dotenv = true } = {
     dirty = execFileSync('git', ['status', '--porcelain', '--untracked-files=all'], { cwd: root, encoding: 'utf8' }).trim().split('\n').some((line) => line && !line.slice(3).startsWith('.agents/'));
   } catch { /* Git is optional at operation time. */ }
   const suiteIdentity = hash((await Promise.all(['src/operations/cases.js', 'src/operations/suite.js'].map((f) => existsSync(join(root, f)) ? readFile(join(root, f), 'utf8') : 'not-added'))).join('\n'));
-  const evidenceContext = { commit, working_tree_modified: dirty, configuration_id: service.configuration_id, protocol_identity: protocol, suite_identity: suiteIdentity,
+  const evidenceContext = { commit, working_tree_modified: dirty, configuration_id: service.configuration_id, protocol_identity: protocol, runtime_identity: protocol, suite_identity: suiteIdentity,
     environment: { node: process.versions.node, platform: process.platform, port: config.server.port }, limits: { ...config.limits }, model_timeout_ms: config.model.timeoutMs,
     tasks: [...catalog.tasks.values()].map(({ task }) => ({ id: task.id, fingerprint: task.fingerprint,
       datasets: task.datasets.map((d) => ({ id: d.id, version: d.version, records: d.rows.length })) })),

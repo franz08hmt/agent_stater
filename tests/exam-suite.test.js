@@ -74,3 +74,36 @@ test('smoke rejects totals assigned to the wrong groups even with correct numeri
   const r = await runSuite({ env: h.env, cases: [c], live: true, profileId: 'fake' });
   assert.equal(r.results[0].status, 'FAIL');
 });
+
+async function approvalReply(t, decision, answer, sourceIds = []) {
+  const c = SMOKE_CASES.find((c) => c.id === decision);
+  const h = await fakeProvider(t, (body) => {
+    const observations = body.messages.filter((m) => m.content.startsWith('OBSERVATION'))
+      .map((m) => JSON.parse(m.content.slice(m.content.indexOf('{'))));
+    if (!observations.length) return { decision: { type: 'tool_call', tool: c.tool, arguments: c.args } };
+    if (!observations.some((o) => o.tool === 'save_draft')) return { decision: { type: 'tool_call', tool: 'save_draft',
+      arguments: { title: 'HTTP notes', content: '401 authentication; 403 authorization.', source_ids: ['http-status'] } } };
+    return { decision: { type: 'final', answer, source_ids: sourceIds, unresolved: 'The final reports the human approval outcome.' } };
+  });
+  return runSuite({ env: h.env, cases: [c], live: true, profileId: 'fake' });
+}
+for (const [decision, answer, drafts] of [['reject', 'Not saved.', 0], ['approve', 'Saved.', 1]]) {
+  test(`approval ${decision}: status-only final without note citations is checked against outcome`, async (t) => {
+    const r = await approvalReply(t, decision, answer);
+    const result = r.results[0];
+    assert.equal(result.run_status, 'completed'); assert.equal(result.status, 'PASS', result.reason);
+    assert.equal(result.drafts, drafts); assert.equal(result.replayed, true);
+    assert.deepEqual(result.final.source_ids, []); assert.equal(result.metrics.provider_requests, 3);
+  });
+}
+for (const [decision, answer] of [['reject', 'Saved.'], ['approve', 'Not saved.']]) {
+  test(`approval ${decision}: false ${answer} is rejected even with a valid note citation`, async (t) => {
+    const r = await approvalReply(t, decision, answer, ['http-status']);
+    assert.equal(r.results[0].run_status, 'completed');
+    assert.equal(r.results[0].status, 'FAIL'); assert.match(r.results[0].reason, /outcome/i);
+  });
+}
+test('approval final that states HTTP knowledge still requires its note evidence', async (t) => {
+  const r = await approvalReply(t, 'reject', 'Not saved. 401 = authentication; 403 = authorization.');
+  assert.equal(r.results[0].status, 'FAIL'); assert.match(r.results[0].reason, /note source/i);
+});

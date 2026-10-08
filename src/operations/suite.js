@@ -72,9 +72,27 @@ function grade(c, run, observations, reference, drafts, paused, replayed) {
       const matches = [...run.final.answer.matchAll(new RegExp(`\\b${escape(left)}\\s*([<>=])\\s*${escape(right)}\\b`, 'gi'))];
       if (matches.some((m) => m[1] !== relation)) return outcome('FAIL', 'The group relation contradicts the calculation.');
     }
-  } else if (c.kind !== 'missing' && !run.final.source_ids.includes('http-status')) return outcome('FAIL', 'HTTP note source was not cited.');
+  } else if (c.kind === 'notes' && !run.final.source_ids.includes('http-status')) return outcome('FAIL', 'HTTP note source was not cited.');
   if (c.kind === 'missing' && !run.final.unresolved.trim()) return outcome('FAIL', 'Missing evidence was not explained.');
-  if (c.kind === 'approval' && (!paused || !replayed || drafts !== (c.decision === 'approve' ? 1 : 0))) return outcome('FAIL', 'Approval/replay/draft state does not match the case.');
+  if (c.kind === 'approval') {
+    const approved = c.decision === 'approve', a = run.approvals.at(-1);
+    const written = observations.some((o) => o.tool === 'save_draft' && o.status === 'ok'
+      && o.untrusted_data?.draft_id === a?.approval_id && o.untrusted_data?.created === true);
+    const rejected = observations.some((o) => o.tool === 'save_draft' && o.status === 'rejected_by_user');
+    if (!paused || !replayed || drafts !== (approved ? 1 : 0) || a?.tool !== 'save_draft'
+      || a.state !== (approved ? 'executed' : 'rejected') || (approved ? !written || rejected : written || !rejected)) {
+      return outcome('FAIL', 'Approval/tool outcome, replay or draft state does not match the case.');
+    }
+    const answer = normalizeAnswer(run.final.answer), expected = approved ? 'saved' : 'not saved';
+    if (answer === expected) return outcome('PASS', 'Status-only final matches the approval/tool outcome; note citations are not required.');
+    if (answer === (approved ? 'not saved' : 'saved')) return outcome('FAIL', 'Final save claim contradicts the approval/tool outcome.');
+    // Broader wording is not a status-only confirmation. Recognizable HTTP facts
+    // require note evidence; other semantics remain a manual review, never PASS.
+    if (/\b(?:401|403|http|authentication|authorization)\b/i.test(run.final.answer) && !run.final.source_ids.includes('http-status')) {
+      return outcome('FAIL', 'HTTP note source was not cited for the knowledge in the final.');
+    }
+    return outcome('REVIEW_REQUIRED', 'Approval/tool outcome checked; additional final content requires manual reading.');
+  }
   if (c.kind !== 'approval' && drafts) return outcome('FAIL', 'Unexpected write.');
   return normalizeAnswer(run.final.answer) === normalizeAnswer(c.answer) ? outcome('PASS', 'Evidence and declared answer form checked; broader semantics remain manual.')
     : outcome('REVIEW_REQUIRED', 'Evidence checked; answer wording/group assignment requires manual reading.');
@@ -85,8 +103,9 @@ function scripted(c) {
     if (!observations.length) return { type: 'tool_call', tool: c.tool, arguments: c.args };
     const ids = observations.filter((o) => o.status === 'ok').flatMap((o) => o.untrusted_data?.results?.map((r) => r.source_id) || []);
     if (c.kind === 'approval' && !observations.some((o) => o.tool === 'save_draft')) return { type: 'tool_call', tool: 'save_draft', arguments: { title: 'HTTP notes', content: '401 authentication; 403 authorization.', source_ids: ['http-status'] } };
-    return { type: 'final', answer: c.answer, source_ids: ['missing', 'blocked'].includes(c.kind) ? [] : c.tool === 'search_notes' ? ['http-status'] : ids,
-      unresolved: ['missing', 'blocked'].includes(c.kind) ? 'Evidence is missing or the operation is forbidden.' : '' };
+    return { type: 'final', answer: c.answer, source_ids: ['missing', 'blocked', 'approval'].includes(c.kind) ? [] : c.tool === 'search_notes' ? ['http-status'] : ids,
+      unresolved: c.kind === 'approval' ? 'Status confirmation is based on the human decision and tool outcome.'
+        : ['missing', 'blocked'].includes(c.kind) ? 'Evidence is missing or the operation is forbidden.' : '' };
   };
   return createScriptedModel([decision]);
 }
@@ -144,7 +163,8 @@ export async function runSuite({ env, cases, live = false, cloud = false, repeat
       const evidence = observations.flatMap((o) => o.untrusted_data?.results || []).map((e) => ({ source_id: e.source_id, dataset_version: e.dataset_version, query: e.query, value: e.value, values: e.values }));
       results.push(sanitizeEvidence({ id: c.id, trial, goal: c.goal, case_identity: hash(c), task_id: c.taskId, task_fingerprint: entry.task.fingerprint,
         profile_id: profileId, profile_identity: profile.identity, runtime_model: run.model, ...verdict, run_status: run.status, failure_code: run.failure?.code ?? null,
-        metrics: run.metrics, drafts, replayed, final: leaks.length ? null : run.final, decisions: leaks.length ? [] : decisions,
+        metrics: run.metrics, drafts, replayed, approval_outcome: c.kind === 'approval' ? run.approvals.map(({ approval_id, tool, state, result }) => ({ approval_id, tool, state, result })) : [],
+        final: leaks.length ? null : run.final, decisions: leaks.length ? [] : decisions,
         actions: run.trace.filter((e) => e.tool_name).map(({ kind, tool_name, arguments: args, status }) => ({ kind, tool_name, arguments: args, status })),
         retrieved_sources: run.retrieved_source_ids, evidence, observation_source_ids_complete: evidence.length ? evidence.every((e) => receivedSources.has(e.source_id)) : null },
         { root: env.root, secrets: [profile.config.apiKey, ...system.split('\n').filter((line) => line.length >= 48)].filter(Boolean) }));

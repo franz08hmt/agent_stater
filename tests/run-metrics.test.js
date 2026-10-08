@@ -15,6 +15,7 @@ async function provider(t, replies, options = {}) {
     let raw = ''; for await (const chunk of req) raw += chunk;
     bodies.push(JSON.parse(raw));
     const reply = replies[bodies.length - 1] ?? { text: final('Done') };
+    if (reply.waitFor) await reply.waitFor;
     if (reply.delay) await new Promise((r) => setTimeout(r, reply.delay));
     if (reply.disconnect) { req.socket.destroy(); return; }
     res.writeHead(reply.status ?? 200, { 'content-type': 'application/json' });
@@ -182,7 +183,10 @@ test('unexpectedly high reported usage stops before a proposed tool can execute'
 });
 
 test('in-flight request accounting is persisted; restart retains unknown reservation', async (t) => {
-  const h = await setup(t, [{ delay: 300, text: final('Done'), usage }]);
+  // Hold the response until the durable in-flight snapshot has been observed.
+  // A fixed 300ms sleep can expire under a busy full-suite run before the reader.
+  const response = Promise.withResolvers(); t.after(() => response.resolve());
+  const h = await setup(t, [{ waitFor: response.promise, text: final('Done'), usage }]);
   const started = await h.runner.startRun('test');
   let saved;
   for (let i = 0; i < 100; i++) {
@@ -191,6 +195,7 @@ test('in-flight request accounting is persisted; restart retains unknown reserva
     await new Promise((resolve) => setTimeout(resolve, 5));
   }
   assert.equal(saved.metrics.provider_requests, 1); assert.equal(saved.metrics.tokens.pending_requests, 1);
+  response.resolve();
   await h.runner.idle(started.run_id);
   await h.store.saveRun(saved); // simulate the last durable snapshot before a process died
   await h.runner.init();
