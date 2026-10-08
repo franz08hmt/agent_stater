@@ -16,6 +16,7 @@ To finish:
 {"type":"final","answer":"<answer for the user>","source_ids":["<id>", ...],"unresolved":"<what the notes did not cover, or empty string>"}
 Rules: when the goal asks for facts from notes or datasets, call an allowed read tool before answering; do not answer from memory.
 Copy each source_id exactly and completely from this run's observation; never invent, abbreviate or rename an ID.
+When a dataset result has rows=[] or matched_count=0, it is evidence of zero matches: cite its returned source_id. Zero matches are not missing evidence; keep unresolved empty if the query answers the goal.
 If no evidence answers the question, explain the gap in unresolved rather than guess. If source_ids is empty, "unresolved" must explain why.
 After a tool observation, do not echo the observation object. Reply with a final answer citing the returned source_ids.
 Do not repeat a tool call with the same arguments; its result will not change.`;
