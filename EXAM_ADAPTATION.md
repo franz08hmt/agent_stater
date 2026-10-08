@@ -1,5 +1,24 @@
 # Thích ứng khi nhận đề
 
+## Template đổi đề nhanh (đợt 3)
+
+Dùng [checklist một trang](docs/EXAM_SCAFFOLD.md) và [contract chi tiết](docs/SCAFFOLD_CONTRACT.md). Sao chép `templates/notes.spec.json`, `dataset-read.spec.json` hoặc `proposal.spec.json` thành spec mới trong templates; tự điền mission/data/schema/tools/examples/cases và expected độc lập. Không TODO, key/model/endpoint hoặc trường lạ. Dữ liệu là assets mới có file/content hoặc tham chiếu file data hiện có; id_column tùy chọn được giữ, proposal có canonical fields và role mapping của đúng policy đăng ký.
+
+```powershell
+npm run exam:scaffold -- --spec=templates/my-read.spec.json --register
+npm run exam:scaffold -- --spec=templates/my-read.spec.json --apply --register
+npm run exam:acceptance -- --task=exam-inventory
+npm test
+```
+
+Thay ID theo spec. Mặc định preview; --apply tạo mới config/task, data assets, acceptance manifest, top-level test driver và task guide. --register thêm catalog có backup, giữ defaults/profiles/tasks, không tự mở rộng 8 slots. Không overwrite; task đã tạo cần sửa file/manifest bằng tay có chủ đích rồi kiểm chứng lại. Xem đường dẫn/thứ tự file ở preview. Lỗi apply chỉ rollback file của lượt đó còn nguyên hash/inode, giữ và báo file người dùng sửa; không sửa editor catalog khi đang publish. Lock/backup và giới hạn atomicity/hard-link/crash recovery được mô tả trong contract.
+
+Acceptance chạy runner/registry/store thật trong temp với scripted model và limits offline cố định, không gọi LLM hoặc dùng .env; chấm expected kết quả/query/snapshot/record/citation, approve/reject/replay và data không đổi. Manifest cần happy, empty/missing và blocked; proposal và notes ghi nháp thêm approve/reject. Apply chưa chạy acceptance luôn NOT_RUN, không tự nhận ready. `npm run qa:scaffold` kiểm chứng spec→apply/register trong project tạm→acceptance→task/UI trên Chrome desktop/mobile; không chiếm slot catalog thật.
+
+Restart server bằng Ctrl+C rồi `npm run exam:start`, reload UI và chọn task/profile; chỉ chủ động probe/warm/live. Mock dataset mặc định không giải tùy ý goal task mới. Mẫu JSON đọc dùng item_key, hai CSV proposal dùng class_code/room_code; ticket-status JSON ticket_id được regression kiểm chứng. notes_dir bắt buộc nền, không cấp thêm search_notes. Proposal không áp dụng CSV/JSON; save_draft vẫn notes-only. Join/formula/timetable/booking/action/policy/field mapping mới cần code và test, không chỉ sửa mission.
+
+Đợt 3: 370 tests, eval16, datasets3/budgets2/smoke6/rehearsal8/proposal5 và Chrome scaffold đạt; live NOT_RUN, không cloud. Chưa đo thời gian sinh viên đổi đề. Có thể phát triển UI Exam mode sau đợt này, nhưng chưa kết luận model ổn định/sẵn sàng thi trên đề mới.
+
 ## Proposal từ dataset (đợt 2)
 
 Hướng dẫn đầy đủ: [docs/DATASET_PROPOSALS.md](docs/DATASET_PROPOSALS.md). Hai task mới `proposal-tickets` và `proposal-rooms` bật query_dataset + create_proposal, không thay defaults/task/data cũ. Dataset lookup phải thực sự trả từng record trong đúng trang; aggregates/source từ run khác không cấp quyền ghi. Model đề xuất action/references/changes/reason, backend kiểm schema/policy/evidence/intent rồi dừng chờ duyệt đúng hash. Chỉ lưu proposal nội bộ, không sửa dataset.

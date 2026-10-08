@@ -1,6 +1,16 @@
 # AI Agent Starter
 
-Đợt 2 bổ sung proposal nội bộ từ dataset với business rules, lookup evidence, approval/hash và chống ghi trùng. Sau sửa P2 cột ID của demo/grader: **318 tests**, 16 eval ghi chú và các demo scripted đạt; browser thật kiểm chứng approve/reject/replay/reload/error và desktop/mobile. Live Ollama trước sửa grader có một trial đạt cho tạo ticket proposal và một trial đạt cho chặn capacity; chưa đủ chứng minh ổn định 3 lần và không chạy lại trong lượt P2 này. Xem [contract và cách đổi policy](docs/DATASET_PROPOSALS.md), [quy trình trước buổi thi](docs/EXAM_REHEARSAL.md) và phần kết quả cuối handoff. Grounding/budgets/repair/timeout giữ nguyên.
+Đợt 3 có CLI tạo task từ ba template notes/dataset-read/proposal, preview mặc định, apply/register có kiểm tra an toàn và acceptance qua runner/store thật. **370 tests**, 16 eval và các demo/scripted đạt; Chrome desktop/mobile kiểm chứng hai task sinh mới, đúng metadata và proposal/reload/approve. Không gọi LLM thật trong đợt này; chưa đo thời gian sinh viên đổi đề. Live stability của proposal vẫn cần chốt riêng. Grounding/budgets/approval/idempotency và regression ID columns giữ nguyên.
+
+Đổi đề: xem [checklist một trang](docs/EXAM_SCAFFOLD.md), [spec/acceptance/publication contract](docs/SCAFFOLD_CONTRACT.md) và mẫu đầy đủ trong `templates/`. Luồng tối thiểu sau khi tự điền spec:
+
+```powershell
+npm run exam:scaffold -- --spec=templates/my-read.spec.json --register
+npm run exam:scaffold -- --spec=templates/my-read.spec.json --apply --register
+npm run exam:acceptance -- --task=exam-inventory
+```
+
+Thay task ID cuối bằng ID đã điền. Preview không ghi/gọi model/đọc credentials; apply không overwrite. Register giữ defaults/task/profile cũ và tạo backup Gitignored tại `var/scaffold-backups`. Catalog vẫn tối đa 8 task (6 đang có); không tự đăng ký các mẫu vào catalog thật. Driver sinh ở `tests/*.generated.test.js` chạy trong `npm test`; `npm run qa:scaffold` kiểm chứng catalog/task tạm trên Chrome thật, không cloud. Mock UI mặc định không phải solver tổng quát cho dataset mới. [Policy proposal](docs/DATASET_PROPOSALS.md), [warm/probe/live rehearsal](docs/EXAM_REHEARSAL.md) và kết quả trong handoff giữ giới hạn bằng chứng riêng.
 
 ```powershell
 npm run exam:start
