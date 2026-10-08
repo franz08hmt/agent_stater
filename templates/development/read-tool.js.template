@@ -1,0 +1,15 @@
+// Development resource: NOT registered or executable by scaffold/spec/model.
+// Replace FILL_* in a real module; write failing tests before registering it.
+export function createFillTool(validatedDatasets) {
+  return {
+    name: 'FILL_NAME', access: 'read', requiresApproval: false,
+    description: 'FILL_PURPOSE_AND_LIMITS',
+    schema: { type: 'object', additionalProperties: false, required: ['dataset_id'],
+      properties: { dataset_id: { type: 'string', pattern: '^[a-z][a-z0-9-]{0,39}$' } } },
+    checkRules(args) {
+      if (!validatedDatasets.some((d) => d.id === args.dataset_id)) return ['Dataset is outside task allow-list.'];
+      throw new Error('UNCONFIGURED: implement finite business validation.');
+    },
+    async execute() { throw new Error('UNCONFIGURED: implement bounded output/provenance using existing engine.'); },
+  };
+}

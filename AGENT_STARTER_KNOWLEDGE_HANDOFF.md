@@ -1,5 +1,9 @@
 # AI Agent Starter — kiến thức và bản đồ bàn giao
 
+## Bộ dụng cụ thích nghi — increment 1, 2026-10-08
+
+Nhánh feature/adaptation-kit-i18n-20261008 từ 34ec8a1. Baseline chạy lại393/393; increment1 đạt397/397. Thêm check_asset_availability và policy asset-loan, dùng chung src/business/assetAvailability.js (whole units1..20), lookup/provenance/evidence/approval/store cũ, không sửa loop. templates/asset-loan.spec.json dùng asset_code, acceptance6ca trong bản sao tạm; expected sai FAIL, approve/reject/concurrent/restart/replay đúng1/0, dữ liệu nguyên trạng. Catalog thật không đổi. policyFingerprint đọc lại phụ thuộc policies.js + business helper để verifyCurrent phát hiện helper đổi trên đĩa. Tài nguyên templates/development chưa điền cố ý throw/fail và không đăng ký. Xem docs/ADAPTATION_KIT.md. Runtime/grader cũ stale; live mới chưa chạy ở increment này, student timing NOT_RUN. .agents/ và .env/var cũ giữ nguyên.
+
 > Mục đích: cung cấp ngữ cảnh cho một agent khác tiếp tục phát triển **đúng project hiện có**, không viết lại sườn hoặc làm mất các ràng buộc an toàn. Đây là tài liệu định hướng; trước khi sửa, agent phải đọc code và test liên quan vì code là nguồn xác nhận cuối cùng.
 
 **Mốc đợt 2, 2026-10-08:** 316 tests, 16 eval, demos dataset/budget/smoke/rehearsal và 5 proposal scripted đạt. Proposal lookup evidence/policies/approval/idempotent store/API/UI đã có; browser thật desktop/mobile đạt. Live 8B ticket-approve và room-blocked mỗi ca 1 PASS, tổng 9 HTTP gồm warm; có 1 repair final status, không retry. Compare_counts đợt 1 từng 3/3, nhưng evidence cũ stale khi runtime đổi; chưa gọi toàn bộ model ổn định. Checkpoint code `4192f7c`, `834c45b`, `ce89996`; chưa push. Xem phần đợt 2 cuối file và [proposal guide](docs/DATASET_PROPOSALS.md). Thời gian sinh viên đổi đề vẫn chưa đo.

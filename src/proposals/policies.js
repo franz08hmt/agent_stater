@@ -3,10 +3,22 @@ import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { validate } from '../tools/schema.js';
 import { decimalUnits } from '../data/datasets.js';
+import { ASSET_QUANTITY_SCHEMA, assetAvailability, assertAssetDataset } from '../business/assetAvailability.js';
 
-export const POLICY_FINGERPRINT = createHash('sha256').update(await readFile(new URL('./policies.js', import.meta.url))).digest('hex');
+export async function policyFingerprint() {
+  const digest = createHash('sha256');
+  for (const name of ['./policies.js', '../business/assetAvailability.js'].sort()) digest.update(name).update(await readFile(new URL(name, import.meta.url)));
+  return digest.digest('hex');
+}
+export const POLICY_FINGERPRINT = await policyFingerprint();
 const string = { type: 'string', minLength: 1, maxLength: 80 };
 export const POLICIES = Object.freeze({
+  'asset-loan': {
+    action: 'asset_loan', roles: { subject: { available: 'number' } },
+    changes: { type: 'object', additionalProperties: false, required: ['quantity'], properties: { quantity: ASSET_QUANTITY_SCHEMA } },
+    description: 'asset_loan: subject asset; changes {quantity: integer 1..20}. Availability must cover quantity. Internal proposal only; inventory unchanged, no booking or actual loan.',
+    check(records, changes) { return assetAvailability(records.subject, changes.quantity).eligible ? [] : ['Asset availability is insufficient for requested quantity.']; },
+  },
   'ticket-status': {
     action: 'ticket_status', roles: { subject: { status: 'string' } },
     changes: { type: 'object', additionalProperties: false, required: ['status'], properties: { status: { ...string, enum: ['open', 'pending', 'closed'] } } },
@@ -56,6 +68,7 @@ export function bindPolicies(definitions = [], snapshots = []) {
       }
       if (def.policy_id === 'ticket-status' && data.rows.some((r) => !['open', 'pending', 'closed'].includes(r.status))) throw new Error('Ticket dataset has an unknown status.');
       if (def.policy_id === 'class-room' && role === 'target' && new Set(data.rows.map((r) => r.room)).size !== data.rows.length) throw new Error('Target room names must be unique.');
+      if (def.policy_id === 'asset-loan') assertAssetDataset(data);
       datasets[role] = data;
     }
     return { ...policy, policyId: def.policy_id, datasets };

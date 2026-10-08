@@ -1,0 +1,11 @@
+// Paste a completed declaration into the code-owned policy registry.
+// Never load this file or a module path from task/spec/model input.
+export const fillPolicy = {
+  action: 'FILL_ACTION', roles: { subject: { FILL_FIELD: 'number' } },
+  changes: { type: 'object', additionalProperties: false, required: ['FILL_CHANGE'],
+    properties: { FILL_CHANGE: { type: 'integer', minimum: 1, maximum: 20 } } },
+  description: 'FILL_CONDITIONS; INTERNAL proposal only, no application.',
+  check() { throw new Error('UNCONFIGURED: implement and test backend business rules.'); },
+};
+// create_proposal owns lookup evidence, approval, recheck, atomic storage/replay.
+// Add helper modules to policyFingerprint(), including disk recheck dependencies.

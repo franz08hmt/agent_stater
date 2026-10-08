@@ -1,0 +1,188 @@
+{
+  "version": 1,
+  "template": "proposal",
+  "task": {
+    "id": "exam-assets",
+    "title": "Fictional Equipment Loan Proposals",
+    "mission": "Use the permitted tools to check fictional whole-unit equipment availability. Only create an INTERNAL asset_loan proposal when explicitly requested. Never reserve or confirm a real loan. Copy exact returned source IDs. Missing records and insufficient quantities must be reported.",
+    "data": {
+      "notes_dir": "data/notes",
+      "datasets": [
+        {
+          "id": "assets",
+          "file": "data/exam-assets/assets.json",
+          "id_column": "asset_code",
+          "columns": [
+            {
+              "name": "asset_code",
+              "type": "string"
+            },
+            {
+              "name": "name",
+              "type": "string"
+            },
+            {
+              "name": "available",
+              "type": "number",
+              "scale": 0
+            }
+          ]
+        }
+      ]
+    },
+    "allowed_tools": [
+      "query_dataset",
+      "check_asset_availability",
+      "create_proposal"
+    ],
+    "proposal_policies": [
+      {
+        "policy_id": "asset-loan",
+        "datasets": {
+          "subject": "assets"
+        }
+      }
+    ],
+    "sample_inputs": [
+      {
+        "label": "Propose CAM1",
+        "goal": "Create a proposal to borrow 2 units of CAM1 in assets."
+      },
+      {
+        "label": "Propose loan",
+        "goal": "Create a proposal to borrow 2 units of CAM1 in assets."
+      }
+    ],
+    "result_labels": {
+      "answer": "Answer",
+      "sources": "Sources",
+      "unresolved": "Missing evidence"
+    }
+  },
+  "assets": [
+    {
+      "file": "data/exam-assets/assets.json",
+      "content": "[{\"asset_code\":\"CAM1\",\"name\":\"Fictional camera\",\"available\":3},{\"asset_code\":\"MIC2\",\"name\":\"Fictional microphone\",\"available\":0}]"
+    }
+  ],
+  "cases": [
+    {
+      "id": "available",
+      "kind": "read",
+      "goal": "Check 2 units of CAM1.",
+      "tool": "check_asset_availability",
+      "args": {
+        "dataset_id": "assets",
+        "record_id": "CAM1",
+        "quantity": 2
+      },
+      "answer": "CAM1: available = 3; requested = 2; eligible = yes.",
+      "expected": {
+        "matched_count": 1,
+        "record_ids": [
+          "CAM1"
+        ],
+        "available": "3",
+        "requested": 2,
+        "eligible": true
+      }
+    },
+    {
+      "id": "missing",
+      "kind": "empty",
+      "goal": "Check 2 units of missing.",
+      "tool": "check_asset_availability",
+      "args": {
+        "dataset_id": "assets",
+        "record_id": "missing",
+        "quantity": 2
+      },
+      "answer": "No matching asset.",
+      "expected": {
+        "matched_count": 0,
+        "record_ids": [],
+        "available": null,
+        "requested": 2,
+        "eligible": false
+      }
+    },
+    {
+      "id": "invalid",
+      "kind": "blocked",
+      "goal": "Check a negative quantity.",
+      "tool": "check_asset_availability",
+      "args": {
+        "dataset_id": "assets",
+        "record_id": "CAM1",
+        "quantity": -1
+      },
+      "expected": {
+        "code": "invalid_arguments"
+      }
+    },
+    {
+      "id": "approve",
+      "kind": "proposal",
+      "goal": "Create a proposal to borrow 2 units of CAM1.",
+      "action": "asset_loan",
+      "references": [
+        {
+          "role": "subject",
+          "dataset_id": "assets",
+          "record_id": "CAM1"
+        }
+      ],
+      "changes": {
+        "quantity": 2
+      },
+      "decision": "approve",
+      "expected": {
+        "proposals": 1,
+        "outcome": "saved"
+      }
+    },
+    {
+      "id": "reject",
+      "kind": "proposal",
+      "goal": "Create a proposal to borrow 2 units of CAM1.",
+      "action": "asset_loan",
+      "references": [
+        {
+          "role": "subject",
+          "dataset_id": "assets",
+          "record_id": "CAM1"
+        }
+      ],
+      "changes": {
+        "quantity": 2
+      },
+      "decision": "reject",
+      "expected": {
+        "proposals": 0,
+        "outcome": "not_saved"
+      }
+    },
+    {
+      "id": "insufficient",
+      "kind": "proposal",
+      "goal": "Create a proposal to borrow 4 units of CAM1.",
+      "action": "asset_loan",
+      "references": [
+        {
+          "role": "subject",
+          "dataset_id": "assets",
+          "record_id": "CAM1"
+        }
+      ],
+      "changes": {
+        "quantity": 4
+      },
+      "decision": "approve",
+      "expected": {
+        "proposals": 0,
+        "outcome": "blocked",
+        "error_contains": "insufficient"
+      }
+    }
+  ]
+}

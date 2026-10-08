@@ -1,5 +1,7 @@
 # AI Agent Starter
 
+Bộ dụng cụ thích nghi: [bảng phân tích đề, mẫu tool/policy và ví dụ thiết bị](docs/ADAPTATION_KIT.md). Ví dụ `asset_code`/`asset-loan` chỉ đăng ký khi chủ động scaffold; catalog/data cũ giữ nguyên. Các checkpoint mới có thể làm evidence runtime cũ stale, không thay verdict lịch sử.
+
 Source offline **c7c09a3** đã kiểm tra phục hồi: 189 file/checksum đúng, health/catalog/UI assets và read/proposal approve/replay đạt, 0 model HTTP, không npm install/Internet. ZIP/manifest/receipt chính xác trong [candidate report](docs/EXAM_CANDIDATE.md); overall vẫn **FAIL** vì live/student chưa đủ, không suy từ package PASS rằng đã READY.
 
 Candidate f920d06: **387 tests / 16 eval và toàn bộ demos/Chrome QA đạt**. Ollama live **42 PASS / 8 FAIL / 1 BLOCKED**, đúng cap **160 HTTP**, 327136 provider tokens, 18 repairs/0 retry. Ticket empty thiếu query citation; ticket reject không tuân final outcome exact; E16 thử write trái goal (backend chặn). **Technical preparation verified; student rehearsal pending**, chưa overall READY. Chọn đúng goal có 3 PASS trong báo cáo; không mở thêm tính năng hoặc gọi thêm model sau cap.

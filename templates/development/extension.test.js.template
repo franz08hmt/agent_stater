@@ -1,0 +1,9 @@
+// Copy into tests/<name>.test.js after implementing a finite extension.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+test('FILL_TOOL: registry -> runner -> evidence; expected is independently authored', async () => {
+  assert.fail('UNCONFIGURED: wire real loader/registry/runner/store, scripted decisions and explicit expected.');
+});
+// Required cases: happy/missing/invalid/forbidden; wrong record/source/snapshot;
+// aggregate/outside-page evidence; approve/reject/hash/replay/concurrent/restart;
+// changed files before approval; unchanged originals; wrong expected must FAIL.

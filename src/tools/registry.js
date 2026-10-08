@@ -7,14 +7,15 @@ import { saveDraft } from './saveDraft.js';
 import { queryDataset, createQueryDatasetTool } from './queryDataset.js';
 import { compareCounts, createCompareCountsTool } from './compareCounts.js';
 import { createProposal, createProposalTool } from './createProposal.js';
+import { checkAssetAvailability, createCheckAssetAvailabilityTool } from './checkAssetAvailability.js';
 
-export const BUILTIN_TOOLS = Object.freeze({ search_notes: searchNotes, save_draft: saveDraft, query_dataset: queryDataset, compare_counts: compareCounts, create_proposal: createProposal });
+export const BUILTIN_TOOLS = Object.freeze({ search_notes: searchNotes, save_draft: saveDraft, query_dataset: queryDataset, compare_counts: compareCounts, create_proposal: createProposal, check_asset_availability: checkAssetAvailability });
 
 export function createConfiguredToolRegistry(names, datasets = [], task) {
   if (!Array.isArray(names) || !names.length || names.some((name) => !Object.hasOwn(BUILTIN_TOOLS, name))) {
     throw new Error('Task allowed_tools contains an unavailable tool.');
   }
-  const datasetFactories = { query_dataset: createQueryDatasetTool, compare_counts: createCompareCountsTool, create_proposal: createProposalTool };
+  const datasetFactories = { query_dataset: createQueryDatasetTool, compare_counts: createCompareCountsTool, create_proposal: createProposalTool, check_asset_availability: createCheckAssetAvailabilityTool };
   return createToolRegistry(names.map((name) => datasetFactories[name] ? datasetFactories[name](datasets, name === 'create_proposal' ? task : undefined) : BUILTIN_TOOLS[name]));
 }
 

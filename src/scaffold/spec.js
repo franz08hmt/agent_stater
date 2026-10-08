@@ -12,7 +12,7 @@ const strings = { type: 'array', maxItems: 10, uniqueItems: true, items: str() }
 const object = (properties, required = Object.keys(properties)) => ({ type: 'object', additionalProperties: false, properties, required });
 const reference = object({ role: { type: 'string', enum: ['subject', 'target'] }, dataset_id: str(40), record_id: str() });
 const count = { type: 'integer', minimum: 0, maximum: 200 };
-const readExpected = object({ matched_count: count, compared_count: count, result_count: count, record_ids: strings, sources: strings, contains: str(1000),
+const readExpected = object({ available: {}, requested: { type: 'integer', minimum: 1, maximum: 20 }, eligible: { type: 'boolean' }, matched_count: count, compared_count: count, result_count: count, record_ids: strings, sources: strings, contains: str(1000),
   value: str(40), values: { ...strings, minItems: 2, maxItems: 2, uniqueItems: false }, relation: { type: 'string', enum: ['lt', 'eq', 'gt'] } }, []);
 const common = { id: { ...str(40), pattern: '^[a-z][a-z0-9-]*$' }, kind: { type: 'string', enum: ['read', 'empty', 'blocked', 'proposal', 'draft'] }, goal: str(),
   tool: { type: 'string', enum: Object.keys(BUILTIN_TOOLS) }, args: { type: 'object' }, expected: { type: 'object' }, answer: str(2000), unresolved: str(500),
@@ -43,8 +43,10 @@ export function validateCases(cases, task, registry, retriever) {
         if (Object.keys(e).some((key) => !['sources', 'result_count', 'contains'].includes(key))) throw new Error('Unsupported notes expected field.');
         if (!Array.isArray(e.sources) || !Number.isInteger(e.result_count) || (c.kind === 'read' && !e.contains) || (c.kind === 'empty' && (!c.unresolved || e.sources.length))) throw new Error('Notes cases require expected sources/count/text; missing evidence needs unresolved.');
       } else {
-        const op = c.tool === 'compare_counts' ? 'compare' : c.args.operation;
-        const keys = ['matched_count', ...(op === 'lookup' ? ['record_ids'] : op === 'compare' ? ['values', 'relation', 'compared_count'] : ['value'])];
+        const asset = c.tool === 'check_asset_availability';
+        const op = asset ? 'lookup' : c.tool === 'compare_counts' ? 'compare' : c.args.operation;
+        const keys = ['matched_count', ...(op === 'lookup' ? ['record_ids'] : op === 'compare' ? ['values', 'relation', 'compared_count'] : ['value']), ...(asset ? ['available', 'requested', 'eligible'] : [])];
+        if (asset && (!Object.hasOwn(e, 'available') || !Number.isInteger(e.requested) || typeof e.eligible !== 'boolean' || (e.available !== null && (typeof e.available !== 'string' || !/^\d+$/.test(e.available))))) throw new Error('Asset expected available/requested/eligible must be independently declared.');
         if (Object.keys(e).some((key) => !keys.includes(key))) throw new Error('Unsupported dataset expected field for this operation.');
         if ([...(e.values || []), ...(e.value === undefined ? [] : [e.value])].some((v) => !/^-?\d+(?:\.\d+)?$/.test(v))) throw new Error('Expected numerical results must be plain decimal strings.');
         if (!Number.isInteger(e.matched_count) || (op === 'lookup' ? !Array.isArray(e.record_ids) : op === 'compare' ? !e.values || !e.relation || !Number.isInteger(e.compared_count) : e.value === undefined)) throw new Error('Dataset expected count and operation result are required.');

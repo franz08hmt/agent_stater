@@ -1,5 +1,7 @@
 # Thích ứng khi nhận đề
 
+Dùng [ADAPTATION_KIT](docs/ADAPTATION_KIT.md) để điền input/output/schema/tool/rules/expected trước scaffold. Có mẫu source/tests chưa đăng ký và ví dụ hữu hạn check_asset_availability/asset-loan; chỉ config/data khi luật đã có, luật mới cần code/test.
+
 ## Chốt candidate và diễn tập riêng (đợt 5)
 
 - Quy trình vận hành một trang: [EXAM_DAY_CHECKLIST](docs/EXAM_DAY_CHECKLIST.md). Quy trình phục hồi nguồn offline: [EXAM_RECOVERY](docs/EXAM_RECOVERY.md). Evidence mới và các failure: [EXAM_CANDIDATE](docs/EXAM_CANDIDATE.md).

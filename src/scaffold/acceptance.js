@@ -25,10 +25,11 @@ export function gradeReadEvidence(c, run, evidence, datasets) {
     return errors;
   }
   const data = datasets.find((d) => d.id === c.args.dataset_id), e = evidence[0];
-  const query = { operation: c.tool === 'compare_counts' ? 'compare' : c.args.operation, filters: c.args.filters || [] };
+  const asset = c.tool === 'check_asset_availability';
+  const query = { operation: asset ? 'lookup' : c.tool === 'compare_counts' ? 'compare' : c.args.operation, filters: asset ? [{ field: data.idColumn, op: 'eq', value: c.args.record_id }] : c.args.filters || [] };
   if (c.args.field !== undefined) query.field = c.args.field;
   if (query.operation === 'compare') query.compare_filters = c.args.compare_filters;
-  if (query.operation === 'lookup') query.limit = c.args.limit ?? 5;
+  if (query.operation === 'lookup') query.limit = asset ? 1 : c.args.limit ?? 5;
   if (!e || evidence.length !== 1 || !data || e.dataset_id !== data.id || e.dataset_version !== data.version || !same(e.query, query)) return [...errors, 'Query, dataset or snapshot differs from the case.'];
   for (const [key, value] of Object.entries(c.expected)) {
     const actual = key === 'record_ids' ? e.rows?.map(({ record }) => record[data.idColumn]) : key === 'value' ? String(e.value) : key === 'values' ? e.values?.map(String) : e[key];

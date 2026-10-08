@@ -6,7 +6,8 @@ import { join, relative } from 'node:path';
 import { validate } from '../src/tools/schema.js';
 import { BUILTIN_TOOLS } from '../src/tools/registry.js';
 import { datasetsSchema, loadDatasets } from '../src/data/datasets.js';
-import { proposalPoliciesSchema, bindPolicies, POLICY_FINGERPRINT } from '../src/proposals/policies.js';
+import { proposalPoliciesSchema, bindPolicies, policyFingerprint } from '../src/proposals/policies.js';
+import { assertAssetDataset } from '../src/business/assetAvailability.js';
 
 const MAX_FILE_BYTES = 16 * 1024;
 const KNOWN_TOOLS = Object.keys(BUILTIN_TOOLS);
@@ -41,12 +42,15 @@ export async function validateTaskConfig(raw, root, virtualFiles) {
   if (errors.length) invalid(errors.join('; ').replace('allowed_tools: items must be unique', 'allowed_tools: duplicate tools'));
   if (new Set(raw.sample_inputs.map((x) => x.label.toLowerCase())).size !== raw.sample_inputs.length) invalid('sample_inputs: duplicate labels');
   if (raw.allowed_tools.includes('save_draft') && !raw.allowed_tools.includes('search_notes')) invalid('save_draft requires search_notes for grounded drafts.');
-  for (const tool of ['query_dataset', 'compare_counts']) {
+  for (const tool of ['query_dataset', 'compare_counts', 'check_asset_availability']) {
     if (raw.allowed_tools.includes(tool) && !raw.data.datasets?.length) invalid(`${tool} requires at least one allowed dataset in data.datasets.`);
   }
   let datasets;
   try { datasets = await loadDatasets(raw.data.datasets, root, virtualFiles); }
   catch (err) { invalid(err.message); }
+  if (raw.allowed_tools.includes('check_asset_availability')) {
+    try { for (const data of datasets) assertAssetDataset(data); } catch (err) { invalid(err.message); }
+  }
   let proposalPolicies;
   try { proposalPolicies = bindPolicies(raw.proposal_policies, datasets); } catch (err) { invalid(err.message); }
   if (raw.allowed_tools.includes('create_proposal') && (!raw.allowed_tools.includes('query_dataset') || !proposalPolicies.length)) invalid('create_proposal requires query_dataset and registered proposal policies.');
@@ -65,7 +69,7 @@ export async function validateTaskConfig(raw, root, virtualFiles) {
   const files = [...new Set([...diskFiles.filter((name) => name.endsWith('.md')), ...virtualNotes.map((file) => file.slice(rel.length + 1))])].sort();
   if (!files.length) invalid('data.notes_dir must contain at least one .md note.');
   const digest = createHash('sha256').update(JSON.stringify(raw));
-  if (proposalPolicies.length) digest.update(POLICY_FINGERPRINT);
+  if (proposalPolicies.length || raw.allowed_tools.includes('check_asset_availability')) digest.update(await policyFingerprint());
   for (const dataset of datasets) digest.update(dataset.id).update(dataset.version);
   for (const name of files) {
     const note = join(dir, name);

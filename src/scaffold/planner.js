@@ -13,7 +13,7 @@ export async function previewScaffold({ root, spec, register = false }) {
   assertSchema(specSchema, spec); noPlaceholders(spec);
   const id = spec.task.id;
   if (id.length > 40) throw new Error('Scaffold task ID must be at most 40 characters.');
-  const allowed = { notes: ['search_notes', 'save_draft'], 'dataset-read': ['query_dataset', 'compare_counts'], proposal: ['query_dataset', 'create_proposal'] }[spec.template];
+  const allowed = { notes: ['search_notes', 'save_draft'], 'dataset-read': ['query_dataset', 'compare_counts', 'check_asset_availability'], proposal: ['query_dataset', 'create_proposal', 'check_asset_availability'] }[spec.template];
   if (spec.task.allowed_tools.some((t) => !allowed.includes(t))) throw new Error('Tool is outside this template scope.');
   if (spec.template === 'notes' && (!spec.task.allowed_tools.includes('search_notes') || spec.task.data.datasets?.length)) throw new Error('Notes template requires search_notes and no datasets.');
   if (spec.template === 'proposal' && (!spec.task.allowed_tools.includes('create_proposal') || spec.task.proposal_policies?.length !== 1)) throw new Error('Proposal template requires exactly one registered policy.');
