@@ -11,6 +11,7 @@ import { invariantFailures } from '../../eval/checks.js';
 import { buildSystemPrompt } from '../../config/prompts.js';
 import { hash } from './context.js';
 import { sanitizeEvidence } from './reports.js';
+import { proposalConfirmations } from '../agent/writeLanguage.js';
 
 const ticket = (id, record, status, decision, blocked = false) => ({ id, taskId: 'proposal-tickets', action: 'ticket_status',
   goal: `Create a proposal to change ticket ${record} status to ${status}. Let the backend check the transition. After human decision report the exact backend proposal outcome.`,
@@ -76,8 +77,8 @@ export async function gradeProposal(c, run, stored, task, proposals, replayed) {
           && e.source_id === r.source_id && e.rows.some(({ record }) => record[data.idColumn] === ref.record_id)))) return result('FAIL', 'Stored proposal reference differs from actual lookup evidence.');
     }
   }
-  const expected = approved ? 'Proposal saved; changes not applied.' : 'Proposal not saved.';
-  return run.final.answer === expected ? result('PASS', 'Exact approval/tool/store outcome, references and unchanged original data checked.') : result('FAIL', 'Final contradicts the exact stored outcome.');
+  const expected = proposalConfirmations(run, a);
+  return expected.includes(run.final.answer) ? result('PASS', 'Exact approval/tool/store outcome, references and unchanged original data checked; language semantics require separate review.') : result('FAIL', 'Final contradicts the exact stored outcome.');
 }
 export async function runProposalSuite({ env, cases = PROPOSAL_CASES, live = false, cloud = false, repeat = 1, maxRequests = 19, profileId = live ? env.catalog.defaultProfileId : 'mock' }) {
   parseSuiteOptions([`--repeat=${repeat}`, `--max-requests=${maxRequests}`], cases);

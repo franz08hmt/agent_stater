@@ -1,6 +1,7 @@
 import { validate } from './schema.js';
 import { bindPolicies, proposalRequested } from '../proposals/policies.js';
 import { argsHash } from '../agent/state.js';
+import { proposalConfirmations } from '../agent/writeLanguage.js';
 
 const id = { type: 'string', minLength: 1, maxLength: 500 };
 export function createProposalTool(datasets = [], task = {}) {
@@ -41,15 +42,14 @@ export function createProposalTool(datasets = [], task = {}) {
     name: 'create_proposal', access: 'write', requiresApproval: true, resultKind: 'proposal',
     description: 'Save an INTERNAL proposal only after human approval; never apply changes to the original dataset. '
       + 'Only when the goal explicitly requests a proposal. First lookup every referenced record; use exact returned source_id and record ID. Aggregate results do not qualify. '
-      + 'Arguments: action, references [{role,dataset_id,record_id,source_id}], changes, reason. After human decision final.answer must be exactly Proposal saved; changes not applied. / Proposal not saved. / Proposal outcome unknown. according to the tool outcome. '
+      + 'Arguments: action, references [{role,dataset_id,record_id,source_id}], changes, reason. After human decision final.answer must be exactly one confirmation matching the outcome and goal language. EN saved: Proposal saved; changes not applied. EN rejected: Proposal not saved. EN unknown: Proposal outcome unknown. VI saved: Đã lưu đề xuất; chưa áp dụng thay đổi. VI rejected: Không lưu đề xuất. VI unknown: Chưa xác định được kết quả lưu đề xuất. '
       + policies.map((p) => `${p.description} Dataset roles: ${JSON.stringify(Object.fromEntries(Object.entries(p.datasets).map(([r, d]) => [r, d.id])))}`).join(' '),
     schema, checkRules: (args, ctx = {}) => resolve(args, ctx).errors,
     checkFinal(decision, run) {
       const approval = run.approvals.findLast((a) => a.result_kind === 'proposal' && a.state !== 'pending');
       if (!approval) return [];
-      const expected = approval.state === 'executed' && approval.result?.proposal_id ? 'Proposal saved; changes not applied.'
-        : approval.write_outcome === 'unknown' ? 'Proposal outcome unknown.' : 'Proposal not saved.';
-      return decision.answer.trim() === expected ? [] : [`Report the backend write outcome exactly: ${expected}`];
+      const expected = proposalConfirmations(run, approval);
+      return expected.includes(decision.answer.trim()) ? [] : [`Report the backend write outcome exactly, in the goal language: ${expected.join(' / ')}`];
     },
     async execute(args, ctx) {
       const checked = resolve(args, ctx);

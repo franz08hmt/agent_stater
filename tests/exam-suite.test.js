@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadEnvironment } from '../src/operations/context.js';
-import { runSuite, selectCases, parseSuiteOptions } from '../src/operations/suite.js';
+import { runSuite, selectCases, parseSuiteOptions, gradeSuiteCase } from '../src/operations/suite.js';
 import { SMOKE_CASES, REHEARSAL_CASES } from '../src/operations/cases.js';
 import { createServer } from 'node:http';
 import { buildCatalog } from '../config/catalog.config.js';
@@ -136,8 +136,15 @@ for (const [decision, answer, drafts] of [['reject', 'Not saved.', 0], ['approve
 for (const [decision, answer] of [['reject', 'Saved.'], ['approve', 'Not saved.']]) {
   test(`approval ${decision}: false ${answer} is rejected even with a valid note citation`, async (t) => {
     const r = await approvalReply(t, decision, answer, ['http-status']);
-    assert.equal(r.results[0].run_status, 'completed');
-    assert.equal(r.results[0].status, 'FAIL'); assert.match(r.results[0].reason, /outcome/i);
+    assert.equal(r.results[0].run_status, 'failed');
+    assert.equal(r.results[0].failure_code, 'invalid_model_output');
+    assert.equal(r.results[0].status, 'FAIL');
+    // Also exercise the grader independently for old history that predates backend confirmation checks.
+    const approved = decision === 'approve', c = SMOKE_CASES.find(c => c.id === decision);
+    const a = { approval_id: 'a1', tool: 'save_draft', state: approved ? 'executed' : 'rejected' };
+    const observations = [{ tool: c.tool, status: 'ok' }, { tool: 'save_draft', status: approved ? 'ok' : 'rejected_by_user', untrusted_data: { draft_id: 'a1', created: true } }];
+    const verdict = gradeSuiteCase(c, { status: 'completed', approvals: [a], final: { answer, source_ids: ['http-status'] } }, observations, null, approved ? 1 : 0, true, true);
+    assert.equal(verdict.status, 'FAIL'); assert.match(verdict.reason, /outcome/i);
   });
 }
 test('approval final that states HTTP knowledge still requires its note evidence', async (t) => {

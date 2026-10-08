@@ -23,7 +23,9 @@ export async function createConfigurationDemo() {
     if (mode === 'timeout') await new Promise((r) => setTimeout(r, 350));
     else if (!isProbe) await new Promise((r) => setTimeout(r, controls.delayMs));
     if (mode === '503' || mode === '429') { res.writeHead(Number(mode), { 'content-type': 'application/json' }); res.end('{"error":"simulated"}'); return; }
-    const text = isProbe ? mode === 'invalid' ? '{"unexpected":true}' : '{"ok":true}' : (await mock.complete({ messages: body.messages })).text;
+    const text = isProbe ? mode === 'invalid' ? '{"unexpected":true}' : '{"ok":true}'
+      : body.messages[0].content.startsWith('Re-express ONLY') && controls.followupReply ? controls.followupReply
+      : controls.runReply ? await controls.runReply(body.messages) : (await mock.complete({ messages: body.messages })).text;
     res.writeHead(200, { 'content-type': 'application/json' });
     res.end(JSON.stringify({ choices: [{ message: { content: text } }], usage: mode === 'missing usage' ? null : { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } }));
   });

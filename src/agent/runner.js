@@ -90,7 +90,7 @@ export function createAgentRunner({ model, registry, retriever, store, limits, m
       total -= m.content.length - short.length;
       m.content = short;
     }
-    const system = buildSystemPrompt({ task, tools: registry.describe(), limits });
+    const system = buildSystemPrompt({ task, tools: registry.describe(), limits, languagePolicy: run.language_policy });
     return [{ role: 'system', content: system }, ...msgs.map(({ role, content }) => ({ role, content }))];
   }
 

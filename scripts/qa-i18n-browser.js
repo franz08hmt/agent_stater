@@ -38,7 +38,37 @@ try {
     release(); await until(async()=>await text('status')==='Hoàn tất','completed');
     const final=await text('answer'), count=app.requests.length;
     await choose('ui-locale','en'); assert.equal(await text('answer'),final); assert.equal(app.requests.length,count);
-    assert.deepEqual(await read('Object.keys(localStorage).sort()'),['agent-studio.ui-locale','agent-studio.ui-mode','agent-studio.viewed-run']);
+    // Separate follow-up context and accounting. Original final/metrics must stay byte-for-byte identical.
+    const parentId=await text('run-id'), beforeRun=app.runner.getRun(parentId);
+    app.controls.followupReply=JSON.stringify({answer:final,source_ids:beforeRun.final.source_ids});
+    await click('#followup-panel summary');
+    await read("document.getElementById('followup-request').value='Giải thích lại bằng tiếng Việt.'");
+    await click('#followup-send');
+    await until(()=>read("document.getElementById('followup-results').textContent.includes('REVIEW_REQUIRED')"),'follow-up stored');
+    assert.equal(app.requests.length,count+1); assert.deepEqual(app.runner.getRun(parentId),beforeRun);
+    assert.match(await text('followup-accounting'),/1 \/ 3/);
+    await choose('ui-locale','vi'); assert.equal(await text('answer'),final); assert.equal(app.requests.length,count+1);
+    const followupMarker=await read('window.i18nMarker=crypto.randomUUID()'); await send('Page.reload');
+    await until(()=>read(`window.i18nMarker!==${JSON.stringify(followupMarker)}&&document.getElementById('followup-results').textContent.includes('REVIEW_REQUIRED')`),'follow-up restored');
+    assert.equal(app.requests.length,count+1); assert.deepEqual(app.runner.getRun(parentId),beforeRun);
+    await read("window.location.hash='#configuration'"); await click('#new-run');
+    assert.equal(await read("document.getElementById('followup-panel').hidden"),true);
+    assert.equal(await text('followup-results'),'');
+    // All four natural goal-language combinations. Fake HTTP establishes plumbing only.
+    for(const [ui,goal,answer] of [
+      ['en','HTTP 429 có nghĩa gì?','HTTP 429 là giới hạn tần suất.'],
+      ['vi','Explain HTTP 429.','HTTP 429 indicates rate limiting.'],
+      ['vi','Giải thích HTTP 429 bằng tiếng Anh.','HTTP 429 indicates rate limiting.'],
+      ['en','Explain HTTP 429 in Vietnamese.','HTTP 429 là giới hạn tần suất.'],
+    ]) {
+      await choose('ui-locale',ui); await choose('model-select','http');
+      app.controls.runReply=messages=>JSON.stringify(messages.some(m=>m.content.startsWith('OBSERVATION'))?{type:'final',answer,source_ids:['http-status'],unresolved:''}:{type:'tool_call',tool:'search_notes',arguments:{query:'HTTP 429',limit:1}});
+      await read(`document.getElementById('goal').value=${JSON.stringify(goal)}`); await click('#start');
+      await until(async()=>{const id=await text('run-id');return app.runner.getRun(id).goal===goal&&app.runner.getRun(id).status==='completed'&&await text('answer')===answer;},'language example');
+      assert.equal(app.runner.getRun(await text('run-id')).goal,goal);
+      await read("window.location.hash='#configuration'"); await click('#new-run');
+    }
+    assert.deepEqual(await read('Object.keys(localStorage).sort()'),['agent-studio.ui-locale','agent-studio.ui-mode']); // New run removes only the viewed-run marker.
     // Wrong/blocked storage has a safe English fallback.
     await read("localStorage.setItem('agent-studio.ui-locale','bad')"); await send('Page.reload'); await ready();
     assert.equal(await read('document.documentElement.lang'),'en'); requests+=app.requests.length;

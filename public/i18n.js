@@ -1,6 +1,10 @@
 // UI-owned strings only. Never pass goal/answer/data/model names/raw diagnostics
 // to this dictionary. English phrases are stable keys; values are static Vietnamese.
 export const VI = Object.freeze({
+  'Rephrase this result': 'Diễn đạt lại kết quả này', 'Rephrase request': 'Yêu cầu diễn đạt lại', 'Rephrase': 'Diễn đạt lại', 'Rephrasing…': 'Đang diễn đạt lại…',
+  'Translate the previous answer into English.': 'Giải thích lại bằng tiếng Việt.',
+  'This result only; no tools or new business work. Separate budget: 3 calls per run.': 'Chỉ kết quả này; không gọi tool hoặc làm nghiệp vụ mới. Ngân sách riêng: 3 lượt mỗi run.',
+  'Separate follow-up session': 'Phiên diễn đạt lại riêng', 'Read manually: numeric/source checks do not verify every prose claim.': 'Cần đọc tay: kiểm số/nguồn không xác minh mọi phát biểu trong văn xuôi.',
   'Source {id}': 'Nguồn {id}', 'UI language': 'Ngôn ngữ giao diện',
   'Skip to agent workspace': 'Đến khu làm việc của agent', 'Exam mode': 'Chế độ thi', 'Standard': 'Tiêu chuẩn', 'Exam': 'Thi',
   'Creation': 'Tạo agent', 'Easily Create': 'Dễ dàng tạo', 'Complex Agent': 'Agent đa bước', 'Configure. Run. Inspect.': 'Cấu hình. Chạy. Kiểm tra.',

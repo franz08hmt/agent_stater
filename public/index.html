@@ -153,6 +153,18 @@
             <ul id="sources"></ul>
           </section>
           <p id="failure" class="error" role="alert" hidden></p>
+          <details id="followup-panel" hidden>
+            <summary data-i18n="Rephrase this result">Rephrase this result</summary>
+            <p class="hint" data-i18n="This result only; no tools or new business work. Separate budget: 3 calls per run.">This result only; no tools or new business work. Separate budget: 3 calls per run.</p>
+            <form id="followup-form">
+              <label for="followup-request" data-i18n="Rephrase request">Rephrase request</label>
+              <textarea id="followup-request" rows="2" maxlength="200" required data-i18n-placeholder="Translate the previous answer into English." placeholder="Translate the previous answer into English."></textarea>
+              <button id="followup-send" type="submit" data-i18n="Rephrase">Rephrase</button>
+            </form>
+            <p id="followup-error" role="alert" hidden></p>
+            <p id="followup-accounting" class="hint"></p>
+            <ol id="followup-results" aria-live="polite"></ol>
+          </details>
           <details id="run-details" class="run-details"><summary><span data-i18n="Run &amp; token details">Run &amp; token details</span></summary>
             <p id="goal-preview" class="message message--user" hidden></p>
             <dl class="run-meta">

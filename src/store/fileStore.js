@@ -14,7 +14,7 @@ import { join } from 'node:path';
 const SAFE_KEY = /^[A-Za-z0-9_-]{1,80}$/;
 
 export async function createFileStore({ root }) {
-  const dirs = { runs: join(root, 'runs'), drafts: join(root, 'drafts'), proposals: join(root, 'proposals'), logs: join(root, 'logs') };
+  const dirs = { runs: join(root, 'runs'), drafts: join(root, 'drafts'), proposals: join(root, 'proposals'), logs: join(root, 'logs'), followups: join(root, 'followups') };
   for (const d of Object.values(dirs)) await mkdir(d, { recursive: true });
 
   /** Write to a temp file then rename, so a crash never leaves half a JSON file. */
@@ -48,6 +48,23 @@ export async function createFileStore({ root }) {
   return {
     root,
     getProposal,
+    async saveFollowups(ledger) {
+      if (!SAFE_KEY.test(ledger.run_id) || ledger.results.length > 3 || Buffer.byteLength(JSON.stringify(ledger)) > 65536) throw new Error('Invalid follow-up ledger.');
+      await writeJsonAtomic(join(dirs.followups, `${ledger.run_id}.json`), ledger);
+    },
+    async getFollowups(id) {
+      if (!SAFE_KEY.test(id)) throw new Error('Invalid follow-up run ID.');
+      try {
+        const file = join(dirs.followups, `${id}.json`), info = await lstat(file);
+        if (!info.isFile() || info.size > 65536) throw new Error('Invalid follow-up storage.');
+        return JSON.parse(await readFile(file, 'utf8'));
+      } catch (error) { if (error.code === 'ENOENT') return null; throw error; }
+    },
+    async listFollowups() {
+      const out = [];
+      for (const name of await readdir(dirs.followups)) if (name.endsWith('.json') && SAFE_KEY.test(name.slice(0, -5))) out.push(await this.getFollowups(name.slice(0, -5)));
+      return out;
+    },
 
     async createProposalOnce(key, proposal, { signal } = {}) {
       if (!SAFE_KEY.test(key) || proposal.proposal_id !== key || JSON.stringify(proposal).length > 16384) throw Object.assign(new Error('Invalid proposal storage record.'), { writeOutcome: 'not_saved' });

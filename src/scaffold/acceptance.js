@@ -12,6 +12,7 @@ import { scriptedProposalDecision, gradeProposal, proposalObservations } from '.
 import { invariantFailures } from '../../eval/checks.js';
 import { buildSystemPrompt } from '../../config/prompts.js';
 import { canonicalJson } from '../agent/state.js';
+import { CONFIRMATIONS } from '../agent/writeLanguage.js';
 import { readBounded, safePath } from './files.js';
 import { manifestSchema, assertSchema, validateCases, OFFLINE_CONFIG } from './spec.js';
 
@@ -54,7 +55,7 @@ function gradeDraft(c, run, evidence, drafts, replayed) {
   if (!a || a.tool !== 'save_draft' || a.state !== (approved ? 'executed' : 'rejected') || !replayed || drafts.length !== c.expected.drafts) errors.push('Draft approval/replay/store mismatch.');
   if (approved && (!drafts[0] || drafts[0].draft_id !== a?.approval_id || a?.result?.draft_id !== drafts[0].draft_id
     || drafts[0].content !== c.draft.content || drafts[0].title !== c.draft.title || !same(drafts[0].source_ids, a.arguments.source_ids))) errors.push('Stored draft does not match approved arguments.');
-  if (run.final.answer !== (approved ? 'Saved.' : 'Not saved.')) errors.push('Draft final contradicts tool outcome.');
+  if (!CONFIRMATIONS.draft[approved ? 'saved' : 'not_saved'].includes(run.final.answer)) errors.push('Draft final contradicts tool outcome.');
   return errors;
 }
 export async function runAcceptanceTask({ root, id }) {

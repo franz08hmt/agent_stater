@@ -18,12 +18,14 @@ import { createFileStore } from './store/fileStore.js';
 import { buildCatalog } from '../config/catalog.config.js';
 import { createRunManager } from './agent/runManager.js';
 import { probeProfile } from './model/probe.js';
+import { createFollowups } from './agent/followups.js';
 
 const STATIC = {
   '/': ['index.html', 'text/html; charset=utf-8'],
   '/index.html': ['index.html', 'text/html; charset=utf-8'],
   '/app.js': ['app.js', 'text/javascript; charset=utf-8'],
   '/i18n.js': ['i18n.js', 'text/javascript; charset=utf-8'],
+  '/followups.js': ['followups.js', 'text/javascript; charset=utf-8'],
   '/approval-outcome.js': ['approval-outcome.js', 'text/javascript; charset=utf-8'],
   '/workspace-view.js': ['workspace-view.js', 'text/javascript; charset=utf-8'],
   '/run-metrics.js': ['run-metrics.js', 'text/javascript; charset=utf-8'],
@@ -82,6 +84,7 @@ export async function createApp({ config, model, task, catalog, varDir, publicDi
   const retriever = catalog.tasks.get(catalog.defaultTaskId)?.retriever;
   const runner = createRunManager({ catalog, store, limits: config.limits, modelTimeoutMs: config.model.timeoutMs });
   await runner.init();
+  const followups = createFollowups({ catalog, store }); await followups.init();
 
   async function route(req, res) {
     const url = new URL(req.url, 'http://localhost');
@@ -132,6 +135,15 @@ export async function createApp({ config, model, task, catalog, varDir, publicDi
     }
     if (parts[1] === 'runs' && parts[2]) {
       const runId = parts[2];
+      if (parts[3] === 'followups' && parts.length === 4) {
+        runner.getRun(runId); // validate known run before storage access
+        if (req.method === 'GET') return send(res, 200, { followups: await followups.get(runId) });
+        if (req.method === 'POST') {
+          const body = await readJson(req, config.server.maxBodyBytes);
+          if (Object.keys(body).join() !== 'request') throw new AgentError('invalid_followup', 'Only a bounded rephrase request is accepted.');
+          return send(res, 200, { followup: await followups.ask(runId, body.request) });
+        }
+      }
       if (req.method === 'GET' && parts.length === 3) return send(res, 200, { run: runner.getRun(runId) });
       if (req.method === 'POST' && parts[3] === 'stop' && parts.length === 4) return send(res, 200, { run: await runner.stopRun(runId) });
       if (req.method === 'POST' && parts[3] === 'approvals' && parts[4] && parts.length === 5) {

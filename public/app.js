@@ -9,6 +9,7 @@ import { readRunSession, rememberRun } from './run-session.js';
 import { setupExamMode, modeContext } from './exam-mode.js';
 import { approvalRows } from './approval-presentation.js';
 import { t, setupLocale, currentLocale, errorExplanation } from './i18n.js';
+import { setupFollowups } from './followups.js';
 
 const $ = (id) => document.getElementById(id);
 const setText = (id, value) => { if ($(id).textContent !== value) $(id).textContent = value; };
@@ -24,6 +25,7 @@ let pollTimer = null;
 let configuration = null, ready = false, restoring = true, creating = false;
 let selection = null, approvalSignature = null;
 let draftsCache = [], proposalsCache = [];
+const followups = setupFollowups(api, document);
 const storage = { getItem: (key) => window.localStorage.getItem(key), setItem: (key, value) => window.localStorage.setItem(key, value), removeItem: (key) => window.localStorage.removeItem(key) };
 
 function updateCurrentNav(moveFocus = false) {
@@ -42,6 +44,7 @@ setupLocale(document, storage, () => {
   $('mode-state').textContent = t(document.documentElement.dataset.mode === 'exam' ? 'Exam' : 'Standard');
   if (current) render(current);
   renderDrafts(); renderProposals();
+  followups.refresh();
 });
 
 async function api(path, options = {}) {
@@ -113,6 +116,7 @@ function render(run) {
     $('goal-count').textContent = run.goal.length;
   }
   current = run;
+  followups.setRun(run);
   updateContext();
   rememberRun(storage, run.run_id);
   configuration?.setRun(run);
@@ -271,6 +275,7 @@ $('stop-dialogue').addEventListener('click', stopRun);
 $('new-run').addEventListener('click', () => {
   clearTimeout(pollTimer);
   current = null;
+  followups.setRun(null);
   approvalSignature = null;
   rememberRun(storage, null);
   configuration?.setRun(null);

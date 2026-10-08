@@ -35,6 +35,7 @@ export function createRun({ goal, model, taskFingerprint = null, limits = {}, se
   return {
     run_id: `run_${randomUUID()}`,
     goal,
+    language_policy: 'goal-natural-v1', // backend-owned; absent in historical runs
     task_fingerprint: taskFingerprint,
     ...(selection ? { task_id: selection.task.id, model_profile_id: selection.profile.id, model_identity: selection.identity,
       configuration: { task: structuredClone(selection.task), model_profile: structuredClone(selection.profile), limits: { max_steps: limits.maxSteps } },
