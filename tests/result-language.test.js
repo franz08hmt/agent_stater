@@ -35,10 +35,10 @@ test('proposal final accepts finite VI or EN equivalents; contradicting outcome 
 test('draft write intent comes from original request, never quoted or negated text', () => {
   const ctx = (goal) => ({ run: { goal, retrieved_source_ids: ['http-status'] }, retriever: { has: () => true } });
   const args = { source_ids: ['http-status'] };
-  for (const goal of ['Do not save a draft.', 'Đừng lưu bản nháp.', 'Explain "save a draft".', 'Giải thích `lưu bản nháp`.', 'Explain how to save a draft.', 'Giải thích từ lưu và bản nháp.', 'Users save drafts; explain why.', 'Users read and save drafts.', 'Tóm tắt HTTP và không lưu bản nháp.', 'Summarize HTTP and do not ever save a draft.']) {
+  for (const goal of ['Do not save a draft.', 'Đừng lưu bản nháp.', 'Explain "save a draft".', 'Giải thích `lưu bản nháp`.', 'Explain how to save a draft.', 'Giải thích từ lưu và bản nháp.', 'Users save drafts; explain why.', 'Users read and save drafts.', 'Tóm tắt HTTP và không lưu bản nháp.', 'Summarize HTTP and do not ever save a draft.', 'Lưu bản nháp là gì?', 'Lưu bản nháp là gì', 'Summarize why users read and save drafts.', 'Summarize how users read and save drafts.', 'Save a draft means what?', 'Save a draft is an example of persistence.']) {
     assert.match(saveDraft.checkRules(args, ctx(goal)).join(), /save_not_requested/);
   }
-  for (const goal of ['Tóm tắt HTTP và lưu bản nháp.', 'Summarize HTTP and save a draft.', 'Tổng hợp HTTP và lưu bản nháp.', 'Save HTTP.', 'Hãy tạo bản nháp HTTP.', 'Please write a draft.']) assert.deepEqual(saveDraft.checkRules(args, ctx(goal)), []);
+  for (const goal of ['Tóm tắt HTTP và lưu bản nháp.', 'Summarize HTTP and save a draft.', 'Tổng hợp HTTP và lưu bản nháp.', 'Save HTTP.', 'Hãy tạo bản nháp HTTP.', 'Please write a draft.', 'Save a draft called "What is HTTP?".']) assert.deepEqual(saveDraft.checkRules(args, ctx(goal)), []);
 });
 
 test('VI/EN finite draft confirmations distinguish saved, rejected and unknown without rewriting output', () => {
@@ -55,7 +55,7 @@ test('VI/EN finite draft confirmations distinguish saved, rejected and unknown w
 });
 
 test('mentioning save in a VI/EN explanation cannot create approval even after a real lookup', async () => {
-  for (const goal of ['Explain how to save a draft about HTTP.', 'Giải thích từ lưu và bản nháp HTTP.', 'Tóm tắt HTTP và không lưu bản nháp.']) {
+  for (const goal of ['Explain how to save a draft about HTTP.', 'Giải thích từ lưu và bản nháp HTTP.', 'Tóm tắt HTTP và không lưu bản nháp.', 'Lưu bản nháp là gì?', 'Lưu bản nháp là gì', 'Summarize why users read and save drafts.', 'Summarize how users read and save drafts.', 'Save a draft is an example of persistence.']) {
     const h = await harness({ replies: [tool('search_notes', { query: 'HTTP 429', limit: 1 }),
       tool('save_draft', { title: 'HTTP draft', content: 'HTTP 429.', source_ids: ['http-status'] }),
       final('Không lưu bản nháp.', ['http-status'])] });

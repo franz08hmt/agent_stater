@@ -42,13 +42,18 @@ export const saveDraft = {
     // drops stopwords such as "and", "và", "không" and is unsuitable here.
     const goal = original.toLowerCase().normalize('NFD').replace(/\p{M}/gu, '').replace(/đ/g, 'd').trim();
     const negated = /\b(?:do not|never|without|don't|khong|dung)\s+(?:(?:ever|please|duoc|nen|bao gio)\s+)*(?:save|store|create|write|luu|tao|viet|ghi)\b/.test(goal);
+    // Fail closed on questions/definitions and summaries of somebody else's
+    // behaviour: a verb inside that description is not a user write command.
+    const ambiguous = /[?？]|\b(?:la gi|duoc hieu la|co nghia la)\b/.test(goal)
+      || /^(?:(?:please|hay)\s+)?(?:summarize|tom tat|tong hop)\s+(?:why|how|what|whether|if|the way|users?|people|tai sao|vi sao|cach|nguoi dung)\b/.test(goal)
+      || /^(?:(?:please|hay)\s+)?(?:save|store|create|write|luu|tao|viet|ghi)\s+(?:(?:a|an|the|mot)\s+)?(?:drafts?|ban nhap)\s+(?:is|are|means?|la|duoc hieu)\b/.test(goal);
     // A direct imperative, or a summary command followed by a write command.
     // Narrative mentions/questions and quoted text never grant write permission.
     const imperative = (verbs) => new RegExp(`^(?:(?:please|hay)\\s+)?(?:(?:${verbs})\\b|(?:summarize|tom tat|tong hop)\\b[\\s\\S]*?\\b(?:and(?: then)?|then|va|roi)\\s+(?:(?:please|hay)\\s+)?(?:${verbs})\\b)`).test(goal);
     const saveRequested = imperative('luu|save|store')
       || (/\bban nhap\b/.test(goal) && imperative('tao|viet|ghi'))
       || (/\bdraft\b/.test(goal) && imperative('create|write'));
-    if (!saveRequested || negated) errors.push('save_not_requested: the original unquoted goal did not explicitly request saving a draft.');
+    if (!saveRequested || negated || ambiguous) errors.push('save_not_requested: the original unquoted goal did not explicitly request saving a draft.');
     for (const id of args.source_ids) {
       if (!ctx.retriever.has(id)) errors.push(`source_id "${id}" does not exist in the notes.`);
       else if (!ctx.run.retrieved_source_ids.includes(id)) errors.push(`source_id "${id}" was not retrieved in this run; search for it first.`);

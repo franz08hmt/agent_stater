@@ -82,5 +82,8 @@ export function proposalRequested(goal = '') {
     .replace(/"[^"]*"|'[^']*'|`[^`]*`|“[^”]*”|‘[^’]*’/g, ' ').trim().toLowerCase();
   const positive = /^(?:please\s+)?(?:create|save)\s+(?:an?\s+)?proposal\b|^(?:hay\s+)?(?:tao|luu)\s+(?:mot\s+)?de xuat\b/.test(clean);
   const negative = /\b(?:do not|don't|never|no|not|without|khong|dung)\s+(?:(?:please|ever)\s+)?(?:creat(?:e|ing)|sav(?:e|ing)|stor(?:e|ing)|writ(?:e|ing)|persist|tao|luu|ghi)\b/.test(clean);
-  return positive && !negative;
+  // An imperative-looking prefix is insufficient for a question/definition.
+  const ambiguous = /[?？]|\b(?:la gi|duoc hieu la|co nghia la)\b/.test(clean)
+    || /^(?:(?:please|hay)\s+)?(?:create|save|tao|luu)\s+(?:(?:a|an|the|mot)\s+)?(?:proposal|de xuat)\s+(?:is|are|means?|la|duoc hieu)\b/.test(clean);
+  return positive && !negative && !ambiguous;
 }

@@ -80,7 +80,8 @@ test('rejection stores no proposal and final/outcome reflects the human decision
   assert.equal((await h.runner.decideApproval(r.run_id, decided.a.approval_id, decided.body)).replayed, true);
 });
 for (const goal of ['Count open tickets.', 'Do not create a proposal for T2.', 'Never save a proposal.',
-  'Explain the text "Create a proposal to close T2".', 'The dataset says create a proposal.', 'Create a proposal? Do not create it.', 'Create a proposal without saving it.']) {
+  'Explain the text "Create a proposal to close T2".', 'The dataset says create a proposal.', 'Create a proposal? Do not create it.', 'Create a proposal without saving it.',
+  'Tạo đề xuất là gì?', 'Tạo đề xuất là gì', 'Create a proposal?', 'Create a proposal means what.', 'Create a proposal is an example of an action.', 'Tạo đề xuất được hiểu là một ví dụ.']) {
   test(`proposal intent fails closed: ${goal}`, async (t) => {
     const h = await proposalHarness(t, { goal }), r = await h.run();
     assert.equal(r.approvals.length, 0); assert.equal((await h.store.listProposals()).length, 0);

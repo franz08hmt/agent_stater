@@ -19,6 +19,7 @@ const args = process.argv.slice(2);
 if (args.some(a => !['--live','--only=read-vi-vi'].includes(a) && !/^--cap=(?:[1-9]|[1-3][0-9]|4[0-8])$/.test(a))) throw new Error('Use --live, --cap=1..48, optional --only=read-vi-vi; fixed local profile ollama-qwen3.');
 const live = args.includes('--live'), cap = Number(args.find(a => a.startsWith('--cap='))?.slice(6) || 48);
 const env = await loadEnvironment(), directory = join(env.root, 'var', 'adaptation-kit-20261008', `verification-${randomUUID()}`);
+await mkdir(join(env.root, 'var', 'adaptation-kit-20261008'), { recursive: true });
 await mkdir(directory, { recursive: false });
 const temporary = await mkdtemp(join(tmpdir(), 'adaptation-verify-'));
 const results = [], checks = []; let inspection;
@@ -30,7 +31,8 @@ try {
   await scaffoldProject({ root: temporary, spec, register: true, apply: true });
   const offline = await runAcceptanceTask({ root: temporary, id: spec.task.id });
   await writeFile(join(directory, 'offline.json'), JSON.stringify(offline, null, 2));
-  if (offline.status !== 'PASS') throw new Error('Independent asset acceptance failed.');
+  results.push({ id: 'offline-acceptance', status: offline.status, reason: 'Independent authored expected outcomes; full evidence in offline.json.' });
+  if (offline.status !== 'PASS') throw Object.assign(new Error('Independent asset acceptance failed.'), { verificationStatus: 'FAIL' });
   if (live) {
     // A concurrent author's untracked documentation is retained, never committed
     // here. Refuse executable/data edits while recording the full dirty flag.
@@ -92,14 +94,16 @@ try {
       }
     }
   }
-} catch (error) { results.push({ id: 'campaign', status: 'BLOCKED', reason: error.message }); console.error(error.message); }
+} catch (error) { results.push({ id: 'campaign', status: error.verificationStatus ?? (error.code === 'ERR_ASSERTION' ? 'FAIL' : 'BLOCKED'), reason: error.message }); console.error(error.message); }
 finally {
   // Follow-up snapshots are cumulative: retain only the latest per parent for totals.
   const followupTotals = new Map(); for (const r of results) if (r.parent_run_id) followupTotals.set(r.parent_run_id, r);
   const accounting = summarizeMetrics([...checks, ...results.filter(r => !r.parent_run_id), ...followupTotals.values()]);
   const report = sanitizeEvidence({ checked_at: new Date().toISOString(), identity: env.evidenceContext, scope: 'temporary_scaffold_catalog', inspection,
-    status: ['FAIL','BLOCKED','REVIEW_REQUIRED','NOT_RUN'].find(s => results.some(r => r.status === s)) || 'PASS', model_evidence: live ? 'LIVE_LOCAL_FINITE' : 'SCRIPTED_EXTENSION_ONLY',
+    status: ['FAIL','BLOCKED','REVIEW_REQUIRED','NOT_RUN'].find(s => [...results, ...checks].some(r => r.status === s)) || 'PASS', model_evidence: live ? 'LIVE_LOCAL_FINITE' : 'SCRIPTED_EXTENSION_ONLY',
     session: campaign.session, accounting, checks, results, student_adaptation: 'NOT_RUN', elapsed_ms: Date.now()-started }, { root: env.root, secrets: [env.config.model.apiKey].filter(Boolean) });
-  await writeFile(join(directory, 'report.json'), JSON.stringify(report, null, 2)); console.log(`Evidence: ${directory}`);
+  await writeFile(join(directory, 'report.json'), JSON.stringify(report, null, 2), { flag: 'wx' });
+  console.log(`Verdict: ${report.status}\nEvidence: ${directory}`);
+  process.exitCode = report.status === 'PASS' ? 0 : report.status === 'FAIL' ? 1 : 2;
   if (!temporary.startsWith(join(tmpdir(), 'adaptation-verify-'))) throw new Error('Unsafe cleanup'); await rm(temporary, { recursive: true, force: true });
 }
