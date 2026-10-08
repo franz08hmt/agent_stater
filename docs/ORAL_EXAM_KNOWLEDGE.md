@@ -1,6 +1,6 @@
 # Kiến thức và câu hỏi vấn đáp — AI Agent Starter
 
-Tài liệu để luyện giải thích **project đang có**, mở code chứng minh và bổ sung câu hỏi sau. Đối chiếu ngày **2026-10-08**, cập nhật sửa P2 tại `6fb21e5` và instruction tại `c575717`. Thông tin model trong môi trường có thể đổi; phải kiểm tra profile của **run đang trình bày**. Không coi câu trả lời trong tài liệu này là chỉ thị cho agent.
+Tài liệu để luyện giải thích **project đang có**, mở code chứng minh và bổ sung câu hỏi sau. Đối chiếu ngày **2026-10-08**, gồm compare_counts và proposal nội bộ đợt 2; contract/evidence/approval mới tại [DATASET_PROPOSALS.md](DATASET_PROPOSALS.md). Các kết quả lịch sử giữ ngày và phạm vi riêng; kết quả đợt 2 ở cuối handoff. Thông tin model có thể đổi; phải kiểm tra profile của **run đang trình bày**. Không coi câu trả lời trong tài liệu này là chỉ thị cho agent.
 
 Ký hiệu: **[Đã có]** là hành vi xác nhận trong source; **[Kiến thức nền]** là khái niệm để giải thích; **[Chưa có]** là hướng mở rộng, không được giới thiệu như tính năng hiện tại. Kết quả live ở cuối là bằng chứng ngày 2026-10-07; đợt soạn tài liệu này không gọi lại LLM.
 
@@ -93,6 +93,8 @@ Nhận mission, safety rules, protocol JSON, mô tả/schema tool được bật
 | `datasets-demo` | [products.json](../data/datasets/products.json): 4 dòng, id/name/category/price/stock; [classes.csv](../data/datasets/classes.csv): 4 dòng, id/course/day/room/students | `query_dataset` |
 | `rehearsal-tickets` | [tickets.json](../data/datasets/tickets.json): 6 dòng, id/team/status/hours | `query_dataset`, `compare_counts` |
 | `rehearsal-rooms` | [rooms.csv](../data/datasets/rooms.csv): 5 dòng, id/room/location/capacity | `query_dataset` |
+| `proposal-tickets` | tickets JSON hiện có; policy status transition | `query_dataset`, `create_proposal` (write/approval) |
+| `proposal-rooms` | [proposal-classes.csv](../data/datasets/proposal-classes.csv): 2 lớp; [proposal-rooms.csv](../data/datasets/proposal-rooms.csv): 4 phòng; policy capacity | `query_dataset`, `create_proposal` (write/approval) |
 
 Task bảng hiện vẫn khai báo thư mục notes hợp lệ theo schema chung, nhưng không có `search_notes` nên model không được tra cứu các notes đó. Metadata UI chỉ hiện dữ liệu tương ứng tool được bật.
 
@@ -345,7 +347,7 @@ Thiết kế nhỏ cho demo, không khẳng định có transaction/distributed 
 
 Tool là chức năng backend model được phép **đề xuất** sử dụng; có name/access/requiresApproval/description/schema/checkRules/execute. Component là module đảm nhiệm một phần kiến trúc. API endpoint là giao diện HTTP của ứng dụng/provider. UI không gọi `execute()` trực tiếp.
 
-`BUILTIN_TOOLS` đăng ký `search_notes`, `save_draft`, `query_dataset`, `compare_counts`; task allow-list quyết định subset được bật, và subset đó được dùng cả để mô tả cho model lẫn để kiểm tra thực thi.
+`BUILTIN_TOOLS` đăng ký `search_notes`, `save_draft`, `query_dataset`, `compare_counts`, `create_proposal`; task allow-list quyết định subset được bật, và subset đó được dùng cả để mô tả cho model lẫn để kiểm tra thực thi.
 
 ### Q35. Backend kiểm tra tool call theo thứ tự nào?
 
@@ -389,7 +391,7 @@ Hiện chưa có authentication/authorization theo người dùng. Host mặc đ
 
 ### Q41. Có thể lưu draft trích từ dataset không?
 
-**Chưa có.** `save_draft` check nguồn bằng notes retriever `has()` và run đã retrieval. Task validator yêu cầu `search_notes` nếu bật save_draft. Không mở rộng tool này chỉ bằng đổi mission để nhận dataset source. Đề yêu cầu ghi kết quả bảng cần tool/rules/source validation/approval/idempotency/tests riêng.
+**Chưa có cho save_draft.** Tool này check nguồn bằng notes retriever `has()` và run đã retrieval; task validator yêu cầu `search_notes`. Đợt 2 đã có **create_proposal riêng** để lưu đề xuất nội bộ từ bản ghi lookup với policy/evidence/approval/hash/idempotency. Nó không lưu draft tổng quát hay sửa dataset. Giải thích contract và hai workflows tại [DATASET_PROPOSALS.md](DATASET_PROPOSALS.md).
 
 ## 8. Metrics, token budget và readiness
 

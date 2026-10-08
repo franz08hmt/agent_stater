@@ -1,5 +1,13 @@
 # Thích ứng khi nhận đề
 
+## Proposal từ dataset (đợt 2)
+
+Hướng dẫn đầy đủ: [docs/DATASET_PROPOSALS.md](docs/DATASET_PROPOSALS.md). Hai task mới `proposal-tickets` và `proposal-rooms` bật query_dataset + create_proposal, không thay defaults/task/data cũ. Dataset lookup phải thực sự trả từng record trong đúng trang; aggregates/source từ run khác không cấp quyền ghi. Model đề xuất action/references/changes/reason, backend kiểm schema/policy/evidence/intent rồi dừng chờ duyệt đúng hash. Chỉ lưu proposal nội bộ, không sửa dataset.
+
+Task thêm `proposal_policies: [{policy_id:"ticket-status",datasets:{subject:"tickets"}}]` hoặc class-room với subject/target IDs. Giữ canonical fields và luật hiện có thì chủ yếu đổi file data, task và catalog. Luật/field mới cần sửa policy backend + schema/bind/check/tests và cases, không nạp code hoặc field mapping tùy ý từ JSON. Bắt đầu goal bằng “Create a proposal” hoặc “Tạo đề xuất”; phủ định/quoted instructions không cho ghi. Restart để nạp cấu hình mới; pending bị hủy nếu task/data/policy/model đổi.
+
+`npm run demo:proposals` chạy 5 ca scripted qua runner; `npm run qa:proposals` dùng browser thật/fake provider. Live chỉ local: `npm run demo:proposals -- --live --profile=ollama-qwen3 --only=ticket-approve,room-blocked --repeat=1 --max-requests=19`; nếu warm riêng 1 request thì tổng cap 20. CLI đóng vai người duyệt theo case, UI vẫn cần người bấm. Backend buộc final proposal status đúng dạng declared sau approval, không suy store outcome từ answer.includes. Chỉ dùng evidence mới và đọc cả repair/failure; 1 trial không chứng minh ổn định.
+
 ## Khởi động và diễn tập đổi đề (mục 6)
 
 Quy trình chi tiết, hai đề giả có đáp án và lệnh ghi thời gian: [docs/EXAM_REHEARSAL.md](docs/EXAM_REHEARSAL.md). Không xóa các task/eval cũ khi thêm đề mới.
@@ -13,7 +21,7 @@ Quy trình chi tiết, hai đề giả có đáp án và lệnh ghi thời gian:
 
 Trước buổi thi: chạy tests/eval/dataset/budget/browser QA, warm/probe local rồi 3 trial liên tiếp của đúng goal demo với cùng fingerprint; đọc tay answer/source/trace. Bộ chấm xác minh query/evidence/số/dạng đáp án, không bảo đảm mọi ngữ nghĩa. Backend vẫn chặn citation bịa; repair citation chỉ nhắc nguồn hợp lệ của chính run hoặc yêu cầu đọc khi chưa có bằng chứng, không tự thay nguồn. Không tăng maxRepairs/maxSteps/timeout để giấu lỗi. Reports lưu timeout thực tế: đợt M6 dùng `.env` sẵn có 120000ms, khác mặc định 30000ms; không sửa `.env`. HTTP redirect bị từ chối, không âm thầm gửi thêm request ngoài accounting.
 
-Mock UI chỉ có các ví dụ cũ; hai đề mới dùng scripted suite hoặc live đã kiểm chứng. `save_draft` vẫn notes-only; đề ghi từ bảng, join, chuyển/đặt phòng hoặc công thức ngoài count/sum/compare cần thiết kế/test tool mới với approval/idempotency. Xem mục kết quả M6 trong handoff để biết ca live nào đã đạt và phần còn chặn.
+Mock UI chỉ có các ví dụ cũ; các đề rehearsal/proposal dùng scripted suite hoặc live đã kiểm chứng. `save_draft` vẫn notes-only; hai policy proposal đã có hỗ trợ status ticket và capacity chuyển phòng ở mức đề xuất. Áp dụng thay đổi thật, join, booking hoặc công thức ngoài count/sum/compare cần thiết kế/test bổ sung. Xem kết quả mới nhất ở cuối handoff; các mốc M6 là lịch sử.
 
 Smoke approval chấm xác nhận `Saved.`/`Not saved.` theo approval state, observation tool, draft count và replay, không bắt nguồn ghi chú cho câu chỉ báo trạng thái. Tuyên bố ngược outcome bị FAIL; final trình bày kiến thức HTTP vẫn cần nguồn ghi chú. Nội dung ngoài dạng xác nhận được giữ REVIEW_REQUIRED để đọc tay. Grounding của runner không đổi: source ID bịa vẫn bị chặn, final source_ids rỗng vẫn phải giải thích unresolved. Lookup rỗng từ bảng có nguồn query, khác với xác nhận trạng thái approval.
 

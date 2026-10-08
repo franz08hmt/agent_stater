@@ -1,6 +1,6 @@
 # AI Agent Starter
 
-Mục 6 thêm launcher foreground, inspection/warm local có accounting, smoke có giới hạn, hai đề JSON/CSV và nhật ký thời gian đổi đề. Xem [quy trình trước buổi thi](docs/EXAM_REHEARSAL.md). Mốc offline sau sửa P2: 260 tests, 16 eval ghi chú, 3 demo dataset scripted và 2 demo ngân sách đạt. Xác nhận Saved/Not saved được chấm theo approval/tool outcome; runtime fingerprint bao phủ JavaScript dưới src/config, không phụ thuộc commit tài liệu. LLM vẫn cần kiểm chứng từng goal; grounding và giới hạn repair giữ nguyên.
+Đợt 2 bổ sung proposal nội bộ từ dataset với business rules, lookup evidence, approval/hash và chống ghi trùng. **316 tests**, 16 eval ghi chú và các demo scripted đạt; browser thật kiểm chứng approve/reject/replay/reload/error và desktop/mobile. Live Ollama có một trial đạt cho tạo ticket proposal và một trial đạt cho chặn capacity; chưa đủ chứng minh ổn định 3 lần. Xem [contract và cách đổi policy](docs/DATASET_PROPOSALS.md), [quy trình trước buổi thi](docs/EXAM_REHEARSAL.md) và phần kết quả cuối handoff. Grounding/budgets/repair/timeout giữ nguyên.
 
 ```powershell
 npm run exam:start
@@ -19,7 +19,7 @@ Task bổ sung: `rehearsal-tickets` (6 ticket JSON) và `rehearsal-rooms` (5 ph�
 
 Reports append-only ở `var/exam/` (Git ignored), có task/data/profile/protocol/suite fingerprints, timestamp/commit, quyết định/tool/nguồn, metrics và tất cả trial thất bại. `exam:report -- --id=ID` xác định stale/commit_changed; readiness loại stale khỏi bằng chứng hiện tại và giữ PASS/FAIL/BLOCKED/REVIEW_REQUIRED/NOT_RUN. Không lưu credentials, system prompt, HTTP body hoặc đường dẫn root. Ba trial liên tiếp chỉ chứng minh các case/dạng đáp án đã kiểm tra; nội dung ngữ nghĩa rộng hơn cần đọc tay.
 
-`exam:timer` ghi start/end cho `read,map,config,start,acceptance,demo`, lỗi và phần sửa bằng tay; xem [hai đề và hướng dẫn timing](docs/EXAM_REHEARSAL.md). **Chưa đo thời gian đổi đề thực tế** trên sinh viên; thời gian script không phải thời gian đổi đề. Mock UI không giải hai task mới; scripted evaluation chỉ chứng minh backend. `save_draft` chưa lưu nguồn dataset; đề yêu cầu ghi từ bảng hoặc join/đặt phòng cần tool mới, không chỉ sửa mission.
+`exam:timer` ghi start/end cho `read,map,config,start,acceptance,demo`, lỗi và phần sửa bằng tay; xem [hai đề và hướng dẫn timing](docs/EXAM_REHEARSAL.md). **Chưa đo thời gian đổi đề thực tế** trên sinh viên; thời gian script không phải thời gian đổi đề. Mock UI không giải hai task rehearsal/proposal mới; scripted evaluation chỉ chứng minh backend. `save_draft` chưa lưu nguồn dataset; `create_proposal` lưu đề xuất nội bộ từ lookup đã chứng minh, không áp dụng thay đổi. Join/đặt phòng thật hoặc luật mới cần code/test, không chỉ sửa mission.
 
 Sườn ứng dụng **AI Agent** nhỏ để chuẩn bị kiểm tra giữa kỳ môn *New Technologies in Software Engineering*.
 Một LLM có sẵn nhận mục tiêu, tự chọn công cụ và bước tiếp theo dựa trên kết quả vừa nhận; backend kiểm tra
@@ -209,6 +209,7 @@ Test `a different tool result leads the (rule-based mock) model to a different n
 | POST | `/api/runs/:id/approvals/:approvalId` | `{"decision":"approve"\|"reject","args_hash":"..."}` | 200; gửi lại cùng quyết định → `replayed: true` |
 | POST | `/api/runs/:id/stop` | — | Dừng run |
 | GET | `/api/drafts` | — | Bản nháp đã lưu |
+| GET | `/api/proposals?limit=20` | — | Proposal nội bộ đã lưu; limit 1–50, mặc định 20; không áp dụng vào dataset |
 
 Mã lỗi: 400 input sai, 404 không có run/approval, 409 hash không khớp hoặc đã quyết định, 413 body quá lớn,
 415 sai content-type.
