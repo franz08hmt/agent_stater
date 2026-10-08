@@ -11,6 +11,7 @@ const choose = (id, value) => read(`(() => {const e=document.getElementById(${JS
 try {
   await send('Page.navigate', { url: app.url });
   await until(() => read("!!document.querySelector('#task-select option[value=proposal-tickets]') && !document.getElementById('start').disabled"), 'catalog');
+  await choose('ui-locale', 'en');
   for (const [index, caseId] of ['ticket-approve', 'room-approve', 'ticket-reject', 'ticket-approve', 'room-blocked'].entries()) {
     const c = PROPOSAL_CASES.find((c) => c.id === caseId); app.controls.caseId = caseId; app.controls.storeError = index === 3;
     await read("window.location.hash='#configuration'");

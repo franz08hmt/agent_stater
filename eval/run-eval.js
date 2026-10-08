@@ -15,6 +15,7 @@ import { mkdtemp, readFile, rm, writeFile, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { randomUUID } from 'node:crypto';
 import { loadConfig } from '../config/agent.config.js';
 import { loadTaskConfig } from '../config/task.config.js';
 import { buildSystemPrompt } from '../config/prompts.js';
@@ -45,7 +46,7 @@ const retriever = await createKeywordRetriever({ dir: task.dataDir });
 const registry = createConfiguredToolRegistry(task.allowedTools, task.datasets);
 const env = {
   registry,
-  systemPrompt: buildSystemPrompt({ task, tools: registry.describe(), limits: config.limits }),
+  systemPrompt: buildSystemPrompt({ task, tools: registry.describe(), limits: config.limits, languagePolicy: 'goal-natural-v1' }),
   apiKey: config.model.apiKey,
 };
 
@@ -121,9 +122,9 @@ for (const c of cases) {
 const count = (s) => results.filter((r) => r.status === s).length;
 console.log(`\n${count('PASS')} passed, ${count('FAIL')} failed, ${count('INCONCLUSIVE')} inconclusive, ${count('BLOCKED')} blocked by the provider, ${count('SKIP')} skipped of ${results.length}.`);
 if (providerDown) console.log(`Live session stopped after the first provider failure (${providerDown}); no further requests were sent.`);
-await mkdir(join(root, 'var'), { recursive: true });
-const out = join(root, 'var', `eval-${live ? 'live' : 'mock'}${only ? `-${only.join('-')}` : ''}.json`);
-await writeFile(out, JSON.stringify({ mode: label, at: new Date().toISOString(), results }, null, 2));
+await mkdir(join(root, 'var', 'evaluations'), { recursive: true });
+const out = join(root, 'var', 'evaluations', `eval-${live ? 'live' : 'mock'}-${randomUUID()}.json`);
+await writeFile(out, JSON.stringify({ mode: label, at: new Date().toISOString(), results }, null, 2), { flag: 'wx' });
 console.log(`Details: ${out}`);
 // 0 = all conclusive passes; 1 = a failure; 3 = nothing failed but something could not be concluded.
 process.exitCode = count('FAIL') ? 1 : count('BLOCKED') || count('INCONCLUSIVE') ? 3 : 0;

@@ -90,7 +90,7 @@ test('the E16 case definition used by the campaign is fingerprinted independentl
 
 test('campaign driver and scoped scaffold spec changes invalidate earlier readiness reports',async(t)=>{
   const root=await copiedProject(t),env=await loadEnvironment({root,dotenv:false}),report=await saveReport(env,'live-campaign',{status:'PASS'});
-  for(const file of ['scripts/exam-campaign.js','templates/rehearsal-rentals.spec.json']){
+  for(const file of ['scripts/exam-campaign.js','templates/rehearsal-rentals.spec.json','scripts/verify-adaptation.js','templates/asset-loan.spec.json']){
     const path=join(root,file),original=await readFile(path,'utf8');
     await writeFile(path,original+'\n');
     assert.equal(reportFreshness(report,await loadEnvironment({root,dotenv:false})).stale,true,file);

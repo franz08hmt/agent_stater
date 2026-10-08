@@ -86,7 +86,7 @@ export async function runAcceptanceTask({ root, id }) {
       const stored = (await store.loadRuns())[0], observations = proposalObservations(stored.messages);
       const evidence = observations.filter((o) => o.status === 'ok').flatMap((o) => o.untrusted_data?.results || []);
       const proposals = await store.listProposals(), drafts = await store.listDrafts(), unchanged = await task.verifyCurrent();
-      const systemPrompt = buildSystemPrompt({ task, tools: registry.describe(), limits: OFFLINE_CONFIG.limits });
+      const systemPrompt = buildSystemPrompt({ task, tools: registry.describe(), limits: OFFLINE_CONFIG.limits, languagePolicy: run.language_policy });
       const errors = invariantFailures(run, { registry, systemPrompt, apiKey: '' });
       if (!unchanged) errors.push('Original data/config changed.');
       let status = 'PASS', reason = 'Declared expected outcomes, run evidence and unchanged data checked.';

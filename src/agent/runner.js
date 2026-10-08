@@ -368,8 +368,8 @@ export function createAgentRunner({ model, registry, retriever, store, limits, m
     },
 
     async startRun(goal) {
-      const text = typeof goal === 'string' ? goal.trim() : '';
-      if (!text) throw new AgentError('invalid_goal', 'Goal must be a non-empty string.');
+      const text = typeof goal === 'string' ? goal : '';
+      if (!text.trim()) throw new AgentError('invalid_goal', 'Goal must be a non-empty string.');
       if (text.length > limits.maxGoalChars) throw new AgentError('goal_too_long', `Goal must be at most ${limits.maxGoalChars} characters (got ${text.length}).`);
       const run = createRun({ goal: text, model, taskFingerprint: task?.fingerprint, limits, selection });
       run.messages.push({ role: 'user', content: `GOAL: ${text}` });

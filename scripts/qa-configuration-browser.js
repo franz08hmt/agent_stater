@@ -24,6 +24,7 @@ try {
   // A note title is untrusted metadata: it must stay literal text, never HTML.
   app.catalog.tasks.get('study-notes').metadata.data.notes[0].title = '<img id="qa-injected-image" src=x onerror="globalThis.qaInjected=true">';
   await send('Page.navigate', { url: `${app.url}/#configuration` }); await uiReady();
+  await choose('ui-locale', 'en');
   assert.equal(app.requests.length, 0, 'load never probes');
   assert.match(await text('task-tools'), /search_notes.*save_draft/s); assert.match(await text('task-data'), /http-status/);
   assert.ok((await text('task-data')).includes('<img id="qa-injected-image"'));
@@ -73,7 +74,7 @@ try {
   await reload(); await status('Awaiting approval'); await delay(750);
   assert.equal(app.requests.length, 2, 'reload/polling pending never calls model or writes');
   assert.equal((await app.store.listDrafts()).length, 0);
-  assert.deepEqual(await read('Object.keys(localStorage)'), ['agent-studio.viewed-run']);
+  assert.deepEqual(await read('Object.keys(localStorage).sort()'), ['agent-studio.ui-locale', 'agent-studio.viewed-run']);
   assert.equal(await read("localStorage.getItem('agent-studio.viewed-run')"), runId);
   for (const width of [1280, 390]) {
     await b.screenshot('pending', width);

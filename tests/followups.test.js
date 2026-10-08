@@ -48,6 +48,9 @@ test('follow-up rejects changed numbers, missing IDs, fake source, tool calls an
   const writing = { final: { answer: 'Proposal not saved.', source_ids: ['http-status'] }, approvals: [{ result_kind: 'proposal', state: 'rejected' }] };
   assert.throws(() => validateFollowup(response('Đã lưu đề xuất; chưa áp dụng thay đổi.'), writing), /outcome/i);
   assert.equal(validateFollowup(response('Không lưu đề xuất.'), writing).status, 'PASS');
+  const enumRun = { ...input, final: { ...input.final, answer: 'CAM1: 2 available; status open.' }, messages: [{ content: 'OBSERVATION ' + JSON.stringify({ status: 'ok', untrusted_data: { results: [{ rows: [{ record: { asset_code: 'CAM1', status: 'open' } }] }] } }) }] };
+  assert.throws(() => validateFollowup(response('CAM1: còn 2; trạng thái mở.'), enumRun), /enum/);
+  assert.equal(validateFollowup(response('CAM1: còn 2; trạng thái open.'), enumRun).status, 'REVIEW_REQUIRED');
 });
 
 test('follow-up session is finite, isolated across runs and restart does not refresh budget', async (t) => {

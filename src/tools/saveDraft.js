@@ -10,7 +10,7 @@ export const saveDraft = {
   requiresApproval: true,
   description:
     'Save a summary draft to backend-managed storage. Requires human approval; the call pauses until a person approves or rejects it. '
-    + 'source_ids must be ids returned by search_notes in this run.',
+    + 'source_ids must be ids returned by search_notes in this run. For a status-only final use the actual outcome in the goal language: Saved. / Đã lưu bản nháp.; Not saved. / Không lưu bản nháp.; Draft outcome unknown. / Chưa xác định được kết quả lưu bản nháp. Never claim success without the confirmed store result.',
   schema: {
     type: 'object',
     properties: {

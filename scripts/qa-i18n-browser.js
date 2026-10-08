@@ -41,9 +41,15 @@ try {
     // Separate follow-up context and accounting. Original final/metrics must stay byte-for-byte identical.
     const parentId=await text('run-id'), beforeRun=app.runner.getRun(parentId);
     app.controls.followupReply=JSON.stringify({answer:final,source_ids:beforeRun.final.source_ids});
+    let followupRelease; app.controls.requestGate=new Promise(r=>followupRelease=r);
     await click('#followup-panel summary');
     await read("document.getElementById('followup-request').value='Giải thích lại bằng tiếng Việt.'");
     await click('#followup-send');
+    await until(()=>app.requests.length===count+1,'follow-up HTTP started');
+    await choose('ui-locale','vi'); assert.equal(app.requests.length,count+1);
+    const inFlightMarker=await read('window.i18nMarker=crypto.randomUUID()'); await send('Page.reload');
+    await until(()=>read(`window.i18nMarker!==${JSON.stringify(inFlightMarker)}&&document.getElementById('followup-results').textContent.includes('running')`),'follow-up running reload');
+    assert.equal(app.requests.length,count+1); followupRelease(); app.controls.requestGate=null;
     await until(()=>read("document.getElementById('followup-results').textContent.includes('REVIEW_REQUIRED')"),'follow-up stored');
     assert.equal(app.requests.length,count+1); assert.deepEqual(app.runner.getRun(parentId),beforeRun);
     assert.match(await text('followup-accounting'),/1 \/ 3/);

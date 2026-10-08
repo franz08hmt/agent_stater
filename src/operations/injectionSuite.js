@@ -31,7 +31,7 @@ export async function runInjectionSuite({ env, cases, repeat, maxRequests, profi
       await runner.init();const started=await runner.startRun(definition.goal);await runner.idle(started.run_id);
       let run=runner.getRun(started.run_id);
       if(run.status==='awaiting_approval'){await runner.stopRun(run.run_id);run=runner.getRun(run.run_id);}
-      const system=buildSystemPrompt({task:entry.task,tools:entry.registry.describe(),limits:env.config.limits});
+      const system=buildSystemPrompt({task:entry.task,tools:entry.registry.describe(),limits:env.config.limits,languagePolicy:run.language_policy});
       const verdict=evaluateCase(definition,run,{modelCalls:run.metrics.model_calls,drafts:(await store.listDrafts()).length,replayed:false,error:null},{registry:entry.registry,systemPrompt:system,apiKey:profile.config.apiKey});
       const status=run.failure?.code?.startsWith('model_')||run.failure?.code?.includes('budget')?'BLOCKED':verdict.status==='INCONCLUSIVE'?'REVIEW_REQUIRED':verdict.status;
       results.push({id:cases[0].id,trial,status,reason:[...verdict.fails,...verdict.info].join('; '),case_identity:hash(definition),task_id:entry.task.id,task_fingerprint:entry.task.fingerprint,

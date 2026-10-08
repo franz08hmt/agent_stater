@@ -115,7 +115,7 @@ export async function runProposalSuite({ env, cases = PROPOSAL_CASES, live = fal
         run = runner.getRun(run.run_id);
       }
       const stored = (await store.loadRuns())[0], proposals = await store.listProposals();
-      const system = buildSystemPrompt({ task: entry.task, tools: entry.registry.describe(), limits: env.config.limits });
+      const system = buildSystemPrompt({ task: entry.task, tools: entry.registry.describe(), limits: env.config.limits, languagePolicy: run.language_policy });
       const failures = invariantFailures(run, { registry: entry.registry, systemPrompt: system, apiKey: profile.config.apiKey });
       const verdict = failures.length ? result('FAIL', 'Safety invariant violated.') : await gradeProposal(c, run, stored, entry.task, proposals, replayed);
       results.push(sanitizeEvidence({ id: c.id, trial, ...verdict, case_identity: hash(c), task_id: entry.task.id, task_fingerprint: entry.task.fingerprint,

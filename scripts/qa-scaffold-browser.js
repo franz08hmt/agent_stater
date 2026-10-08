@@ -34,6 +34,7 @@ try {
   const choose = (id, value) => read(`(() => { const e=document.getElementById(${JSON.stringify(id)});e.value=${JSON.stringify(value)};e.dispatchEvent(new Event('change',{bubbles:true})); })()`);
   await send('Page.navigate', { url });
   await until(() => read("!!document.querySelector('#task-select option[value=exam-class-proposal]') && !document.getElementById('start').disabled"), 'generated catalog');
+  await choose('ui-locale', 'en');
   for (const [index, spec] of specs.entries()) {
     await read("window.location.hash='#configuration'");
     if (index) await click('#new-run');

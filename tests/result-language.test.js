@@ -66,3 +66,9 @@ test('scripted VI/EN goal matrix preserves raw goal; explicit instruction is pas
     finally { await h.cleanup(); }
   }
 });
+
+test('raw mixed technical goal including whitespace is preserved; only emptiness uses trim', async () => {
+  const h = await harness({ replies: [final('Thiếu dữ liệu.', [], 'Chưa có nguồn.')] });
+  try { const goal = '  Giải thích CAM1 / open bằng tiếng Anh. \n'; const r = await h.run(goal); assert.equal(r.goal, goal); }
+  finally { await h.cleanup(); }
+});

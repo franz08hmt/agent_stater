@@ -158,7 +158,7 @@ export async function runSuite({ env, cases, live = false, cloud = false, repeat
       const observations = stored.messages.filter((m) => m.content.startsWith('OBSERVATION')).map((m) => JSON.parse(m.content.slice(m.content.indexOf('{'))));
       const drafts = (await store.listDrafts()).length;
       const reference = c.kind === 'table' ? (await entry.registry.get(c.tool).execute(c.args)).results[0] : null;
-      const system = buildSystemPrompt({ task: entry.task, tools: entry.registry.describe(), limits: env.config.limits });
+      const system = buildSystemPrompt({ task: entry.task, tools: entry.registry.describe(), limits: env.config.limits, languagePolicy: run.language_policy });
       const leaks = invariantFailures(run, { registry: entry.registry, systemPrompt: system, apiKey: profile.config.apiKey });
       const verdict = leaks.length ? outcome('FAIL', 'Safety invariant violated; potentially sensitive answer omitted.') : gradeSuiteCase(c, run, observations, reference, drafts, paused, replayed);
       const evidence = observations.flatMap((o) => o.untrusted_data?.results || []).map((e) => ({ source_id: e.source_id, dataset_version: e.dataset_version, query: e.query, value: e.value, values: e.values }));

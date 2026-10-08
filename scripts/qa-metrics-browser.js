@@ -56,6 +56,7 @@ try {
       };
       await cdp.send('Page.navigate', { url: `${app.url}/#configuration` });
       await until(() => read("document.querySelector('#model-badge')?.textContent.includes('fake-http-demo')"), 'UI ready');
+      await read("(()=>{const e=document.getElementById('ui-locale');e.value='en';e.dispatchEvent(new Event('change',{bubbles:true}));})()");
       await click('#goal'); await cdp.send('Input.insertText', { text: scenario === 'approval' ? 'save HTTP 401 and 403' : 'Explain 401 and 403' });
       await click('#start');
       const expected = scenario === 'approval' ? 'Awaiting approval' : scenario === 'budget' ? 'Stopped' : 'Completed';

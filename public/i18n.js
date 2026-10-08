@@ -52,7 +52,12 @@ const ERRORS = { request_budget: ['Request budget exhausted.', 'Hết ngân sác
   model_rate_limited: ['Provider rate limited.', 'Provider giới hạn tần suất.'], model_unavailable: ['Model unavailable.', 'Model không khả dụng.'],
   task_changed: ['Task/data changed; start a new run.', 'Nhiệm vụ/dữ liệu đổi; tạo lượt chạy mới.'], model_changed: ['Model changed; start a new run.', 'Model đổi; tạo lượt chạy mới.'],
   configuration_missing: ['Configuration missing.', 'Thiếu cấu hình.'], user_stopped: ['Stopped by user.', 'Người dùng đã dừng.'], run_timeout: ['Run timed out.', 'Lượt chạy quá thời gian.'],
-  invalid_configuration: ['Select a valid configuration.', 'Chọn cấu hình hợp lệ.'], profile_unavailable: ['Profile unavailable.', 'Hồ sơ model không khả dụng.'] };
+  invalid_configuration: ['Select a valid configuration.', 'Chọn cấu hình hợp lệ.'], profile_unavailable: ['Profile unavailable.', 'Hồ sơ model không khả dụng.'],
+  invalid_followup: ['Only rephrasing is supported; create a new run for business work.', 'Chỉ hỗ trợ diễn đạt lại; tạo run mới cho nghiệp vụ.'],
+  followup_busy: ['A follow-up is in progress.', 'Đang có lượt diễn đạt lại.'], followup_budget: ['Follow-up budget exhausted.', 'Hết ngân sách diễn đạt lại.'],
+  followup_context: ['Stored context is unavailable.', 'Không đủ ngữ cảnh đã lưu.'], configuration_changed: ['Original configuration changed.', 'Cấu hình gốc đã đổi.'],
+  invalid_followup_output: ['Follow-up output failed validation.', 'Kết quả diễn đạt lại không hợp lệ.'], interrupted: ['Interrupted; not automatically restarted.', 'Bị gián đoạn; không tự chạy lại.'],
+  timeout: ['Model timed out.', 'Model quá thời gian.'], unavailable: ['Model unavailable.', 'Model không khả dụng.'], rate_limited: ['Provider rate limited.', 'Provider giới hạn tần suất.'] };
 export function errorExplanation(code) { return ERRORS[code]?.[locale === 'vi' ? 1 : 0] ?? ''; }
 export function t(key, args = {}) {
   const message = locale === 'vi' ? VI[key] ?? key : key;

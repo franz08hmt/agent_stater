@@ -28,6 +28,7 @@ async function open(app) {
   await viewport(); await send('Page.navigate', { url: `${app.url}/#configuration` });
   await until(() => read(`location.origin===${JSON.stringify(app.url)} && !!document.getElementById('task-select') && !document.getElementById('task-select').disabled`), 'configuration');
   await read('document.fonts.ready');
+  await choose('ui-locale', 'en');
 }
 async function reload(status) {
   const marker = await read('window.qaDocumentMarker=crypto.randomUUID()');
@@ -134,7 +135,7 @@ try {
     app.controls.run = '429'; await start('Explain HTTP 401 and 403'); await settled('Failed');
     assert.match(await text('failure'), /rate_limit|429/); await reload('Failed');
     assert.match(await text('mode-context'), /failed/);
-    assert.deepEqual(await read('Object.keys(localStorage).sort()'), ['agent-studio.ui-mode', 'agent-studio.viewed-run']);
+    assert.deepEqual(await read('Object.keys(localStorage).sort()'), ['agent-studio.ui-locale', 'agent-studio.ui-mode', 'agent-studio.viewed-run']);
     for (const width of [390, 320, 900]) {
       await viewport(width, 844); assert.equal(await read('document.documentElement.scrollWidth<=innerWidth'), true, `${width}px overflow`);
       assert.equal(await read("document.getElementById('configuration').hidden||document.getElementById('dialogue').hidden"), false);
