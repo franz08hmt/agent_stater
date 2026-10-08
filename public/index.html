@@ -11,7 +11,9 @@
 </head>
 <body>
   <a class="skip-link" href="#workspace">Skip to agent workspace</a>
-  <header class="hero" aria-labelledby="page-title">
+  <header id="app-header" class="hero" aria-labelledby="page-title">
+    <div class="mode-toolbar"><h1 id="exam-title" class="exam-brand"><img src="/assets/robot-pet.png" width="32" height="32" alt="">Agent Studio</h1><button type="button" id="exam-mode" class="secondary" aria-pressed="false">Exam mode <span id="mode-state">Standard</span></button></div>
+    <p id="mode-context" class="mode-context"></p>
     <p class="eyebrow">Creation</p>
     <h1 id="page-title">Easily Create<br>Complex Agent</h1>
     <p class="hero-subtitle">Configure. Run. Inspect.</p>
@@ -75,14 +77,16 @@
       <form id="goal-form">
         <fieldset class="form-section" id="configuration-options">
           <legend><span class="icon icon--cpu-chip" aria-hidden="true"></span>Run configuration</legend>
-          <label for="task-select">Task</label>
-          <select id="task-select" disabled><option>Loading tasks…</option></select>
-          <label for="model-select">Model profile</label>
-          <select id="model-select" disabled><option>Loading models…</option></select>
+          <div class="selection-grid">
+            <div><label for="task-select">Task</label><select id="task-select" disabled><option>Loading tasks…</option></select></div>
+            <div><label for="model-select">Model profile</label><select id="model-select" disabled><option>Loading models…</option></select></div>
+          </div>
+          <p id="selected-model-state" class="hint"></p>
           <p id="configuration-status" class="hint" role="status" aria-live="polite">Loading backend configuration…</p>
           <section id="model-check" aria-label="Model connectivity check">
             <p class="actions"><button type="button" id="probe-model" class="secondary" disabled><span class="icon icon--bolt" aria-hidden="true"></span>Check model</button></p>
-            <p id="probe-result" class="hint" role="status" aria-live="polite"></p>
+            <p id="probe-summary" class="hint" role="status" aria-live="polite"></p>
+            <details><summary>Connection details</summary><p id="probe-result" class="hint"></p></details>
           </section>
           <details class="configuration-details"><summary>Enabled tools &amp; data</summary>
             <h3>Tools</h3><ul id="task-tools"></ul>
@@ -96,15 +100,15 @@
           <textarea id="goal" name="goal" rows="5" maxlength="500" required aria-describedby="goal-limit" placeholder="Describe a task for this agent."></textarea>
           <p id="goal-limit" class="character-count"><span id="goal-count">0</span> / 500 characters</p>
         </fieldset>
-        <fieldset class="samples">
-          <legend>Try a course scenario</legend>
-        </fieldset>
         <p class="actions">
           <button type="submit" id="start" class="primary" disabled><span class="button-label">Run agent</span><span class="button-end"><span class="icon icon--chevron-right" aria-hidden="true"></span></span></button>
           <button type="button" id="stop" class="secondary" hidden><span class="icon icon--stop" aria-hidden="true"></span>Stop run</button>
           <button type="button" id="new-run" class="secondary" hidden><span class="icon icon--arrow-path" aria-hidden="true"></span>New run</button>
         </p>
         <p id="form-error" class="error" role="alert" hidden></p>
+        <fieldset class="samples">
+          <legend>Try a course scenario</legend>
+        </fieldset>
       </form>
       <section class="policy-note" aria-labelledby="policy-title">
         <span class="icon icon--shield-check" aria-hidden="true"></span>
@@ -125,28 +129,20 @@
           <h3 id="dialogue-empty-title">No run yet</h3>
           <a href="#configuration">Open Agent <span class="icon icon--chevron-right" aria-hidden="true"></span></a>
         </section>
-        <p id="goal-preview" class="message message--user" hidden></p>
         <section id="run-panel" class="run-content" aria-labelledby="run-title" hidden>
           <h3 id="run-title" class="sr-only">Current run</h3>
           <p id="run-configuration" class="hint"></p>
           <dl class="run-meta">
             <div><dt>Status</dt><dd><span id="status" class="status" role="status" aria-live="polite"></span></dd></div>
-            <div><dt>Steps</dt><dd id="steps"></dd></div>
             <div><dt>Active time</dt><dd id="elapsed"></dd></div>
             <div><dt>Provider requests</dt><dd id="metrics-requests"></dd></div>
-            <div><dt>Model activity</dt><dd id="metrics-calls"></dd></div>
-            <div><dt>Run timing</dt><dd id="metrics-timing"></dd></div>
-            <div class="run-id-row"><dt>Tokens</dt><dd id="metrics-tokens"></dd></div>
-            <div class="run-id-row"><dt>Run ID</dt><dd><code id="run-id"></code></dd></div>
           </dl>
-          <p id="metrics-note" class="hint"></p>
           <section id="approval" class="approval" aria-labelledby="approval-title" hidden>
             <h4 id="approval-title">Write approval required</h4>
             <p>Tool: <code id="approval-tool"></code>. Review the exact arguments.</p>
             <div id="approval-summary"></div>
-            <pre id="approval-args"></pre>
-            <p class="hint">Argument hash: <code id="approval-hash"></code></p>
             <p class="actions"><button type="button" id="approve" class="primary"><span class="button-label">Approve write</span><span class="button-end"><span class="icon icon--check-circle" aria-hidden="true"></span></span></button><button type="button" id="reject" class="danger">Reject</button></p>
+            <details id="approval-details"><summary>Exact arguments &amp; hash</summary><pre id="approval-args"></pre><p class="hint">Argument hash: <code id="approval-hash"></code></p></details>
           </section>
           <p id="write-outcome" class="write-outcome" role="status" aria-live="polite" hidden></p>
           <section id="result" class="result" aria-labelledby="result-title" hidden>
@@ -157,6 +153,17 @@
             <ul id="sources"></ul>
           </section>
           <p id="failure" class="error" role="alert" hidden></p>
+          <details id="run-details" class="run-details"><summary>Run &amp; token details</summary>
+            <p id="goal-preview" class="message message--user" hidden></p>
+            <dl class="run-meta">
+              <div><dt>Steps</dt><dd id="steps"></dd></div>
+              <div><dt>Model activity</dt><dd id="metrics-calls"></dd></div>
+              <div class="run-id-row"><dt>Run timing</dt><dd id="metrics-timing"></dd></div>
+              <div class="run-id-row"><dt>Tokens</dt><dd id="metrics-tokens"></dd></div>
+              <div class="run-id-row"><dt>Token breakdown</dt><dd id="metrics-breakdown"></dd></div>
+              <div class="run-id-row"><dt>Run ID</dt><dd><code id="run-id"></code></dd></div>
+            </dl><p id="metrics-note" class="hint"></p>
+          </details>
           <details class="trace-details">
             <summary>Execution trace <span class="icon icon--chevron-right" aria-hidden="true"></span></summary>
             <div class="table-wrap">

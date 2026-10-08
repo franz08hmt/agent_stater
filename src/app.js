@@ -28,6 +28,8 @@ const STATIC = {
   '/run-metrics.js': ['run-metrics.js', 'text/javascript; charset=utf-8'],
   '/configuration.js': ['configuration.js', 'text/javascript; charset=utf-8'],
   '/run-session.js': ['run-session.js', 'text/javascript; charset=utf-8'],
+  '/exam-mode.js': ['exam-mode.js', 'text/javascript; charset=utf-8'],
+  '/approval-presentation.js': ['approval-presentation.js', 'text/javascript; charset=utf-8'],
   '/styles.css': ['styles.css', 'text/css; charset=utf-8'],
   '/assets/robot-pet.png': ['assets/robot-pet.png', 'image/png'],
 };

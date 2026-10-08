@@ -96,4 +96,10 @@ test('static UI is served with a content security policy', async () => {
   const outcomeModule = await fetch(`${base}/approval-outcome.js`);
   assert.equal(outcomeModule.status, 200);
   assert.match(outcomeModule.headers.get('content-type'), /text\/javascript/);
+  for (const path of ['/exam-mode.js', '/approval-presentation.js']) {
+    const module = await fetch(`${base}${path}`);
+    assert.equal(module.status, 200);
+    assert.match(module.headers.get('content-type'), /text\/javascript/);
+    assert.match(module.headers.get('content-security-policy'), /default-src 'self'/);
+  }
 });

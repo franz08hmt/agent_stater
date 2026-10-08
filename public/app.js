@@ -6,8 +6,11 @@ import { latestWriteOutcome } from './approval-outcome.js';
 import { formatRunMetrics } from './run-metrics.js';
 import { setupConfiguration } from './configuration.js';
 import { readRunSession, rememberRun } from './run-session.js';
+import { setupExamMode, modeContext } from './exam-mode.js';
+import { approvalRows } from './approval-presentation.js';
 
 const $ = (id) => document.getElementById(id);
+const setText = (id, value) => { if ($(id).textContent !== value) $(id).textContent = value; };
 const STATUS_TEXT = {
   running: 'Running',
   awaiting_approval: 'Awaiting approval',
@@ -18,10 +21,11 @@ const STATUS_TEXT = {
 let current = null;
 let pollTimer = null;
 let configuration = null, ready = false, restoring = true, creating = false;
+let selection = null, approvalSignature = null;
 const storage = { getItem: (key) => window.localStorage.getItem(key), setItem: (key, value) => window.localStorage.setItem(key, value), removeItem: (key) => window.localStorage.removeItem(key) };
 
 function updateCurrentNav(moveFocus = false) {
-  const headingId = applyWorkspaceView(document, window.location.hash);
+  const headingId = applyWorkspaceView(document, window.location.hash, document.documentElement.dataset.mode);
   if (moveFocus) {
     $(headingId).focus({ preventScroll: true });
     $('workspace').scrollIntoView({ block: 'start' });
@@ -29,6 +33,8 @@ function updateCurrentNav(moveFocus = false) {
 }
 window.addEventListener('hashchange', () => updateCurrentNav(true));
 updateCurrentNav();
+setupExamMode(document, storage, () => updateCurrentNav());
+const updateContext = () => { $('mode-context').textContent = modeContext(current, selection); };
 
 async function api(path, options = {}) {
   const res = await fetch(path, {
@@ -87,7 +93,12 @@ async function loadProposals() {
 }
 
 function render(run) {
+  if (current?.run_id !== run.run_id) {
+    $('goal').value = run.goal;
+    $('goal-count').textContent = run.goal.length;
+  }
   current = run;
+  updateContext();
   rememberRun(storage, run.run_id);
   configuration?.setRun(run);
   const labels = run.configuration?.task.result_labels ?? { answer: 'Answer', sources: 'Sources', unresolved: 'Unresolved' };
@@ -98,15 +109,16 @@ function render(run) {
   $('run-panel').setAttribute('aria-busy', String(run.status === 'running'));
   $('goal-preview').textContent = run.goal;
   $('goal-preview').hidden = false;
-  $('status').textContent = STATUS_TEXT[run.status] || run.status;
+  setText('status', STATUS_TEXT[run.status] || run.status);
   $('status').className = `status is-${run.status}`;
   $('run-id').textContent = run.run_id;
   $('steps').textContent = `${run.steps_used} / ${run.configuration?.limits.max_steps ?? $('steps').dataset.max ?? '?'}`;
   $('elapsed').textContent = `${(run.active_ms / 1000).toFixed(1)} s`;
   const metrics = formatRunMetrics(run.metrics);
-  for (const key of ['requests', 'tokens', 'calls', 'timing', 'note']) $(`metrics-${key}`).textContent = metrics[key];
+  for (const key of ['requests', 'tokens', 'calls', 'timing', 'note', 'breakdown']) $(`metrics-${key}`).textContent = metrics[key];
 
   const busy = run.status === 'running' || run.status === 'awaiting_approval';
+  $('goal').disabled = busy;
   $('start').disabled = busy || !ready || restoring || creating;
   $('stop').hidden = !busy;
   $('stop-dialogue').hidden = !busy;
@@ -114,23 +126,25 @@ function render(run) {
 
   const pending = run.approvals.find((a) => a.approval_id === run.pending_approval);
   $('approval').hidden = !pending;
-  if (pending) {
+  const signature = pending ? `${pending.approval_id}:${pending.args_hash}` : null;
+  if (pending && signature !== approvalSignature) {
     $('approval-tool').textContent = pending.tool;
     $('approval-args').textContent = JSON.stringify(pending.arguments, null, 2);
     $('approval-hash').textContent = pending.args_hash;
     $('approval-hash').title = pending.args_hash;
     $('approval-summary').replaceChildren();
-    if (pending.result_kind === 'proposal') {
-      const a = pending.arguments, summary = $('approval-summary');
-      summary.append(el('p', `Action: ${a.action}`));
-      for (const ref of a.references) summary.append(el('p', `${ref.role}: ${ref.dataset_id} / ${ref.record_id} · ${ref.source_id}`));
-      summary.append(el('p', `Proposed changes: ${JSON.stringify(a.changes)}`), el('p', `Reason: ${a.reason}`), el('p', 'Internal proposal only; source data will not be changed.', 'hint'));
+    const summary = $('approval-summary'), list = el('dl');
+    for (const [label, value] of approvalRows(pending, run.configuration?.task)) {
+      const row = el('div'); row.append(el('dt', label), el('dd', value)); list.append(row);
     }
+    summary.append(list);
+    if (pending.result_kind === 'proposal') summary.append(el('p', 'Internal proposal only; changes are not applied.', 'hint'));
   }
+  approvalSignature = signature;
 
   const writeOutcome = latestWriteOutcome(run.approvals);
   $('write-outcome').hidden = !writeOutcome;
-  $('write-outcome').textContent = writeOutcome?.message || '';
+  setText('write-outcome', writeOutcome?.message || '');
   $('write-outcome').className = `write-outcome ${writeOutcome?.status || ''}`;
 
   $('result').hidden = !run.final;
@@ -242,6 +256,7 @@ $('stop-dialogue').addEventListener('click', stopRun);
 $('new-run').addEventListener('click', () => {
   clearTimeout(pollTimer);
   current = null;
+  approvalSignature = null;
   rememberRun(storage, null);
   configuration?.setRun(null);
   $('run-panel').hidden = true;
@@ -252,16 +267,19 @@ $('new-run').addEventListener('click', () => {
   $('start').disabled = !ready;
   $('new-run').hidden = true;
   $('goal').value = '';
+  $('goal').disabled = false;
   $('goal-count').textContent = '0';
   showError('');
   window.location.hash = '#configuration';
   $('goal').focus();
+  updateContext();
 });
 
 async function boot() {
   try {
     const health = await api('/api/health'); $('steps').dataset.max = health.limits.max_steps;
-    configuration = await setupConfiguration(api, ({ ready: configured }) => {
+    configuration = await setupConfiguration(api, ({ ready: configured, task, profile }) => {
+      selection = { task, profile }; updateContext();
       ready = configured; $('start').disabled = !ready || restoring || creating || ['running', 'awaiting_approval'].includes(current?.status);
     });
     const saved = readRunSession(storage);

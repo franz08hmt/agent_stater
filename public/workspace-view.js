@@ -29,14 +29,15 @@ export function viewFromHash(hash) {
   return VIEW_BY_HASH[hash] || 'overview';
 }
 
-export function visiblePanels(view) {
+export function visiblePanels(view, mode = 'standard') {
+  if (mode === 'exam' && view !== 'drafts') return ['configuration', 'dialogue'];
   return PANELS_BY_VIEW[view] || PANELS_BY_VIEW.overview;
 }
 
-export function applyWorkspaceView(document, hash) {
+export function applyWorkspaceView(document, hash, mode = 'standard') {
   const view = viewFromHash(hash);
-  const visible = new Set(visiblePanels(view));
-  document.getElementById('workspace').dataset.view = view;
+  const visible = new Set(visiblePanels(view, mode));
+  document.getElementById('workspace').dataset.view = mode === 'exam' && view !== 'drafts' ? 'exam' : view;
   for (const id of PANELS_BY_VIEW.overview) {
     document.getElementById(id).hidden = !visible.has(id);
   }
@@ -46,5 +47,5 @@ export function applyWorkspaceView(document, hash) {
     if (active) link.setAttribute('aria-current', 'location');
     else link.removeAttribute('aria-current');
   }
-  return HEADING_BY_VIEW[view];
+  return mode === 'exam' && view === 'overview' ? 'configuration-title' : HEADING_BY_VIEW[view];
 }
