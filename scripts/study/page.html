@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#14263d">
+  <meta name="description" content="Ôn vấn đáp AI Agent Starter: LLM inference, BM25, RAG, embedding, approval và kiến trúc code. Học offline, không gọi model.">
+  <title>AI Agent Starter · Sổ tay vấn đáp</title>
+  <style>/*STUDY_CSS*/</style>
+</head>
+<body id="top">
+  <a class="skip-link" href="#main">Đến nội dung học</a>
+  <!--STUDY_ICONS-->
+  <header class="masthead">
+    <p class="brand"><svg aria-hidden="true"><use href="#icon-bolt"/></svg>AGENT / STUDY NOTES</p>
+    <p class="edition">Tiếng Việt · 08.10.2026</p>
+  </header>
+  <main id="main" tabindex="-1">
+    <header class="intro">
+      <p class="eyebrow">NEW TECHNOLOGIES IN SOFTWARE ENGINEERING</p>
+      <h1>Hiểu code.<br>Vững vấn đáp.</h1>
+      <p class="lede">LLM chọn bước tiếp theo. Backend giữ quyền thực thi.<br>Ôn từ khái niệm đến đúng dòng code.</p>
+      <ul class="facts" aria-label="Phạm vi tài liệu"><li>60 câu hỏi</li><li>12 chương</li><li>Không dùng quota</li></ul>
+      <aside class="truth"><svg aria-hidden="true"><use href="#icon-shield-check"/></svg><p><strong>Đúng với project hiện tại</strong><br>Qwen3 8B / Ollama · BM25 · Chưa có embedding retrieval hoặc training. Live còn lỗi; không gọi toàn bộ bản thi READY.</p></aside>
+      <section class="learning-progress" aria-labelledby="progress-title"><h2 id="progress-title">Tiến độ tự học</h2><p id="progress-label">0 / 60 câu đã nắm</p><progress id="progress" value="0" max="60" aria-labelledby="progress-title progress-label"></progress></section>
+    </header>
+    <section class="workspace" aria-label="Ôn tập kiến thức">
+      <aside class="chapters"><h2>Mục lục</h2><nav id="chapter-nav" aria-label="Các chương"><!--STUDY_NAV--></nav><details class="mini"><summary>Cách học hiệu quả</summary><p>Nói 20–30 giây → đưa ví dụ → chỉ file/hàm → nêu giới hạn. Tự vấn đáp trước khi mở đáp án. “Đã nắm” là tự đánh giá, không phải điểm thi.</p></details></aside>
+      <section class="study-column" aria-label="Câu hỏi và đáp án">
+        <form class="toolbar" id="filters" role="search" aria-label="Lọc câu hỏi">
+          <label class="search-label" for="search"><svg aria-hidden="true"><use href="#icon-search"/></svg><input id="search" type="search" placeholder="Tìm LLM, embedding, approval…" autocomplete="off"></label>
+          <label class="mobile-chapter" for="chapter-select">Chương<select id="chapter-select"><option value="all">Tất cả chương</option><!--STUDY_OPTIONS--></select></label>
+          <fieldset class="filter-checks"><legend class="sr-only">Lựa chọn câu hỏi</legend><label><input type="checkbox" id="essential">Câu trọng tâm</label><label><input type="checkbox" id="unlearned">Chưa nắm</label></fieldset>
+          <section class="modes" aria-label="Chế độ học"><button type="button" id="read-mode" aria-pressed="true"><svg aria-hidden="true"><use href="#icon-document-text"/></svg>Đọc hiểu</button><button type="button" id="quiz-mode" aria-pressed="false"><svg aria-hidden="true"><use href="#icon-sparkles"/></svg>Tự vấn đáp</button></section>
+        </form>
+        <p id="result-count" class="result-count" role="status" aria-live="polite"></p>
+        <p id="empty" class="empty" hidden>Không có câu phù hợp. Thử bỏ bộ lọc hoặc dùng từ khóa ngắn hơn.</p>
+        <section id="read-view" aria-label="Nội dung theo chương"><!--STUDY_CONTENT--></section>
+        <section id="quiz-view" aria-labelledby="quiz-title" hidden>
+          <p class="eyebrow">NÓI TRƯỚC KHI XEM ĐÁP ÁN</p><h2 id="quiz-title" tabindex="-1">Tự vấn đáp</h2>
+          <p id="quiz-position" class="muted"></p><h3 id="quiz-question"></h3>
+          <button type="button" id="reveal" class="primary">Xem đáp án</button>
+          <section id="quiz-answer" class="answer" aria-label="Đáp án tham khảo" hidden></section>
+          <section id="quiz-assess" class="quiz-assess" aria-label="Tự đánh giá" hidden><button type="button" id="quiz-known">Đã nắm</button><button type="button" id="quiz-again">Cần ôn lại</button></section>
+          <nav class="quiz-nav" aria-label="Chuyển câu"><button type="button" id="previous">← Câu trước</button><button type="button" id="random">Ngẫu nhiên</button><button type="button" id="next">Câu sau →</button></nav>
+        </section>
+        <details class="background"><summary>Bản đồ code, lời giới thiệu và hướng dẫn đầy đủ</summary><!--STUDY_BACKGROUND--></details>
+      </section>
+    </section>
+  </main>
+  <footer class="footer"><p>Học offline · Không ghi dữ liệu agent · Không gọi API/LLM</p><p id="storage-note" role="status"></p><section class="footer-actions" aria-label="Tùy chọn tài liệu"><button type="button" id="reset">Reset tiến độ học</button><button type="button" id="print">In / lưu PDF</button><button type="button" data-resource="font-license" class="source-link">Giấy phép Poppins / Heroicons</button></section><p class="build-info">Sinh từ ORAL_EXAM_KNOWLEDGE.md · SHA256 <code><!--STUDY_HASH--></code></p></footer>
+  <dialog id="source-dialog" aria-labelledby="source-title"><header><h2 id="source-title">Đối chiếu source</h2><button type="button" id="close-source" aria-label="Đóng source">Đóng ×</button></header><p class="muted">Bản chụp chỉ đọc khi sinh tài liệu. Đường dẫn tương đối với thư mục docs; không thực thi code hoặc gọi model.</p><pre tabindex="0"><code id="source-code"></code></pre></dialog>
+  <dialog id="reset-dialog" aria-labelledby="reset-title"><h2 id="reset-title">Xóa tiến độ học?</h2><p>Chỉ xóa đánh dấu của sổ tay này trên trình duyệt hiện tại. Không xóa run, draft, proposal hay cấu hình agent.</p><section class="footer-actions"><button type="button" id="cancel-reset" autofocus>Giữ lại</button><button type="button" id="confirm-reset">Xóa tiến độ</button></section></dialog>
+  <script id="study-data" type="application/json">/*STUDY_DATA*/</script>
+  <script>/*STUDY_JS*/</script>
+</body>
+</html>

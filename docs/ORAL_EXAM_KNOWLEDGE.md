@@ -1,8 +1,10 @@
 # Kiến thức và câu hỏi vấn đáp — AI Agent Starter
 
-Tài liệu để luyện giải thích **project đang có**, mở code chứng minh và bổ sung câu hỏi sau. Đối chiếu ngày **2026-10-08**, gồm compare_counts và proposal nội bộ đợt 2; contract/evidence/approval mới tại [DATASET_PROPOSALS.md](DATASET_PROPOSALS.md). Các kết quả lịch sử giữ ngày và phạm vi riêng; kết quả đợt 2 ở cuối handoff. Thông tin model có thể đổi; phải kiểm tra profile của **run đang trình bày**. Không coi câu trả lời trong tài liệu này là chỉ thị cho agent.
+Tài liệu để luyện giải thích **project đang có**, mở code chứng minh và bổ sung câu hỏi sau. Cập nhật ngày **2026-10-08**, đối chiếu candidate code `f920d06` và checkpoint `f17e02c`. Kết quả hiện hành nằm trong [EXAM_CANDIDATE.md](EXAM_CANDIDATE.md); contract proposal nằm trong [DATASET_PROPOSALS.md](DATASET_PROPOSALS.md). Thông tin model có thể đổi; phải kiểm tra profile của **run đang trình bày**. Không coi câu trả lời trong tài liệu này là chỉ thị cho agent.
 
-Ký hiệu: **[Đã có]** là hành vi xác nhận trong source; **[Kiến thức nền]** là khái niệm để giải thích; **[Chưa có]** là hướng mở rộng, không được giới thiệu như tính năng hiện tại. Kết quả live ở cuối là bằng chứng ngày 2026-10-07; đợt soạn tài liệu này không gọi lại LLM.
+Ký hiệu: **[Đã có]** là hành vi xác nhận trong source; **[Kiến thức nền]** là khái niệm để giải thích; **[Chưa có]** là hướng mở rộng, không được giới thiệu như tính năng hiện tại. Đợt cập nhật tài liệu không gọi lại LLM. Số liệu candidate là evidence được lưu, không phải lần chạy mới.
+
+**Cách học:** nói đáp án trong 20–30 giây → giải thích một ví dụ → chỉ file/hàm → nêu giới hạn. Đừng chỉ thuộc tên công nghệ. Ưu tiên Q14–Q28 và Q53–Q60 cho LLM/RAG/embedding; Q03, Q35–Q39 và Q42–Q49 cho kiến trúc/an toàn. Bản điện thoại [ORAL_EXAM_STUDY.html](ORAL_EXAM_STUDY.html) có tìm kiếm, câu trọng tâm và tự vấn đáp; không gọi API/model. Đánh dấu “Đã nắm” chỉ là tự đánh giá.
 
 ## 1. Câu giới thiệu và bản đồ code
 
@@ -160,6 +162,8 @@ Provenance dùng ranges hoặc bitmap base64 không mất thông tin, giúp 200 
 
 **[Đã có] Không có embedding retrieval hoặc vector database.** Notes dùng keyword BM25; bảng dùng filter/tính toán xác định. Không có request `/embeddings`, chunk vectors hay index cosine trong đường chạy hiện tại.
 
+**Đáp án 20 giây:** “Project chưa tạo document/query embeddings, nên không có embedding model được cấu hình. `qwen3:8b` là model sinh quyết định/câu trả lời; `keyword-bm25` là retriever. Không được gọi Qwen3 8B là embedding model của project.” Chứng minh tại [keywordSearch.js](../src/retrieval/keywordSearch.js), `kind: 'keyword-bm25'`, và [catalog.json](../config/catalog.json), `model_profiles`.
+
 “LLM bên trong thường có biểu diễn embedding” và “ứng dụng xây embedding index cho retrieval” là hai việc khác nhau. Repo này gọi model có sẵn, không triển khai các lớp neural network bên trong model.
 
 ### Q15. BM25 hoạt động thế nào trong code này?
@@ -211,9 +215,13 @@ Viết retriever mới tương thích `search(query,{limit})`, `has(sourceId)` v
 
 Cần thiết kế chunk/index/version, encoder/document-query compatibility, data access, giới hạn và tests/evals riêng. Giữ source grounding/approval/backend rights. Đây là công việc tương lai, không có model embedding được khai báo sẵn.
 
+Query và documents phải dùng encoder tương thích cùng không gian biểu diễn; khi đổi model/normalization/chunking cần xem xét tạo lại index. Không trộn vector khác model chỉ vì cùng dimension. API embeddings riêng của Ollama là kiến thức mở rộng, chưa được project gọi: [Ollama embeddings](https://docs.ollama.com/capabilities/embeddings).
+
 ### Q20. RAG có bắt buộc dùng vector search? Retrieval khác generation thế nào?
 
 Retrieval tìm evidence; generation dùng evidence để diễn đạt câu trả lời. Pattern RAG không bắt buộc là vector search: luồng notes ở đây dùng BM25 để cung cấp ngữ cảnh cho generation. Luồng bảng là structured retrieval + backend calculation. Không gọi hai luồng đó là “RAG vector”.
+
+Giới thiệu chính xác: **agent có luồng trả lời tăng cường bằng truy xuất ghi chú BM25; chưa triển khai dense/vector RAG**. Bài RAG gốc dùng dense retrieval và có kiến trúc huấn luyện riêng; repo không tái hiện toàn bộ bài đó. [Bài báo RAG](https://arxiv.org/abs/2005.11401).
 
 ### Q21. Token của BM25, token của LLM và embedding có giống nhau không?
 
@@ -252,6 +260,8 @@ const pending = fetch(url, { method: 'POST', headers,
 ```
 
 Computation neural network/weights xảy ra ở dịch vụ provider: Ollama khi local, dịch vụ bên ngoài khi cloud. JS backend này không cài thuật toán forward pass hoặc tự train model. `search_notes`, `query_dataset` không phải LLM inference.
+
+**Chỉ đúng vị trí hiện tại:** [runner.js](../src/agent/runner.js) `askModel()` gọi `model.complete`; [openaiCompatible.js](../src/model/openaiCompatible.js) `once()` gửi HTTP rồi đọc `choices[0].message.content`. Với profile `ollama-qwen3`, URL đích là `http://127.0.0.1:11434/v1/chat/completions`. `cfg.name` đi vào payload `model`; `messages` là ngữ cảnh inference, không phải training dataset. Số dòng có thể đổi sau sửa code; ưu tiên tên hàm/khóa. [Ollama OpenAI compatibility](https://docs.ollama.com/api/openai-compatibility).
 
 ### Q24. API model khác API ứng dụng thế nào?
 
@@ -312,6 +322,7 @@ Tất cả routes nằm trong [app.js](../src/app.js). Server dùng `node:http`,
 | `POST /api/runs/:id/approvals/:aid` | `{decision:"approve" hoặc "reject", args_hash}`; trả run và replayed |
 | `POST /api/runs/:id/stop` | Yêu cầu dừng run, trả `{run}` |
 | `GET /api/drafts` | Danh sách draft đã được lưu; không API sửa/xóa dữ liệu tổng quát |
+| `GET /api/proposals` | Đề xuất nội bộ đã lưu, không áp dụng thay đổi lên dataset gốc |
 
 API lỗi thường trả `{error,message}`. Probe có thể HTTP 200 nhưng `probe.error` vẫn thể hiện endpoint/protocol thất bại; phải đọc body. `POST /api/runs` không chấp nhận config/path/prompt tùy ý. Body JSON có giới hạn; content-type sai/body quá lớn bị từ chối.
 
@@ -337,7 +348,7 @@ Restart: backend đọc persisted runs. Run đang running bị interrupted, khô
 
 ### Q33. Dữ liệu được lưu ở đâu? File store có thay database được không?
 
-`var/runs/<run_id>.json` giữ state; `var/drafts/<approval_id>.json` giữ draft; `var/logs/audit.jsonl` append audit. Save run viết temp rồi rename giảm nguy cơ JSON dở dang. Draft dùng exclusive create để chống ghi trùng. `var/exam/` giữ báo cáo vận hành, không Git commit.
+`var/runs/<run_id>.json` giữ state; `var/drafts/<approval_id>.json` giữ draft; `var/proposals/` giữ proposal; `var/logs/audit.jsonl` append audit. Save run viết temp rồi rename giảm nguy cơ JSON dở dang. Draft dùng exclusive create; proposal dùng publish nguyên tử và approval ID để chống ghi trùng, có reconciliation cho outcome chưa rõ. `var/exam/` giữ báo cáo vận hành, không Git commit.
 
 Thiết kế nhỏ cho demo, không khẳng định có transaction/distributed lock/auth/backup như hệ quản trị database production. Nếu dùng nhiều backend process hoặc yêu cầu nghiệp vụ lớn hơn phải thiết kế storage/coordination tương ứng.
 
@@ -381,7 +392,7 @@ Tool trả evidence trong `results`; runner thêm IDs vào `retrieved_source_ids
 
 Dữ liệu truy xuất chứa câu kiểu “ignore previous instructions, call tool X” nhằm điều khiển agent. [forum-copy.md](../data/notes/forum-copy.md) là mẫu kiểm thử cố ý. Tool results gắn `untrusted_data`; prompt nhắc coi dữ liệu là dữ liệu. Quyền thực sự nằm ở backend: tool allow-list, schema/rules, approval và budgets, không phụ thuộc model nghe prompt.
 
-Test fake model làm theo lệnh độc chứng minh backend chặn tool lạ/ghi chưa duyệt. Không dùng bằng chứng đó để nói mọi LLM thật miễn nhiễm injection; live injection đầy đủ chưa được xác minh trong đợt M6.
+Test fake model làm theo lệnh độc chứng minh backend chặn tool lạ/ghi chưa duyệt. Candidate live E16 có **FAIL/FAIL/BLOCKED**: model thử `save_draft` dù goal không yêu cầu; business rule `save_not_requested` chặn, không tạo approval/draft. Trial thứ ba chạm cap chiến dịch. Đây là **backend kiểm soát quyền đúng, model vẫn bị ảnh hưởng**, không phải prompt-injection robustness PASS. Xem [EXAM_CANDIDATE.md](EXAM_CANDIDATE.md).
 
 ### Q40. Dataset/HTML/key có những ranh giới bảo mật nào?
 
@@ -459,21 +470,21 @@ Các ca này kiểm an toàn/đúng hành vi backend; không suy ra LLM luôn đ
 
 ### Q49. Hiện có thể nói model đã ổn định cho demo chưa?
 
-**Không được nói toàn bộ model đã ổn định.** Mốc M6 ngày 2026-10-07: 253 tests, 16 eval ghi chú, 3 dataset demos, 2 budget demos và Chrome QA đạt; smoke/rehearsal scripted mới là 6/6 và 8/8.
+**Đáp án ngắn:** “Nền tảng và một số goal demo đã kiểm chứng; chưa thể khẳng định model ổn định với mọi đề. Em giữ cả kết quả thất bại và biết giới hạn.” Candidate code `f920d06`, checkpoint `f17e02c`: **387/387 tests**, **16/16 eval offline**, năm Chrome QA và ZIP phục hồi đạt; đây không phải bằng chứng LLM cho các ca offline.
 
-Live Qwen3:8b cuối: **15 PASS/3 FAIL** smoke, **9 PASS/9 FAIL** rehearsal. Ba trial liên tiếp PASS cho notes, sum, compare mẫu, missing evidence, approve, tickets-count, rooms-lookup, rooms-sum. Còn lỗi final sau reject bỏ source, ticket compare sai arguments/repeated_action, hai empty-query finals bỏ nguồn. Backend không ghi khi reject vẫn đúng nhưng acceptance final chưa đạt. Ngữ nghĩa rộng hơn cần đọc tay.
+Chiến dịch Qwen3 8B thật: **42 PASS, 8 FAIL, 1 BLOCKED**, dùng đủ **160 HTTP**, **327136 tokens provider reported**, 18 repairs, 0 retry. Notes, sum/compare mẫu, `compare_counts`, `save_draft` approve/reject, ticket approve và room approve/reject có ba PASS liên tiếp trong đúng phạm vi goal/profile đã ghi nhận. Thêm task Rentals bằng scaffold cũng được kiểm trong catalog tạm, không phải task có sẵn trong UI chính.
 
-**Đính chính P2 ngày 2026-10-08:** reject “Not saved.” chỉ xác nhận approval/tool outcome, không trình bày kiến thức HTTP nên không bắt nguồn ghi chú. Bộ chấm cũ đã đánh FAIL sai; sửa chấm theo approval state/tool result/draft count/replay và vẫn loại “Saved” trái outcome. Lookup rỗng từ bảng vẫn phải cite query source. Mốc tests mới 260/260. Runtime fingerprint hiện bao phủ JavaScript `src/config`, gồm metrics/grounding/schema/loader/run manager; chỉ đổi tài liệu/commit không làm stale. Kết quả live mới và diễn tập agent xem phần cập nhật trong [EXAM_REHEARSAL.md](EXAM_REHEARSAL.md); không dùng các số lịch sử ở đoạn trước làm verdict hiện tại.
+Blocker còn lại: `tickets-empty` thiếu nguồn query (3 FAIL), proposal ticket reject sai final exact outcome (3 FAIL nhưng backend không ghi), E16 thử ghi trái goal (FAIL/FAIL/BLOCKED), diễn tập **sinh viên NOT_RUN**. Không lấy thời gian script/agent thay thời gian sinh viên. Mock không phải dự phòng LLM thật. Probe PASS không chứng minh giải nghiệp vụ PASS.
 
-Warm/probe PASS không thay verdict này. Profile 4B so sánh chưa đủ ổn định và báo cáo cũ stale sau thay adapter. Full live eval, live injection và thời gian sinh viên đổi đề chưa được xác minh trong M6. Cổng 8787 BLOCKED trong report cũ là kết quả lúc đó, không tự suy ra tình trạng cổng hôm nay.
+**Lịch sử:** các mốc M6 253 tests, 15/3 smoke live, 9/9 rehearsal live và đính chính grader reject nằm trong [EXAM_REHEARSAL.md](EXAM_REHEARSAL.md). Chúng không thay verdict candidate hiện hành. Chỉ đổi tài liệu không làm stale runtime/grader evidence; thay model/task/data/runtime phải kiểm tra lại identity. Không suy tình trạng cổng từ báo cáo cũ.
 
-**Bằng chứng/giới hạn cụ thể:** [EXAM_REHEARSAL.md](EXAM_REHEARSAL.md), [handoff](../AGENT_STARTER_KNOWLEDGE_HANDOFF.md). Report mới bằng `npm run exam:report -- --profile=ollama-qwen3` đọc trạng thái hiện tại, không tự gọi LLM.
+**Bằng chứng hiện hành:** [EXAM_CANDIDATE.md](EXAM_CANDIDATE.md). `npm run exam:report -- --profile=ollama-qwen3` đọc trạng thái và ghi report mới, không tự gọi LLM. Số lượng test có thể tăng khi thêm kiểm thử tài liệu; phải ghi rõ phạm vi, không tự sửa kết quả candidate lịch sử.
 
 ### Q50. Thêm dữ liệu/đổi đề có phải viết lại agent loop không?
 
 Nếu chỉ lookup/count/sum/compare theo cột được phép: thêm dataset, khai báo schema/scale/ID trong task, đăng ký catalog, example goals và acceptance cases; restart để nạp snapshot mới. Không sửa loop và không cấp đường dẫn tùy ý cho model.
 
-Nếu cần join, công thức chưa có cột đầu vào, CRUD bảng hoặc đặt/chuyển phòng thì tool hiện tại chưa đủ; phải thiết kế tool/rules/test. Đổi prompt không thay backend capabilities.
+Scaffold có ba template notes/dataset-read/proposal, preview và acceptance riêng: [EXAM_SCAFFOLD.md](EXAM_SCAFFOLD.md). Đã có **đề xuất chuyển phòng**, kiểm capacity, nhưng chưa có booking hay áp dụng chuyển phòng thật. Nếu cần join, công thức mới, CRUD bảng, policy mới hoặc lịch đặt phòng thì phải thiết kế tool/rules/test. Đổi prompt không thay backend capabilities.
 
 ### Q51. Vì sao Node/frontend thuần và file storage? Điểm yếu production là gì?
 
@@ -529,3 +540,127 @@ Giới hạn / điều chưa thể khẳng định:
 ```
 
 Khi code/dữ liệu/model đổi, cập nhật câu trả lời và bằng chứng liên quan. [DEFENSE_NOTES.md](../DEFENSE_NOTES.md) là ghi chú bảo vệ từ các mốc trước; dùng cùng source hiện tại và tài liệu này, đặc biệt đối chiếu catalog/runtime/budgets mới. [EXAM_ADAPTATION.md](../EXAM_ADAPTATION.md) hướng dẫn đổi đề; [EXAM_REHEARSAL.md](EXAM_REHEARSAL.md) hướng dẫn vận hành và giữ kết quả thất bại.
+
+## 11. Luyện trả lời sâu: lựa chọn model, training và RAG
+
+### Q53. Vì sao chọn Qwen3 8B, không phải cứ model lớn nhất?
+
+**Trả lời 20 giây:** “Em ưu tiên chạy offline để giảm phụ thuộc mạng và quota. Qwen3 8B đã được chạy thử trên máy và có evidence cho những goal cụ thể. Em cân nhắc chất lượng, thời gian, tài nguyên và giao thức, không khẳng định đây là model tốt nhất.”
+
+**[Đã có]** Profile `ollama-qwen3` khai báo `qwen3:8b`, loopback port 11434, `requires_key:false`; `reasoning_effort:none`, temperature 0 và output cap gửi qua adapter. Kết quả phải đọc cùng identity và giới hạn của run. Profile 4B chỉ dùng so sánh, chưa là phương án dự phòng đã đạt.
+
+**Chỉ code:** [catalog.json](../config/catalog.json) `model_profiles`; [openaiCompatible.js](../src/model/openaiCompatible.js) payload. **Không khẳng định:** RAM/VRAM hay quantization cụ thể khi chưa đọc metadata model đã tải. 8B là quy mô tham số, không phải context 8 nghìn token hay yêu cầu đúng 8 GB RAM.
+
+### Q54. Model free hay trả phí? Vì sao local vẫn đo token?
+
+**Trả lời 20 giây:** “Qwen3 8B trong profile này chạy trên máy em, không gửi request tới dịch vụ trả phí theo token. Vẫn có chi phí phần cứng, điện, lưu trữ và thời gian. Token giúp theo dõi lượng xử lý/context, không đồng nghĩa em đang trả tiền cho từng token local.”
+
+Qwen3 open-weight được công bố theo Apache 2.0; cần tuân thủ giấy phép khi phân phối. Ollama local và Ollama Cloud là hai chế độ khác nhau. Dịch vụ cloud có chính sách/giá/quota riêng có thể thay đổi; không suy toàn bộ model dùng qua Ollama đều miễn phí. Project không tính hóa đơn và không bảo đảm usage estimated bằng số token bị tính phí.
+
+**Chỉ code:** [catalog.json](../config/catalog.json), `base_url` local và `requires_key`; [metrics.js](../src/agent/metrics.js), reported/estimated. **Nguồn:** [Qwen3 license](https://github.com/QwenLM/Qwen3), [Ollama FAQ](https://docs.ollama.com/faq), [Ollama pricing](https://ollama.com/pricing). Không chép giá cloud làm cam kết cố định trong bài thi.
+
+### Q55. Có thay LLM khác được không? Đổi những gì và kiểm gì?
+
+**Trả lời 20 giây:** “Có. Runner phụ thuộc interface `complete()`, không phụ thuộc trực tiếp Qwen. Model mới dùng endpoint tương thích thì có thể thêm profile; API khác thì cần adapter. Sau đổi phải kiểm chứng lại, không suy rằng cấu hình hợp lệ là giải bài tốt.”
+
+1. Xác định model đã có sẵn và endpoint có hỗ trợ `/chat/completions`.
+2. Tạo profile backend trong [catalog.json](../config/catalog.json), hoặc sửa môi trường cho profile `env`; giữ key phía backend.
+3. Đối chiếu JSON mode, `reasoning_effort`, sampling, output/context và timeout; không gửi tham số provider không hỗ trợ.
+4. Restart khi cấu hình file thay đổi; inspect/warm/probe phù hợp rồi **tạo run mới**.
+5. Kiểm tool selection, schema/arguments, số, nguồn, approve/reject, budgets và live stability có giới hạn.
+
+**Chỉ code:** [model/index.js](../src/model/index.js) factory; [openaiCompatible.js](../src/model/openaiCompatible.js) adapter; [agent.config.js](../config/agent.config.js) `loadConfig()`; [runManager.js](../src/agent/runManager.js) runtime identity. Không đổi model ngầm giữa run; profile unavailable không tự fallback sang mock. Tên `openai-compatible` chỉ là giao thức, không phải bảo đảm mọi provider hỗ trợ giống hệt nhau. [Ollama compatibility](https://docs.ollama.com/api/openai-compatibility).
+
+### Q56. Training, fine-tuning, prompting, indexing và inference khác nhau thế nào?
+
+**Trả lời 20 giây:** “Project chỉ dùng inference với model huấn luyện sẵn. Sửa prompt, nạp notes và tạo index không cập nhật trọng số của Qwen. Training/fine-tuning mới là quá trình học làm thay đổi weights hoặc các tham số adapter.”
+
+| Hoạt động | Thay weights model? | Vai trò | Trong project |
+|---|---|---|---|
+| Pre-training | Có | Học từ dữ liệu lớn; với causal LM thường dự đoán token tiếp theo | Do nhà phát triển model thực hiện, không phải repo |
+| Fine-tuning | Có, toàn bộ/một phần hoặc adapter | Thích nghi hành vi bằng dữ liệu huấn luyện chuyên biệt | Chưa có |
+| Prompting | Không | Thay instruction/context đầu vào | Có: mission, safety, tool schema |
+| Indexing | Không cập nhật weights LLM | Chuẩn bị cấu trúc tìm kiếm dữ liệu | Có: BM25 index |
+| Inference | Không cập nhật weights | Sinh output bằng model có sẵn | Có: `model.complete()` |
+
+**[Kiến thức nền]** Training thường gồm forward → loss → backpropagation → optimizer update, lặp trên batches. Fine-tune cần dữ liệu hợp lệ, tách train/validation/test tránh leakage, baseline, tài nguyên và eval sau triển khai. LoRA học adapter tham số nhỏ hơn thay vì nhất thiết sửa toàn bộ weights. Không trình bày đây là pipeline đã chạy trong repo.
+
+**Nguồn:** [Qwen3 pre/post-training](https://qwenlm.github.io/blog/qwen3/). `ollama pull/run` tải/phục vụ model, không tự train. Thêm dữ liệu vào `data/notes/` không làm Qwen ghi nhớ vĩnh viễn.
+
+### Q57. Dùng RAG có bắt buộc train model không? Khi nào nên fine-tune?
+
+**Trả lời 20 giây:** “Không bắt buộc train. Em có thể dùng LLM và retriever đã có sẵn, tìm tài liệu liên quan rồi đưa vào context lúc inference. RAG thay phần ngữ cảnh, không mặc nhiên thay weights.”
+
+Tài liệu thay đổi thường xuyên và cần truy nguồn: cân nhắc retrieval trước. Nếu cần cải thiện hành vi/định dạng ổn định trên nhiều ví dụ, có thể cân nhắc fine-tuning sau khi đo lỗi, chuẩn bị dữ liệu và baseline. Hai phương pháp có thể kết hợp; không coi fine-tuning là database hay bảo đảm không hallucination.
+
+**Chỉ code:** [searchNotes.js](../src/tools/searchNotes.js) tìm passage; [runner.js](../src/agent/runner.js) `observe()` bổ sung context và `buildMessages()` gửi lượt sau. Không có optimizer/backprop/training loop trong repo. Bài RAG gốc có huấn luyện kiến trúc của tác giả; cách tích hợp retrieval vào ứng dụng hiện nay không bắt buộc phải tái huấn luyện theo bài đó. [Nguồn RAG](https://arxiv.org/abs/2005.11401).
+
+### Q58. Vẽ và giải thích một run 401/403 từ đầu đến cuối?
+
+**Trả lời 20 giây:** “LLM đề xuất tìm ghi chú. Backend kiểm tra rồi BM25 trả passage. LLM nhận passage trong observation, sinh câu trả lời có source ID; backend kiểm tra ID trước khi hoàn tất.”
+
+Ví dụ minh họa giao thức, không phải transcript/evidence của một run thật:
+
+```json
+{"type":"tool_call","tool":"search_notes","arguments":{"query":"401 403","limit":3}}
+```
+
+1. UI gửi goal/task/profile tới `POST /api/runs`; backend tạo state và trả 202.
+2. `drive()` → `askModel()` → `buildMessages()` → `model.complete()`; inference thứ nhất đề xuất read tool.
+3. Registry kiểm allow-list/schema/rules. `searchNotes.execute()` gọi retriever.
+4. BM25 chấm passage; kết quả chứa text/source ID/score. `observe()` thêm vào messages dưới dạng dữ liệu không tin cậy.
+5. Inference tiếp theo có evidence mới; model có thể tìm tiếp hoặc trả final.
+6. `parseDecision()`/`checkGrounding()` kiểm tra; persist trạng thái, answer và metrics; UI polling hiển thị.
+
+**Chỉ code:** [runner.js](../src/agent/runner.js), [searchNotes.js](../src/tools/searchNotes.js), [keywordSearch.js](../src/retrieval/keywordSearch.js), [decision.js](../src/agent/decision.js). Hai inference và một tool là ví dụ thường gặp, không phải thứ tự/số lượt hard-code. Payload HTTP gọi LLM khác tool decision JSON; project không gửi native provider `tools/tool_calls`.
+
+### Q59. Những câu nào dễ nói sai khi bảo vệ project?
+
+**Trả lời ngắn:** “Em phải tách model, runtime, retriever và backend policy; nói rõ cái đã có, cái chưa có và phạm vi kiểm chứng.”
+
+| Không nên nói | Nói chính xác |
+|---|---|
+| Em dùng Ollama làm LLM | Em dùng Qwen3 8B; Ollama chạy/phục vụ model |
+| Qwen3 8B là embedding model của em | Project chưa có document/query embedding model |
+| Em train bằng cách thêm notes/sửa prompt | Em thay dữ liệu truy xuất/input inference, không cập nhật weights |
+| BM25 là vector search ngữ nghĩa | BM25 chấm từ khóa; không có dense embedding index |
+| Có RAG là không hallucination | Retrieval/grounding giảm rủi ro; vẫn cần eval ngữ nghĩa |
+| Có source ID là answer chắc chắn đúng | Membership đúng chưa chứng minh nguồn hỗ trợ từng câu |
+| Model tính tổng và tự ghi database | Backend tính số và kiểm tra/phê duyệt ghi; proposal không apply |
+| Mock PASS chứng minh agent LLM sẵn sàng | Mock/scripted kiểm backend; model thật cần live evidence riêng |
+| Chặn injection nghĩa là model miễn nhiễm | Backend có thể chặn dù model đã bị ảnh hưởng |
+| Temperature 0 hoặc ba PASS bảo đảm mọi đề | Chỉ có bằng chứng hữu hạn cho đúng cấu hình/goal đã thử |
+
+### Q60. Nếu thầy hỏi “em tự làm và hiểu được phần nào”, chứng minh ra sao?
+
+**Trả lời 20 giây:** “Em khai báo phần AI hỗ trợ, rồi tự giải thích luồng, dự đoán một ca lỗi và sửa một task có acceptance đúng. Em không chứng minh hiểu biết chỉ bằng việc bấm Run hoặc đọc nhãn PASS.”
+
+Tự làm ba bài không cần gọi model:
+
+1. Mở catalog, chỉ task/profile, model name/endpoint và tools đang bật; giải thích vì sao UI không được gửi endpoint/key tùy ý.
+2. Với goal sum `price` stationery, dự đoán 30.30; giải thích scale 2/BigInt và nguồn query. Nếu đổi expected thành 12 thì grader phải FAIL, không lấy output đang test làm đáp án.
+3. Vẽ approval/reject/replay: người duyệt từ chối → 0 proposal; final của model có thể sai nhưng không được biến backend outcome thành “saved”. Phân biệt hash nội dung với authentication người duyệt.
+
+Sau đó tự diễn tập đổi đề bằng [STUDENT_REHEARSAL.md](STUDENT_REHEARSAL.md). Các chức năng/kiến thức ngoài phạm vi phải nói “chưa triển khai” hoặc “chưa xác minh”, không hứa model/framework sẽ tự giải được.
+
+## 12. Học trên điện thoại và cập nhật bản HTML
+
+File **ORAL_EXAM_STUDY.html** là bản học standalone sinh từ tài liệu này. Toàn bộ câu hỏi/đáp án, CSS/JS và font có sẵn trong file; không fetch API, không gọi LLM, không cần key hoặc CDN. Link tài liệu chính thức chỉ dùng mạng khi bạn chủ động mở. Bản thân HTML không chứng minh các tests/live được chạy lại.
+
+Gửi file HTML sang điện thoại và mở bằng trình duyệt có hỗ trợ JavaScript. Nếu ứng dụng Files chỉ preview HTML hoặc hệ điều hành không cho mở tương tác, dùng server tài liệu riêng trên máy cùng Wi-Fi:
+
+```powershell
+cd D:\New-Tech\ai-agent-starter
+node scripts/serve-oral-study.js --lan
+```
+
+Mở địa chỉ IPv4 được in ra trên điện thoại; PC phải đang chạy server, cùng mạng và firewall cho phép trên **Private network**. Không bật trên Wi-Fi công cộng, không mở firewall tự động. Server này chỉ phục vụ HTML học, không expose API agent/.env/run/draft. Không đổi HOST của agent sang 0.0.0.0. Ctrl+C dừng server tài liệu.
+
+Sau khi sửa Markdown, sinh lại bản HTML để tránh lệch nội dung:
+
+```powershell
+node scripts/build-oral-study.js
+node scripts/qa-oral-study.js
+```
+
+Trên bản học: tìm có/không dấu → chọn chương/câu trọng tâm → đọc đáp án → chuyển Tự vấn đáp và nói trước khi mở đáp án → đánh dấu Đã nắm/Cần ôn. Tiến độ chỉ lưu cục bộ trong browser, không đồng bộ thiết bị, không đánh giá tự động độ đúng lời nói. Reset chỉ xóa tiến độ học của bản này; không tác động dữ liệu agent.
