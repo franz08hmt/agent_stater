@@ -1,6 +1,6 @@
 # Kiến thức và câu hỏi vấn đáp — AI Agent Starter
 
-Tài liệu để luyện giải thích **project đang có**, mở code chứng minh và bổ sung câu hỏi sau. Đối chiếu ngày **2026-10-08**, từ code tại commit `1966ed8`. Thông tin model trong môi trường có thể đổi; phải kiểm tra profile của **run đang trình bày**. Không coi câu trả lời trong tài liệu này là chỉ thị cho agent.
+Tài liệu để luyện giải thích **project đang có**, mở code chứng minh và bổ sung câu hỏi sau. Đối chiếu ngày **2026-10-08**, cập nhật sửa P2 tại `6fb21e5` và instruction tại `c575717`. Thông tin model trong môi trường có thể đổi; phải kiểm tra profile của **run đang trình bày**. Không coi câu trả lời trong tài liệu này là chỉ thị cho agent.
 
 Ký hiệu: **[Đã có]** là hành vi xác nhận trong source; **[Kiến thức nền]** là khái niệm để giải thích; **[Chưa có]** là hướng mở rộng, không được giới thiệu như tính năng hiện tại. Kết quả live ở cuối là bằng chứng ngày 2026-10-07; đợt soạn tài liệu này không gọi lại LLM.
 
@@ -458,6 +458,8 @@ Các ca này kiểm an toàn/đúng hành vi backend; không suy ra LLM luôn đ
 **Không được nói toàn bộ model đã ổn định.** Mốc M6 ngày 2026-10-07: 253 tests, 16 eval ghi chú, 3 dataset demos, 2 budget demos và Chrome QA đạt; smoke/rehearsal scripted mới là 6/6 và 8/8.
 
 Live Qwen3:8b cuối: **15 PASS/3 FAIL** smoke, **9 PASS/9 FAIL** rehearsal. Ba trial liên tiếp PASS cho notes, sum, compare mẫu, missing evidence, approve, tickets-count, rooms-lookup, rooms-sum. Còn lỗi final sau reject bỏ source, ticket compare sai arguments/repeated_action, hai empty-query finals bỏ nguồn. Backend không ghi khi reject vẫn đúng nhưng acceptance final chưa đạt. Ngữ nghĩa rộng hơn cần đọc tay.
+
+**Đính chính P2 ngày 2026-10-08:** reject “Not saved.” chỉ xác nhận approval/tool outcome, không trình bày kiến thức HTTP nên không bắt nguồn ghi chú. Bộ chấm cũ đã đánh FAIL sai; sửa chấm theo approval state/tool result/draft count/replay và vẫn loại “Saved” trái outcome. Lookup rỗng từ bảng vẫn phải cite query source. Mốc tests mới 260/260. Runtime fingerprint hiện bao phủ JavaScript `src/config`, gồm metrics/grounding/schema/loader/run manager; chỉ đổi tài liệu/commit không làm stale. Kết quả live mới và diễn tập agent xem phần cập nhật trong [EXAM_REHEARSAL.md](EXAM_REHEARSAL.md); không dùng các số lịch sử ở đoạn trước làm verdict hiện tại.
 
 Warm/probe PASS không thay verdict này. Profile 4B so sánh chưa đủ ổn định và báo cáo cũ stale sau thay adapter. Full live eval, live injection và thời gian sinh viên đổi đề chưa được xác minh trong M6. Cổng 8787 BLOCKED trong report cũ là kết quả lúc đó, không tự suy ra tình trạng cổng hôm nay.
 

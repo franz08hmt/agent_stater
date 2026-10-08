@@ -1,5 +1,7 @@
 # Mục 6: mở máy, kiểm tra và diễn tập đổi đề
 
+**Cập nhật sau review ngày 2026-10-08:** hai P2 đã sửa, 260 tests đạt; server 8787 đã được launcher xác minh đúng project. Smoke live mới 18/18; compare ticket vẫn FAIL và ticket empty còn REVIEW_REQUIRED. Xem phần cuối; các số và blocker ngày 2026-10-07 là lịch sử, không dùng làm trạng thái hiện tại.
+
 Hai đề dưới đây là **dữ liệu giả lập**, không phải dự đoán đề thi. Dùng `query_dataset` hiện có; không thêm tool nghiệp vụ, join hoặc công thức tùy ý. `save_draft` chỉ nhận nguồn ghi chú. Nếu đề thật yêu cầu ghi từ bảng, cần một tool ghi với business rules, approval và idempotency riêng.
 
 ## Mở máy → warm → kiểm tra → UI
@@ -128,7 +130,7 @@ npm run exam:report -- --id=smoke-<UUID>
 
 `var/exam/*.json` được Git bỏ qua. Mỗi report có ID riêng, timestamp/commit/working-tree state, Node/platform/port, task/data fingerprints, profile identity/cap/reasoning, kết quả và accounting. Không lưu key, headers, system prompt, HTTP request body hoặc root path. Case reports giữ quyết định JSON/tool/query, nguồn đã trả/được trích, lỗi và counters; `observation_source_ids_complete` kiểm tra ID đầy đủ có tới messages gửi model. Token provider reported tách với estimated reservation, usage thiếu không thành 0. Request cap là cứng; token budget vẫn là ước lượng, không bảo đảm hóa đơn tuyệt đối.
 
-Readiness đọc tối đa 50 report gần nhất, tách configured/probed/warmed, offline/live/student timing. Có PASS, FAIL, BLOCKED, REVIEW_REQUIRED, NOT_RUN; không gộp thành READY. Overall vẫn REVIEW_REQUIRED khi chưa có diễn tập người dùng được đọc lại; cổng không xác minh được là BLOCKED dù live đúng. Reports cũ bị đánh dấu stale khi task/data/profile/options/budget/protocol hoặc suite/grader đổi; không dùng làm bằng chứng sẵn sàng hiện tại. Đổi commit riêng được ghi `commit_changed`, không tự coi một docs-only commit làm dữ liệu stale. Report không tự phát hiện mọi thay đổi dịch vụ/model weights bên ngoài; kiểm tra lại trước demo.
+Readiness đọc tối đa 50 report gần nhất, tách configured/probed/warmed, offline/live/student timing. Có PASS, FAIL, BLOCKED, REVIEW_REQUIRED, NOT_RUN; không gộp thành READY. Overall vẫn REVIEW_REQUIRED khi chưa có diễn tập người dùng được đọc lại; cổng không xác minh được là BLOCKED dù live đúng. Reports cũ bị đánh dấu stale khi task/data/profile/options/budget/runtime hoặc suite/grader đổi; không dùng làm bằng chứng sẵn sàng hiện tại. Runtime identity bao phủ tên và nội dung JavaScript modules dưới `src/` và `config/`, cùng Node engine; gồm metrics, grounding, schema, loader, run manager và storage, cả modules mới. Đổi commit riêng được ghi `commit_changed`, không tự coi một docs-only commit làm dữ liệu stale. Report không tự phát hiện mọi thay đổi dịch vụ/model weights bên ngoài; kiểm tra lại trước demo.
 
 Checklist: đúng project/Node → đúng server/cổng → chọn đúng task/model/Mock-Live → đọc schema/version/tools → inspect/warm/probe chủ động → 3 trial liên tiếp của **đúng goal sẽ trình bày** → đọc tay đáp án/nguồn → tập approve/reject riêng bằng task ghi chú → ghi thời gian cả hai đề → xem readiness và xử lý FAIL/BLOCKED/NOT_RUN → checkpoint local sau kiểm chứng. Không push khi chưa được yêu cầu.
 
@@ -166,3 +168,42 @@ Evidence IDs để đọc chi tiết bằng `exam:report -- --id=...`:
 - Warm/probe cuối 8B: `warm-af940e86-1e90-4cbd-9eff-28b071c67afb`, `probe-96f63da8-1118-44c9-9fea-975424b7885f`.
 
 Chỉ trình bày live các goal được đánh dấu 3 PASS liên tiếp sau khi tự đọc tay source/answer lần nữa. Ca failed dùng để giải thích giới hạn hoặc demo scripted có nhãn rõ. Để sẵn sàng đi thi còn cần tự restart đúng server 8787, diễn tập cả hai đề có timing và chọn/xác minh model cho các ca live còn lỗi. Toàn bộ `eval:live`, cloud và một lượt diễn tập UI bằng sinh viên chưa được kiểm chứng trong mục 6.
+
+## Sau review P2, 2026-10-08
+
+Checkpoint `6fb21e5` sửa hai P2 và test timing race; `c575717` chỉ làm rõ instruction, không thêm nghiệp vụ. Không đổi `.env`, schema/final contract, grounding, repairs/steps/timeouts hoặc dữ liệu mẫu.
+
+- Approval grader đối chiếu approval state, observation `save_draft`, draft count và replay. Final chỉ `Saved.`/`Not saved.` không cần source ghi chú; tuyên bố ngược outcome bị FAIL. HTTP knowledge vẫn cần note citation, nội dung khác cần đọc tay. Backend vẫn yêu cầu unresolved nếu final không có source. Scripted approval cũng trả source_ids rỗng để exercise đúng trường hợp này.
+- Runtime hash mở rộng thay cho danh sách 5 file cũ. Regression sửa thuật toán dự phòng token trong bản sao tạm làm report stale, và commit Git chỉ chứa tài liệu vẫn fresh/commit_changed. Report cũ trước thay đổi không bị xóa.
+- Full suite ban đầu 259/260 vì fixture response delay 300ms đã kết thúc trước lúc đọc snapshot dưới tải. Thay bằng response gate giữ HTTP đang bay tới khi đọc xong; assertions về persistence/reservation/restart vẫn nguyên. Full suite sau đó **260/260**.
+- Baseline live hữu hạn ba ca lỗi: **0 PASS/9 FAIL**,18 HTTP/25692 provider tokens/79135ms. Compare trả field:null/limit:10 rồi lặp; empty finals bỏ nguồn mặc dù ID đã tới model.
+- Một lần chỉnh instruction chung: optional keys không dùng phải bỏ, không null; result có zero matches vẫn là query evidence cần cite. Không hard-code câu trả lời/IDs. Không chỉnh tiếp sau kết quả below.
+
+| Kiểm chứng trên cấu hình cuối | Kết quả |
+|---|---|
+| Offline | **260/260 tests**, **16/16 eval notes**, **3/3 dataset demo**, **2/2 budgets**, **6/6 smoke scripted**, **8/8 rehearsal scripted** |
+| Chrome fake provider | Configuration desktop/mobile/reload/approval/probe PASS:7 fake probe+8 fake run HTTP; metrics PASS:6 fake HTTP |
+| Full smoke 8B repeat3 | **18/18 PASS**,45/60 HTTP,61606 provider tokens,3 repairs/0 retry,163596ms; notes/sum/compare/missing/approve/reject từng ca3 liên tiếp |
+| Ba ca lỗi sau instruction | **4 PASS/2 FAIL/3 REVIEW_REQUIRED**,18/30 HTTP,27243 tokens,0 repair/retry,80599ms. rooms-empty3PASS; tickets-compare1PASS/2repeated_action; tickets-empty3REVIEW_REQUIRED |
+| Ba ca dương tính hai đề | **9/9 PASS**,18/24 HTTP,27240 tokens,0 repair/retry,69076ms: tickets-count/rooms-lookup/rooms-sum từng ca3 liên tiếp |
+| Live UI hai đề | **2/2 PASS**,4 HTTP/6015 provider tokens,0 repair/retry; Chrome1280/390, reload khi running giữ cùng run, một run/task, answer/source/metrics đúng, không ghi dữ liệu và không lỗi console/network |
+| Warm/probe cuối | Model installed+loaded; mỗi thao tác1 HTTP/48 provider tokens/0 retry; warm787ms, probe440ms. Probe cold trước đó bị timeout được giữ, không gộp PASS |
+| Server | Launcher đã chạy đúng project/configuration trên8787; health/catalog PASS, không LLM lúc startup. Sau QA chỉ dừng server do lượt này tạo; chạy lại exam:start để mở UI |
+| Readiness | **FAIL** do tickets-compare chưa đạt3 liên tiếp; tickets-empty giữ REVIEW_REQUIRED. Không còn blocker owner cổng cũ |
+
+Tickets-empty hiện trả `answer:"Empty"`, source đúng của status cancelled/limit5, unresolved rỗng. Đọc tay xác nhận query trả 0 tickets; không đạt dạng answer `Empty = yes` đã khai báo nên **không tự đổi REVIEW_REQUIRED thành PASS**. Mọi trial có evidence ở phiên cuối đều nhận source IDs đầy đủ trong messages.
+
+Diễn tập đã làm **bởi agent**, dùng task/data có sẵn, không triển khai miền mới: 6 mốc read/map/config/start/acceptance/demo, mỗi đề acceptance scripted4/4 rồi demo UI live count/sum. Ticket **9280ms**, phòng **7993ms**; bao gồm thao tác tự động và inference, không phải thời gian sinh viên đọc đề/viết cấu hình. Agent timing vẫn cần review và `student_adaptation=NOT_RUN`. **Chưa đo thời gian đổi đề thực tế bởi sinh viên**.
+
+Evidence ở `var/exam/`, đọc bằng `exam:report -- --id=...`:
+
+- Offline cuối: `verification-584c0225-6515-46a8-85a7-7dcbd5b97c6e`.
+- Full smoke: `smoke-f5c8a787-9a32-49a9-9b85-040b473170c2`.
+- Baseline lỗi: `rehearsal-62db1fdb-1c5e-4ccc-a418-6396f1e8f72f` (stale sau instruction, giữ nguyên FAIL).
+- Sau instruction: `rehearsal-560cf8f8-f593-4ecb-846b-f0b9c8fb59b2`.
+- Ca dương tính: `rehearsal-788d27f5-a1e5-4bb4-aa15-6fc8d7198087`.
+- UI/timing: `agent-ui-rehearsal-57133dd9-1cb6-457a-9062-3c4c2f261957`; sessions `timing-f5e526c0-b767-4653-a361-95a3cfe83f5a`, `timing-afc9003d-f16b-43c7-bb22-e3b5a0512397`.
+- Warm/probe: `warm-d9665bde-ea71-4a2f-ad34-ac4a9553b025`, `probe-39d15298-8f78-458b-99b5-ce1d39353268`.
+- Toàn lượt review: `review-campaign-51578acf-f3c8-49b2-988c-75a15ee439f7`, **117 HTTP/159880 provider tokens/3 repairs/0 retry**, có **1 request thiếu usage, 400 estimated reservation**; gồm baseline stale/probe timeout/UI, không che các lần lỗi. Không cloud. Readiness accounting riêng chỉ83 HTTP/116185 tokens của fresh suites/warm/probe, không gồm UI/baseline stale.
+
+Để chốt đi thi: chỉ chọn những goal đã3PASS trên cùng cấu hình và đọc lại câu trả lời/nguồn. Compare ticket cần model/goal được kiểm chứng thêm; ticket empty cần review dạng trả lời. Sinh viên tự làm cả hai đề với timer/edit/error notes; không dùng 9 giây của agent để ước lượng thời gian bài thi. Full live eval/injection và model weights bên ngoài vẫn không được bảo đảm bởi hash.

@@ -1,6 +1,6 @@
 # AI Agent Starter
 
-Mục 6 thêm launcher foreground, inspection/warm local có accounting, smoke có giới hạn, hai đề JSON/CSV và nhật ký thời gian đổi đề. Xem [quy trình trước buổi thi](docs/EXAM_REHEARSAL.md). Mốc offline: 253 tests, 16 eval ghi chú, 3 demo dataset scripted và 2 demo ngân sách đạt. LLM vẫn cần kiểm chứng từng goal; grounding và giới hạn repair giữ nguyên.
+Mục 6 thêm launcher foreground, inspection/warm local có accounting, smoke có giới hạn, hai đề JSON/CSV và nhật ký thời gian đổi đề. Xem [quy trình trước buổi thi](docs/EXAM_REHEARSAL.md). Mốc offline sau sửa P2: 260 tests, 16 eval ghi chú, 3 demo dataset scripted và 2 demo ngân sách đạt. Xác nhận Saved/Not saved được chấm theo approval/tool outcome; runtime fingerprint bao phủ JavaScript dưới src/config, không phụ thuộc commit tài liệu. LLM vẫn cần kiểm chứng từng goal; grounding và giới hạn repair giữ nguyên.
 
 ```powershell
 npm run exam:start
