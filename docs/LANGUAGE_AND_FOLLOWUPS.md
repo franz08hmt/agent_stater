@@ -15,6 +15,8 @@ BM25 vẫn tìm từ khóa, không embedding. Model cần đặt query theo từ
 
 Draft chỉ nhận mệnh lệnh đầu câu (`Save ...`, `Lưu ...`, `Please write a draft ...`, `Hãy tạo bản nháp ...`) hoặc câu tóm tắt/tổng hợp có mệnh lệnh ghi sau `and/then/và/rồi`: `Tóm tắt HTTP và lưu bản nháp.`. `Explain how to save a draft.`, `Giải thích từ lưu và bản nháp.` hay `Tóm tắt HTTP và không lưu bản nháp.` không cấp quyền. Backend normalize dấu để đối chiếu grammar nhưng giữ nguyên goal đã lưu; không dùng tokenizer BM25 cho authorization vì nó loại conjunction/negation. Cách nói ngoài grammar bị chặn, cần viết lại goal rõ ràng; không suy quyền từ văn bản model dịch.
 
+Sau review P2 ngày 09/10/2026, gate còn chặn câu hỏi/định nghĩa hoặc summary mô tả hành vi: `Lưu bản nháp là gì?`, `Summarize why users read and save drafts.`, `Tạo đề xuất là gì?` → 0 approval/0 write ngay cả khi model đã lookup và đề xuất tool ghi. Dấu hỏi ngoài phần trích dẫn bị từ chối bảo thủ; dùng mệnh lệnh rõ nếu muốn ghi. Đây là grammar hữu hạn, không lời hứa hiểu mọi paraphrase. Xem [receipt ba P2](FREEZE_P2_VERIFICATION.md).
+
 Proposal final phải là đúng một câu tương đương outcome backend:
 
 | Outcome | EN | VI |

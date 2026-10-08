@@ -1,5 +1,7 @@
 # Kiểm chứng adaptation kit + VI/EN — 08/10/2026
 
+**Lịch sử đợt 08/10.** Runtime mới adb6e86 và phiên live có ngân sách mới ngày 09/10 được ghi riêng trong [FREEZE_P2_VERIFICATION.md](FREEZE_P2_VERIFICATION.md); không ghép streak hoặc sửa các kết quả cũ bên dưới.
+
 Nhánh `feature/adaptation-kit-i18n-20261008`, từ `34ec8a1`. Checkpoints `8d662ff` (kit), `dce8458` (UI), `8fcfc58` (follow-up), `bb79ede` (QA/campaign), `f4442ab`, `15cd8c0`, `e46f4b5` (runtime được thử live cuối). **Runtime cuối `d3ca6f3`** siết quyền save_draft: nhắc từ save/lưu không phải yêu cầu ghi. Bản sửa đầu dùng tokenizer retrieval làm mất `and/và/không`; regression tests bắt lỗi và đã thay bằng normalization giữ conjunction/negation, kiểm grammar mệnh lệnh hữu hạn, không thay tokenizer BM25. Test bao phủ direct/summary imperative, quoted/negated/narrative/question, và runner lookup rồi chặn approval/ghi. UI probe-loading được sửa ở `e04e0f3`. Catalog thật giữ 6 task; .env/data/run cũ không đổi, chưa push. `.agents/` và `EXAM_AGENT_CONTINUATION_HANDOFF.md` của thao tác khác giữ ngoài commit.
 
 ## Offline và Chrome thật

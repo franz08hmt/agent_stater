@@ -1,5 +1,7 @@
 # Thích ứng khi nhận đề
 
+**Sửa P2 ngày 09/10/2026:** `npm run exam:adaptation` tự tạo thư mục cha khi source sạch chưa có var, artifact UUID không overwrite. CLI in verdict; PASS/exit0, FAIL/exit1 (expected sai), BLOCKED/REVIEW_REQUIRED/NOT_RUN/exit2. Quyền ghi là grammar mệnh lệnh bảo thủ, câu hỏi `Lưu bản nháp là gì?`/`Tạo đề xuất là gì?` và mô tả `Summarize why users read and save drafts.` không tạo approval. 423 tests/16 eval đạt; live mới cap20 có hai goal 3 PASS, một ticket BLOCKED. Xem [receipt](docs/FREEZE_P2_VERIFICATION.md); student timing vẫn NOT_RUN.
+
 **Đợt thích nghi VI/EN (08/10/2026):** xem [worksheet/đường nối tool-policy](docs/ADAPTATION_KIT.md), [ngôn ngữ/follow-up](docs/LANGUAGE_AND_FOLLOWUPS.md), [evidence/giới hạn](docs/ADAPTATION_VERIFICATION.md). Đổi miền dùng scaffold cũ; luật mới cần code/test. Mẫu asset-loan dùng asset_code, check_asset_availability và policy backend asset-loan, không cho mượn thật. `npm run exam:adaptation` chạy 6 acceptance trong catalog/store tạm, không chiếm slot thật; `--live --cap=48` chủ động gọi local. Thời gian script không phải thời gian sinh viên.
 
 Runtime cuối d3ca6f3 đã chặn câu chỉ nhắc save/lưu; draft goal mẫu `Tóm tắt HTTP và lưu bản nháp.` hoặc `Summarize HTTP and save a draft.`. Dùng đúng grammar, không lấy instruction trong dữ liệu làm quyền. 414 tests/16 eval đạt; evidence live trước sửa stale, cap48 đã hết nên chưa xác minh live bản cuối. Không chạy lệnh --live tiếp trong đợt này.

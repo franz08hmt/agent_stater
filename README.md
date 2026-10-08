@@ -1,5 +1,7 @@
 # AI Agent Starter
 
+**Chốt ba P2 ngày 09/10/2026, runtime adb6e86:** 423 tests/16 eval và regressions/Chrome QA đạt. Gate chặn câu hỏi/miêu tả tạo nhầm approval; CLI chạy trên source sạch không var và FAIL/exit1 khi expected sai. Live phiên mới cap20: sum và draft approve/replay mỗi ca 3 PASS; ticket final sai bị chặn ở cap, giữ BLOCKED. Đã agent rehearsal trong project tạm; student NOT_RUN. Xem [receipt/goal demo](docs/FREEZE_P2_VERIFICATION.md). Số liệu đợt 08/10 bên dưới là lịch sử; chưa overall READY, không chạy thêm model sau cap.
+
 **Cập nhật 08/10/2026:** [Bộ dụng cụ thích nghi đề](docs/ADAPTATION_KIT.md), [UI VI/EN và diễn đạt lại](docs/LANGUAGE_AND_FOLLOWUPS.md), [kiểm chứng mới](docs/ADAPTATION_VERIFICATION.md). Một selector đổi UI; goal quyết định answer, không answer_language selector. Follow-up chỉ diễn đạt lại run đang xem, không tool/ghi hoặc sửa lịch sử. Catalog giữ nguyên.
 
 Runtime `d3ca6f3`: **414 tests / 16 eval**, demos/scripted và Chrome QA đạt. save_draft kiểm mệnh lệnh ghi trên goal gốc, không coi việc nhắc save/lưu là quyền. Live của bản cuối **NOT_RUN**: cả 48 HTTP local của đợt đã dùng trên các runtime trước; báo cáo live cũ stale, giữ failures và chưa streak3. Student rehearsal chưa đo. Xem receipt mới, không dùng số liệu candidate lịch sử bên dưới làm bằng chứng cho checkout mới.
