@@ -61,5 +61,5 @@ export async function rollbackFile(root, entry, areas) {
     const { bytes, info, path } = await readBounded(root, entry.path, 256 * 1024, areas);
     if (info.ino !== entry.ino || info.dev !== entry.dev || digest(bytes) !== entry.hash) return false;
     await unlink(path); return true;
-  } catch { return false; }
+  } catch (error) { return error.code === 'ENOENT'; }
 }

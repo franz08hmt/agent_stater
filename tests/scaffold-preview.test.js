@@ -1,9 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cp, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import { readFile, readdir, writeFile, symlink } from 'node:fs/promises';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
-import { ROOT } from './helpers.js';
 import { scaffoldFixture } from './scaffold-helpers.js';
 import { previewScaffold } from '../src/scaffold/planner.js';
 
@@ -30,7 +28,36 @@ for (const [name, mutate] of [
   ['invalid ID column', (s) => s.task.data.datasets[0].id_column = 'missing'], ['bad numeric scale', (s) => s.task.data.datasets[0].columns[2].scale = 0],
   ['missing expected', (s) => delete s.cases[0].expected], ['missing failure case', (s) => s.cases = s.cases.filter((c) => c.kind !== 'blocked')],
   ['traversal', (s) => s.assets[0].file = 'data/../existing.json'], ['Windows name', (s) => s.task.id = 'con'],
+  ['unknown expected field', (s) => s.cases[0].expected.sources = ['fake']],
+  ['unsupported operation', (s) => s.cases[0].args.operation = 'join'],
+  ['duplicate case', (s) => s.cases.push(s.cases[0])],
+  ['duplicate asset', (s) => s.assets.push(s.assets[0])],
+  ['unrelated asset', (s) => s.assets.push({ file: 'data/arbitrary.json', content: '{}' })],
+  ['inconsistent blocked expectation', (s) => s.cases.at(-1).expected.code = 'invalid_arguments'],
+  ['unconfigured numeric expected', (s) => s.cases[0].expected.value = 'TBD'],
+  ['oversize spec', (s) => s.assets[0].content += 'x'.repeat(65536)],
 ]) test(`scaffold refuses ${name} before writing`, async (t) => {
   const { root, spec } = await scaffoldFixture(t); mutate(spec);
+  await assert.rejects(previewScaffold({ root, spec }));
+});
+test('existing output and junction parents are rejected even for virtual assets', async (t) => {
+  const { root, spec } = await scaffoldFixture(t);
+  await writeFile(join(root, 'config', `${spec.task.id}.task.json`), 'keep me');
+  await assert.rejects(previewScaffold({ root, spec }), /already exists/);
+  assert.equal(await readFile(join(root, 'config', `${spec.task.id}.task.json`), 'utf8'), 'keep me');
+  const other = await scaffoldFixture(t);
+  await symlink(join(other.root, 'config'), join(other.root, 'data/exam-inventory'), 'junction');
+  await assert.rejects(previewScaffold(other), /Linked/);
+});
+for (const [name, mutate] of [
+  ['unsupported policy', (s) => s.task.proposal_policies[0].policy_id = 'book-room'],
+  ['missing role', (s) => delete s.task.proposal_policies[0].datasets.target],
+  ['unsupported field mapping', (s) => s.task.proposal_policies[0].fields = { capacity: 'seats' }],
+  ['wrong role dataset', (s) => s.task.proposal_policies[0].datasets.target = 'classes'],
+  ['wrong field type', (s) => s.task.data.datasets[1].columns.at(-1).type = 'string'],
+  ['missing replay coverage', (s) => s.cases = s.cases.filter((c) => c.id !== 'reject')],
+  ['non-imperative proposal example', (s) => s.task.sample_inputs[0].goal = 'Do not create a proposal.'],
+]) test(`proposal template refuses ${name}`, async (t) => {
+  const { root, spec } = await scaffoldFixture(t, 'proposal'); mutate(spec);
   await assert.rejects(previewScaffold({ root, spec }));
 });

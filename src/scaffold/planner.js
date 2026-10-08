@@ -5,6 +5,7 @@ import { createConfiguredToolRegistry } from '../tools/registry.js';
 import { createKeywordRetriever } from '../retrieval/keywordSearch.js';
 import { safePath, readBounded, digest } from './files.js';
 import { specSchema, SPEC_MAX_BYTES, OFFLINE_CONFIG, assertSchema, noPlaceholders, validateCases } from './spec.js';
+import { proposalRequested } from '../proposals/policies.js';
 
 const json = (value) => `${JSON.stringify(value, null, 2)}\n`;
 export async function previewScaffold({ root, spec, register = false }) {
@@ -16,6 +17,7 @@ export async function previewScaffold({ root, spec, register = false }) {
   if (spec.task.allowed_tools.some((t) => !allowed.includes(t))) throw new Error('Tool is outside this template scope.');
   if (spec.template === 'notes' && (!spec.task.allowed_tools.includes('search_notes') || spec.task.data.datasets?.length)) throw new Error('Notes template requires search_notes and no datasets.');
   if (spec.template === 'proposal' && (!spec.task.allowed_tools.includes('create_proposal') || spec.task.proposal_policies?.length !== 1)) throw new Error('Proposal template requires exactly one registered policy.');
+  if (spec.template === 'proposal' && spec.task.sample_inputs.some((s) => !proposalRequested(s.goal))) throw new Error('Proposal example goals must use the explicit positive proposal intent grammar.');
   if (spec.template !== 'proposal' && spec.task.proposal_policies?.length) throw new Error('Read templates cannot grant proposal policies.');
   const files = [], virtualFiles = new Map(), paths = new Set();
   async function add(path, kind, content) {

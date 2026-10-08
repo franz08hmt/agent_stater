@@ -15,6 +15,8 @@
     "exam:rehearsal": "node scripts/exam-smoke.js --rehearsal",
     "exam:timer": "node scripts/exam-timer.js",
     "exam:report": "node scripts/exam-report.js",
+    "exam:scaffold": "node scripts/exam-scaffold.js",
+    "exam:acceptance": "node scripts/exam-acceptance.js",
     "test": "node --test tests/*.test.js",
     "eval": "node eval/run-eval.js",
     "eval:live": "node eval/run-eval.js --live",
@@ -23,6 +25,7 @@
     "demo:budgets": "node scripts/demo-budgets.js",
     "demo:proposals": "node scripts/demo-proposals.js",
     "qa:proposals": "node scripts/qa-proposals-browser.js",
+    "qa:scaffold": "node scripts/qa-scaffold-browser.js",
     "qa:metrics": "node scripts/qa-metrics-browser.js",
     "qa:configuration": "node scripts/qa-configuration-browser.js"
   }

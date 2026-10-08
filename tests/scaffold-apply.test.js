@@ -48,13 +48,36 @@ test('catalog concurrent edit detected before atomic publication, preserving edi
 });
 test('catalog full refuses registration rather than changing maximum or deleting tasks', async (t) => {
   const { root, spec } = await scaffoldFixture(t);
-  for (let i = 0; i < 2; i++) { const next = structuredClone(spec); next.task.id = `extra-${i}`; next.assets = []; next.task.data.datasets[0].file = 'data/datasets/products.json';
-    // Use validated existing task data instead of making acceptance unrelated to it.
-    const original = JSON.parse(await readFile(join(root, 'config/task.json'))); next.template = 'notes'; next.task = { ...original, id: `extra-${i}`, allowed_tools: ['search_notes'] };
-    const sample = (await scaffoldFixture(t, 'notes')).spec; next.cases = sample.cases.filter((c) => c.kind !== 'draft'); next.task.data.notes_dir = sample.task.data.notes_dir;
-    next.assets = i ? [] : sample.assets;
+  const sample = (await scaffoldFixture(t, 'notes')).spec;
+  for (let i = 0; i < 2; i++) {
+    const next = structuredClone(sample); next.task.id = `extra-${i}`; next.task.allowed_tools = ['search_notes'];
+    next.task.sample_inputs = [next.task.sample_inputs[0]];
+    next.cases = next.cases.filter((c) => c.kind !== 'draft'); next.assets = i ? [] : next.assets;
     await scaffoldProject({ root, spec: next, apply: true, register: true });
   }
   await assert.rejects(scaffoldProject({ root, spec, apply: true, register: true }), /maxItems|at most|8/);
   await assert.rejects(access(join(root, spec.assets[0].file)));
+});
+test('simultaneous scaffold writers cannot publish over each other or remove another invocation lock', async (t) => {
+  const { root, spec } = await scaffoldFixture(t), second = (await scaffoldFixture(t, 'notes')).spec;
+  let unlock, entered; const gate = new Promise((r) => unlock = r), started = new Promise((r) => entered = r);
+  const first = scaffoldProject({ root, spec, apply: true, register: true, hooks: { async afterFile(_entry, index) { if (!index) { entered(); await gate; } } } });
+  await started;
+  try { await assert.rejects(scaffoldProject({ root, spec: second, apply: true, register: true }), /already exists.*scaffold-register.lock/); }
+  finally { unlock(); }
+  await first;
+  const raw = JSON.parse(await readFile(join(root, 'config/catalog.json')));
+  assert.ok(raw.tasks.some((x) => x.id === spec.task.id)); assert.ok(!raw.tasks.some((x) => x.id === second.task.id));
+  await assert.rejects(access(join(root, 'config/scaffold-register.lock')));
+});
+test('task data changed before register retains student edit and leaves catalog, .env and old var data untouched', async (t) => {
+  const { root, spec } = await scaffoldFixture(t), before = await readFile(join(root, 'config/catalog.json'));
+  const { mkdir } = await import('node:fs/promises'); await mkdir(join(root, 'var'));
+  await writeFile(join(root, '.env'), 'sentinel secret'); await writeFile(join(root, 'var/keep.json'), 'existing run');
+  await assert.rejects(scaffoldProject({ root, spec, apply: true, register: true, hooks: { async beforeCatalogCheck() {
+    await writeFile(join(root, spec.assets[0].file), 'student new data');
+  } } }), (e) => /Task\/data changed/.test(e.message) && e.retained.includes(spec.assets[0].file));
+  assert.deepEqual(await readFile(join(root, 'config/catalog.json')), before);
+  assert.equal(await readFile(join(root, '.env'), 'utf8'), 'sentinel secret');
+  assert.equal(await readFile(join(root, 'var/keep.json'), 'utf8'), 'existing run');
 });

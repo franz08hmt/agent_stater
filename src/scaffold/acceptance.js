@@ -11,10 +11,11 @@ import { createScriptedModel } from '../model/mock.js';
 import { scriptedProposalDecision, gradeProposal, proposalObservations } from '../operations/proposalSuite.js';
 import { invariantFailures } from '../../eval/checks.js';
 import { buildSystemPrompt } from '../../config/prompts.js';
+import { canonicalJson } from '../agent/state.js';
 import { readBounded, safePath } from './files.js';
 import { manifestSchema, assertSchema, validateCases, OFFLINE_CONFIG } from './spec.js';
 
-const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const same = (a, b) => canonicalJson(a) === canonicalJson(b);
 export function gradeReadEvidence(c, run, evidence, datasets) {
   const errors = [], ids = [...new Set(evidence.map((e) => e.source_id))];
   if (!same([...run.final.source_ids].sort(), [...ids].sort()) || ids.some((id) => !run.retrieved_source_ids.includes(id))) errors.push('Cited sources differ from actual run evidence.');
@@ -108,7 +109,7 @@ export async function runAcceptanceTask({ root, id }) {
       if (errors.length) { status = 'FAIL'; reason = errors.join('; '); }
       results.push({ id: c.id, status, reason, run_status: run.status, proposals: proposals.length, drafts: drafts.length, replayed,
         dataset_unchanged: unchanged, source_ids: run.final?.source_ids || [], metrics: run.metrics });
-    } catch (error) { results.push({ id: c.id, status: 'FAIL', reason: error.code || error.message, dataset_unchanged: await task.verifyCurrent() }); }
+    } catch (error) { results.push({ id: c.id, status: 'FAIL', reason: error.code || 'Acceptance execution failed; inspect task/data and declared cases.', dataset_unchanged: await task.verifyCurrent() }); }
     finally {
       if (!dir.startsWith(join(tmpdir(), 'scaffold-acceptance-'))) throw new Error('Unsafe cleanup');
       await rm(dir, { recursive: true, force: true });

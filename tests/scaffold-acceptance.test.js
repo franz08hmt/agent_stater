@@ -46,3 +46,24 @@ test('read grader rejects fake citation, changed snapshot, wrong record and swap
   const lookup = { ...c, tool: 'query_dataset', args: { dataset_id: 'x', operation: 'lookup', filters: [], limit: 1 }, expected: { matched_count: 1, record_ids: ['wanted'] } };
   assert.ok(gradeReadEvidence(lookup, run, [{ ...e, matched_count: 1, query: { operation: 'lookup', filters: [], limit: 1 }, rows: [{ record: { key: 'wrong' } }] }], [data]).length);
 });
+test('proposal template also binds ticket-status with a JSON ticket_id identity column', async (t) => {
+  const { root, spec } = await scaffoldFixture(t, 'proposal'); spec.task.id = 'exam-ticket-proposal';
+  spec.task.data.datasets = [{ id: 'tickets', file: 'data/exam-ticket-proposal/tickets.json', id_column: 'ticket_id', columns: [{ name: 'ticket_id', type: 'string' }, { name: 'status', type: 'string' }] }];
+  spec.task.proposal_policies = [{ policy_id: 'ticket-status', datasets: { subject: 'tickets' } }];
+  spec.task.sample_inputs = [{ label: 'Status proposal', goal: 'Create a proposal to close ticket T2.' }];
+  spec.assets = [{ file: 'data/exam-ticket-proposal/tickets.json', content: '[{"ticket_id":"T2","status":"pending"},{"ticket_id":"T3","status":"closed"}]\n' }];
+  const proposal = (id, record_id, status, decision, blocked = false) => ({ id, kind: 'proposal', goal: `Create a proposal to change ticket ${record_id} to ${status}. Let backend check transition.`,
+    action: 'ticket_status', references: [{ role: 'subject', dataset_id: 'tickets', record_id }], changes: { status }, decision,
+    expected: { proposals: decision === 'approve' && !blocked ? 1 : 0, outcome: blocked ? 'blocked' : decision === 'approve' ? 'saved' : 'not_saved', ...(blocked ? { error_contains: 'transition' } : {}) } });
+  spec.cases = [proposal('approve', 'T2', 'closed', 'approve'), proposal('reject', 'T2', 'closed', 'reject'), proposal('transition', 'T3', 'open', 'approve', true),
+    { id: 'missing', kind: 'empty', goal: 'Find missing ticket.', tool: 'query_dataset', args: { dataset_id: 'tickets', operation: 'lookup', filters: [{ field: 'ticket_id', op: 'eq', value: 'none' }], limit: 1 }, expected: { matched_count: 0, record_ids: [] }, answer: 'No matching ticket.' }];
+  await scaffoldProject({ root, spec, apply: true, register: true });
+  const report = await runAcceptanceTask({ root, id: spec.task.id });
+  assert.equal(report.status, 'PASS', JSON.stringify(report.results)); assert.equal(report.datasets[0].id_column, 'ticket_id');
+});
+test('JSON key order in filters does not change acceptance query identity', async (t) => {
+  const { root, spec } = await scaffoldFixture(t);
+  spec.cases[0].args.filters = [{ value: 'supply', op: 'eq', field: 'group' }];
+  await scaffoldProject({ root, spec, apply: true });
+  const report = await runAcceptanceTask({ root, id: spec.task.id }); assert.equal(report.status, 'PASS', JSON.stringify(report.results));
+});
