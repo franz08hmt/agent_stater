@@ -75,6 +75,13 @@ try {
       await read("window.location.hash='#configuration'"); await click('#new-run');
     }
     assert.deepEqual(await read('Object.keys(localStorage).sort()'),['agent-studio.ui-locale','agent-studio.ui-mode']); // New run removes only the viewed-run marker.
+    let probeRelease; app.controls.probeGate=new Promise(r=>probeRelease=r);
+    await choose('ui-locale','en'); const beforeProbe=app.requests.length; await click('#probe-model');
+    await until(()=>app.requests.length===beforeProbe+1,'explicit probe started');
+    assert.equal(await text('probe-summary'),'Checking model…');
+    await choose('ui-locale','vi'); assert.equal(await text('probe-summary'),'Đang kiểm tra model…');
+    assert.equal(app.requests.length,beforeProbe+1); probeRelease(); app.controls.probeGate=null;
+    await until(()=>read("!document.getElementById('probe-model').disabled"),'probe finished');
     // Wrong/blocked storage has a safe English fallback.
     await read("localStorage.setItem('agent-studio.ui-locale','bad')"); await send('Page.reload'); await ready();
     assert.equal(await read('document.documentElement.lang'),'en'); requests+=app.requests.length;

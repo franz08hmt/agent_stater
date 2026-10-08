@@ -18,6 +18,7 @@ export async function createConfigurationDemo() {
     let raw = ''; for await (const chunk of req) raw += chunk;
     const body = JSON.parse(raw), isProbe = body.messages[0].content.startsWith('Connectivity probe');
     requests.push({ kind: isProbe ? 'probe' : 'run', body });
+    if (isProbe && controls.probeGate) await controls.probeGate;
     if (!isProbe && controls.requestGate) await controls.requestGate;
     const mode = isProbe ? controls.probe : controls.run;
     if (mode === 'timeout') await new Promise((r) => setTimeout(r, 350));

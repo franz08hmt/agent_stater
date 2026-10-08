@@ -15,7 +15,7 @@ export async function setupConfiguration(api, onChange) {
   ]) {
     element.replaceChildren();
     for (const item of entries) {
-      const option = node('option', `${item.title ?? item.label}${item.status === 'unavailable' ? ' — unavailable' : ''}`);
+      const option = node('option', `${item.title ?? item.label}${item.status === 'unavailable' ? ` — ${translate('unavailable')}` : ''}`);
       option.value = item.id; element.append(option);
     }
     element.value = defaultId;
@@ -32,6 +32,10 @@ export async function setupConfiguration(api, onChange) {
   }
   function refresh() {
     const t = task(), p = profile();
+    for (const option of $('model-select').options) {
+      const item = catalog.model_profiles.find((profile) => profile.id === option.value);
+      option.textContent = `${item.label}${item.status === 'unavailable' ? ` — ${translate('unavailable')}` : ''}`;
+    }
     $('task-select').disabled = locked || probing; $('model-select').disabled = locked || probing;
     setText('configuration-status', `${translate(locked ? 'Selections locked for this active run. ' : 'Applies to the next run. ')}${translate('Backend configured; model ')}${p.status === 'configured' ? translate('configuration valid') : `${translate('unavailable')}: ${p.reason}`}.`);
     setText('selected-model-state', `${translate(p.is_mock ? 'Mock' : 'Live')} · ${p.name} · ${translate(p.status)}`);
@@ -66,17 +70,16 @@ export async function setupConfiguration(api, onChange) {
     }
     for (const button of document.querySelectorAll('.samples button')) button.disabled = locked;
     document.querySelector('.policy-note').hidden = !writes.length;
-    setText('probe-result', probeFailures.get(p.id) ?? probeText(probes.get(p.id)));
+    setText('probe-result', probing ? translate('Checking model…') : probeFailures.get(p.id) ?? probeText(probes.get(p.id)));
     const probe = probes.get(p.id);
-    setText('probe-summary', probeFailures.get(p.id) ?? (p.status !== 'configured' ? translate('Model unavailable') : !probe ? translate('Connection not checked') : `${probe.is_mock ? translate('Mock simulation') : probe.error ? probe.error.message : translate('Probe protocol valid')} · ${new Date(probe.checked_at).toLocaleTimeString()}`));
+    setText('probe-summary', probing ? translate('Checking model…') : probeFailures.get(p.id) ?? (p.status !== 'configured' ? translate('Model unavailable') : !probe ? translate('Connection not checked') : `${probe.is_mock ? translate('Mock simulation') : probe.error ? probe.error.message : translate('Probe protocol valid')} · ${new Date(probe.checked_at).toLocaleTimeString()}`));
     $('probe-model').disabled = locked || probing || p.status !== 'configured';
     onChange({ ready: p.status === 'configured' && !locked && !probing, task: t, profile: p });
   }
   for (const id of ['task-select', 'model-select']) $(id).addEventListener('change', refresh);
   $('probe-model').addEventListener('click', async () => {
     const id = profile().id; probing = true; probeFailures.delete(id); refresh();
-    $('probe-result').textContent = 'Checking model…'; $('model-check').setAttribute('aria-busy', 'true');
-    $('probe-summary').textContent = 'Checking model…';
+    $('model-check').setAttribute('aria-busy', 'true');
     try { const { probe } = await api(`/api/model-profiles/${encodeURIComponent(id)}/probe`, { method: 'POST', body: '{}' }); probes.set(id, probe); }
     catch (err) { probeFailures.set(id, `${translate("Probe unavailable")}: ${err.message}`); }
     finally { probing = false; $('model-check').setAttribute('aria-busy', 'false'); refresh(); }
