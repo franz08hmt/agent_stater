@@ -10,139 +10,139 @@
   <link rel="icon" href="/assets/robot-pet.png" type="image/png">
 </head>
 <body>
-  <a class="skip-link" href="#workspace">Skip to agent workspace</a>
+  <a class="skip-link" href="#workspace"><span data-i18n="Skip to agent workspace">Skip to agent workspace</span></a>
   <header id="app-header" class="hero" aria-labelledby="page-title">
-    <div class="mode-toolbar"><h1 id="exam-title" class="exam-brand"><img src="/assets/robot-pet.png" width="32" height="32" alt="">Agent Studio</h1><button type="button" id="exam-mode" class="secondary" aria-pressed="false">Exam mode <span id="mode-state">Standard</span></button></div>
+    <div class="mode-toolbar"><label class="locale-control" for="ui-locale"><span data-i18n="UI language">UI language</span><select id="ui-locale"><option value="en">EN</option><option value="vi">VI</option></select></label><h1 id="exam-title" class="exam-brand"><img src="/assets/robot-pet.png" width="32" height="32" alt="">Agent Studio</h1><button type="button" id="exam-mode" class="secondary" aria-pressed="false"><span data-i18n="Exam mode">Exam mode </span><span id="mode-state">Standard</span></button></div>
     <p id="mode-context" class="mode-context"></p>
-    <p class="eyebrow">Creation</p>
-    <h1 id="page-title">Easily Create<br>Complex Agent</h1>
-    <p class="hero-subtitle">Configure. Run. Inspect.</p>
-    <aside class="hero-notes" aria-label="Workspace highlights">
+    <p class="eyebrow"><span data-i18n="Creation">Creation</span></p>
+    <h1 id="page-title"><span data-i18n="Easily Create">Easily Create</span><br><span data-i18n="Complex Agent">Complex Agent</span></h1>
+    <p class="hero-subtitle"><span data-i18n="Configure. Run. Inspect.">Configure. Run. Inspect.</span></p>
+    <aside class="hero-notes" aria-label="Workspace highlights" data-i18n-aria-label="Workspace highlights">
       <section class="hero-note">
-        <h2>Simplified concepts</h2>
-        <p>Goals, knowledge, tools, results.</p>
+        <h2><span data-i18n="Simplified concepts">Simplified concepts</span></h2>
+        <p><span data-i18n="Goals, knowledge, tools, results.">Goals, knowledge, tools, results.</span></p>
       </section>
       <section class="hero-note">
-        <h2>Real-time debugging</h2>
-        <p>Inspect decisions and approvals.</p>
+        <h2><span data-i18n="Real-time debugging">Real-time debugging</span></h2>
+        <p><span data-i18n="Inspect decisions and approvals.">Inspect decisions and approvals.</span></p>
       </section>
     </aside>
   </header>
 
-  <main id="workspace" class="workspace" data-view="overview" aria-label="AI agent workspace">
-    <nav class="sidebar" aria-label="Workspace navigation">
-      <a class="brand" href="#workspace" aria-label="Agent Studio home">
+  <main id="workspace" class="workspace" data-view="overview" aria-label="AI agent workspace" data-i18n-aria-label="AI agent workspace">
+    <nav class="sidebar" aria-label="Workspace navigation" data-i18n-aria-label="Workspace navigation">
+      <a class="brand" href="#workspace" aria-label="Agent Studio home" data-i18n-aria-label="Agent Studio home">
         <span class="brand-mark" aria-hidden="true"><img src="/assets/robot-pet.png" width="1024" height="1024" alt=""></span>
         <span>Agent<span class="brand-accent">Studio</span></span>
       </a>
-      <p class="nav-label">Workspace</p>
+      <p class="nav-label"><span data-i18n="Workspace">Workspace</span></p>
       <ul class="nav-list">
-        <li><a class="nav-link is-current" href="#agent-profile" aria-current="location"><span class="icon icon--squares-2x2" aria-hidden="true"></span>Overview<span class="icon icon--chevron-right nav-arrow" aria-hidden="true"></span></a></li>
+        <li><a class="nav-link is-current" href="#agent-profile" aria-current="location"><span class="icon icon--squares-2x2" aria-hidden="true"></span><span data-i18n="Overview">Overview</span><span class="icon icon--chevron-right nav-arrow" aria-hidden="true"></span></a></li>
         <li><a class="nav-link" href="#configuration"><span class="icon icon--sparkles" aria-hidden="true"></span>Agent<span class="icon icon--chevron-right nav-arrow" aria-hidden="true"></span></a></li>
-        <li><a class="nav-link" href="#dialogue"><span class="icon icon--chat-bubble-left-right" aria-hidden="true"></span>Dialogue<span class="icon icon--chevron-right nav-arrow" aria-hidden="true"></span></a></li>
-        <li><a class="nav-link" href="#drafts-title"><span class="icon icon--document-text" aria-hidden="true"></span>Saved drafts<span class="icon icon--chevron-right nav-arrow" aria-hidden="true"></span></a></li>
+        <li><a class="nav-link" href="#dialogue"><span class="icon icon--chat-bubble-left-right" aria-hidden="true"></span><span data-i18n="Dialogue">Dialogue</span><span class="icon icon--chevron-right nav-arrow" aria-hidden="true"></span></a></li>
+        <li><a class="nav-link" href="#drafts-title"><span class="icon icon--document-text" aria-hidden="true"></span><span data-i18n="Saved drafts">Saved drafts</span><span class="icon icon--chevron-right nav-arrow" aria-hidden="true"></span></a></li>
       </ul>
-      <p class="sidebar-foot"><span class="icon icon--shield-check" aria-hidden="true"></span>Local-first</p>
+      <p class="sidebar-foot"><span class="icon icon--shield-check" aria-hidden="true"></span><span data-i18n="Local-first">Local-first</span></p>
     </nav>
 
     <section id="agent-profile" class="profile" aria-labelledby="profile-title">
       <header class="section-heading">
-        <p class="section-kicker">Agent profile</p>
+        <p class="section-kicker"><span data-i18n="Agent profile">Agent profile</span></p>
         <h2 id="profile-title" tabindex="-1">Agent</h2>
       </header>
       <figure class="avatar-card">
-        <img src="/assets/robot-pet.png" width="1024" height="1024" alt="Robotic cat agent avatar">
+        <img src="/assets/robot-pet.png" width="1024" height="1024" alt="Robotic cat agent avatar" data-i18n-alt="Robotic cat agent avatar">
       </figure>
       <dl class="profile-facts">
-        <div><dt>Model</dt><dd id="model-badge" class="badge" aria-live="polite">Checking model…</dd></div>
-        <div><dt>Knowledge</dt><dd id="knowledge">Loading…</dd></div>
-        <div><dt>Retrieval</dt><dd id="retrieval-kind">Loading…</dd></div>
-        <div><dt>Write policy</dt><dd id="write-policy">Checking…</dd></div>
+        <div><dt><span data-i18n="Model">Model</span></dt><dd id="model-badge" class="badge" aria-live="polite"><span data-i18n="Checking model…">Checking model…</span></dd></div>
+        <div><dt><span data-i18n="Knowledge">Knowledge</span></dt><dd id="knowledge"><span data-i18n="Loading…">Loading…</span></dd></div>
+        <div><dt><span data-i18n="Retrieval">Retrieval</span></dt><dd id="retrieval-kind"><span data-i18n="Loading…">Loading…</span></dd></div>
+        <div><dt><span data-i18n="Write policy">Write policy</span></dt><dd id="write-policy"><span data-i18n="Checking…">Checking…</span></dd></div>
       </dl>
       <section class="drafts-card" aria-labelledby="drafts-title">
-        <h3 id="drafts-title" tabindex="-1"><span class="icon icon--document-text" aria-hidden="true"></span>Saved drafts</h3>
-        <ul id="drafts"><li class="hint">No drafts yet. <a href="#configuration">Open Agent</a> to create one.</li></ul>
-        <h3 id="proposals-title"><span class="icon icon--document-text" aria-hidden="true"></span>Saved proposals</h3>
-        <p class="hint">Internal records only. Changes are not applied.</p>
+        <h3 id="drafts-title" tabindex="-1"><span class="icon icon--document-text" aria-hidden="true"></span><span data-i18n="Saved drafts">Saved drafts</span></h3>
+        <ul id="drafts"><li class="hint"><span data-i18n="No drafts yet.">No drafts yet. </span><a href="#configuration"><span data-i18n="Open Agent">Open Agent</span></a> to create one.</li></ul>
+        <h3 id="proposals-title"><span class="icon icon--document-text" aria-hidden="true"></span><span data-i18n="Saved proposals">Saved proposals</span></h3>
+        <p class="hint"><span data-i18n="Internal records only. Changes are not applied.">Internal records only. Changes are not applied.</span></p>
         <p id="proposals-error" class="hint" role="status" hidden></p>
-        <ul id="proposals"><li class="hint">No proposals yet.</li></ul>
+        <ul id="proposals"><li class="hint"><span data-i18n="No proposals yet.">No proposals yet.</span></li></ul>
       </section>
     </section>
 
     <section id="configuration" class="configuration" aria-labelledby="configuration-title">
       <header class="section-heading config-heading">
-        <span class="section-kicker">01 / Configure</span>
-        <h2 id="configuration-title" tabindex="-1">Define the agent goal</h2>
+        <span class="section-kicker"><span data-i18n="01 / Configure">01 / Configure</span></span>
+        <h2 id="configuration-title" tabindex="-1"><span data-i18n="Define the agent goal">Define the agent goal</span></h2>
       </header>
       <form id="goal-form">
         <fieldset class="form-section" id="configuration-options">
-          <legend><span class="icon icon--cpu-chip" aria-hidden="true"></span>Run configuration</legend>
+          <legend><span class="icon icon--cpu-chip" aria-hidden="true"></span><span data-i18n="Run configuration">Run configuration</span></legend>
           <div class="selection-grid">
-            <div><label for="task-select">Task</label><select id="task-select" disabled><option>Loading tasks…</option></select></div>
-            <div><label for="model-select">Model profile</label><select id="model-select" disabled><option>Loading models…</option></select></div>
+            <div><label for="task-select"><span data-i18n="Task">Task</span></label><select id="task-select" disabled><option data-i18n="Loading tasks…">Loading tasks…</option></select></div>
+            <div><label for="model-select"><span data-i18n="Model profile">Model profile</span></label><select id="model-select" disabled><option data-i18n="Loading models…">Loading models…</option></select></div>
           </div>
           <p id="selected-model-state" class="hint"></p>
-          <p id="configuration-status" class="hint" role="status" aria-live="polite">Loading backend configuration…</p>
-          <section id="model-check" aria-label="Model connectivity check">
-            <p class="actions"><button type="button" id="probe-model" class="secondary" disabled><span class="icon icon--bolt" aria-hidden="true"></span>Check model</button></p>
+          <p id="configuration-status" class="hint" role="status" aria-live="polite"><span data-i18n="Loading backend configuration…">Loading backend configuration…</span></p>
+          <section id="model-check" aria-label="Model connectivity check" data-i18n-aria-label="Model connectivity check">
+            <p class="actions"><button type="button" id="probe-model" class="secondary" disabled><span class="icon icon--bolt" aria-hidden="true"></span><span data-i18n="Check model">Check model</span></button></p>
             <p id="probe-summary" class="hint" role="status" aria-live="polite"></p>
-            <details><summary>Connection details</summary><p id="probe-result" class="hint"></p></details>
+            <details><summary><span data-i18n="Connection details">Connection details</span></summary><p id="probe-result" class="hint"></p></details>
           </section>
-          <details class="configuration-details"><summary>Enabled tools &amp; data</summary>
-            <h3>Tools</h3><ul id="task-tools"></ul>
-            <h3>Allowed data</h3><div id="task-data"></div>
-            <p class="hint">Data is untrusted. save_draft supports note sources only; dataset citations cannot be saved yet.</p>
+          <details class="configuration-details"><summary><span data-i18n="Enabled tools &amp; data">Enabled tools &amp; data</span></summary>
+            <h3><span data-i18n="Tools">Tools</span></h3><ul id="task-tools"></ul>
+            <h3><span data-i18n="Allowed data">Allowed data</span></h3><div id="task-data"></div>
+            <p class="hint"><span data-i18n="Data is untrusted. save_draft supports note sources only; dataset citations cannot be saved yet.">Data is untrusted. save_draft supports note sources only; dataset citations cannot be saved yet.</span></p>
           </details>
         </fieldset>
         <fieldset class="form-section">
-          <legend><span class="icon icon--bolt" aria-hidden="true"></span>Task</legend>
-          <label for="goal">Goal</label>
-          <textarea id="goal" name="goal" rows="5" maxlength="500" required aria-describedby="goal-limit" placeholder="Describe a task for this agent."></textarea>
-          <p id="goal-limit" class="character-count"><span id="goal-count">0</span> / 500 characters</p>
+          <legend><span class="icon icon--bolt" aria-hidden="true"></span><span data-i18n="Task">Task</span></legend>
+          <label for="goal"><span data-i18n="Goal">Goal</span></label>
+          <textarea id="goal" name="goal" rows="5" maxlength="500" required aria-describedby="goal-limit" placeholder="Describe a task for this agent." data-i18n-placeholder="Describe a task for this agent."></textarea>
+          <p id="goal-limit" class="character-count"><span id="goal-count">0</span><span data-i18n=" / 500 characters"> / 500 characters</span></p>
         </fieldset>
         <p class="actions">
-          <button type="submit" id="start" class="primary" disabled><span class="button-label">Run agent</span><span class="button-end"><span class="icon icon--chevron-right" aria-hidden="true"></span></span></button>
-          <button type="button" id="stop" class="secondary" hidden><span class="icon icon--stop" aria-hidden="true"></span>Stop run</button>
-          <button type="button" id="new-run" class="secondary" hidden><span class="icon icon--arrow-path" aria-hidden="true"></span>New run</button>
+          <button type="submit" id="start" class="primary" disabled><span class="button-label"><span data-i18n="Run agent">Run agent</span></span><span class="button-end"><span class="icon icon--chevron-right" aria-hidden="true"></span></span></button>
+          <button type="button" id="stop" class="secondary" hidden><span class="icon icon--stop" aria-hidden="true"></span><span data-i18n="Stop run">Stop run</span></button>
+          <button type="button" id="new-run" class="secondary" hidden><span class="icon icon--arrow-path" aria-hidden="true"></span><span data-i18n="New run">New run</span></button>
         </p>
         <p id="form-error" class="error" role="alert" hidden></p>
         <fieldset class="samples">
-          <legend>Try a course scenario</legend>
+          <legend><span data-i18n="Try a course scenario">Try a course scenario</span></legend>
         </fieldset>
       </form>
       <section class="policy-note" aria-labelledby="policy-title">
         <span class="icon icon--shield-check" aria-hidden="true"></span>
-        <div><h3 id="policy-title">Write approval</h3><p>Every write tool requires human approval.</p></div>
+        <div><h3 id="policy-title"><span data-i18n="Write approval">Write approval</span></h3><p><span data-i18n="Every write tool requires human approval.">Every write tool requires human approval.</span></p></div>
       </section>
     </section>
 
     <section id="dialogue" class="dialogue" aria-labelledby="dialogue-title">
       <header class="section-heading dialogue-heading">
-        <span class="section-kicker">02 / Observe</span>
-        <h2 id="dialogue-title" tabindex="-1">Dialogue &amp; execution</h2>
-        <button type="button" id="stop-dialogue" class="dialogue-stop" hidden><span class="icon icon--stop" aria-hidden="true"></span>Stop run</button>
+        <span class="section-kicker"><span data-i18n="02 / Observe">02 / Observe</span></span>
+        <h2 id="dialogue-title" tabindex="-1"><span data-i18n="Dialogue &amp; execution">Dialogue &amp; execution</span></h2>
+        <button type="button" id="stop-dialogue" class="dialogue-stop" hidden><span class="icon icon--stop" aria-hidden="true"></span><span data-i18n="Stop run">Stop run</span></button>
       </header>
       <p id="dialogue-error" class="error" role="alert" hidden></p>
-      <section class="conversation" aria-label="Agent conversation">
+      <section class="conversation" aria-label="Agent conversation" data-i18n-aria-label="Agent conversation">
         <section id="dialogue-empty" class="dialogue-empty" aria-labelledby="dialogue-empty-title">
           <span class="icon icon--chat-bubble-left-right" aria-hidden="true"></span>
-          <h3 id="dialogue-empty-title">No run yet</h3>
-          <a href="#configuration">Open Agent <span class="icon icon--chevron-right" aria-hidden="true"></span></a>
+          <h3 id="dialogue-empty-title"><span data-i18n="No run yet">No run yet</span></h3>
+          <a href="#configuration"><span data-i18n="Open Agent">Open Agent </span><span class="icon icon--chevron-right" aria-hidden="true"></span></a>
         </section>
         <section id="run-panel" class="run-content" aria-labelledby="run-title" hidden>
-          <h3 id="run-title" class="sr-only">Current run</h3>
+          <h3 id="run-title" class="sr-only"><span data-i18n="Current run">Current run</span></h3>
           <p id="run-configuration" class="hint"></p>
           <dl class="run-meta">
-            <div><dt>Status</dt><dd><span id="status" class="status" role="status" aria-live="polite"></span></dd></div>
-            <div><dt>Active time</dt><dd id="elapsed"></dd></div>
-            <div><dt>Provider requests</dt><dd id="metrics-requests"></dd></div>
+            <div><dt><span data-i18n="Status">Status</span></dt><dd><span id="status" class="status" role="status" aria-live="polite"></span></dd></div>
+            <div><dt><span data-i18n="Active time">Active time</span></dt><dd id="elapsed"></dd></div>
+            <div><dt><span data-i18n="Provider requests">Provider requests</span></dt><dd id="metrics-requests"></dd></div>
           </dl>
           <section id="approval" class="approval" aria-labelledby="approval-title" hidden>
-            <h4 id="approval-title">Write approval required</h4>
-            <p>Tool: <code id="approval-tool"></code>. Review the exact arguments.</p>
+            <h4 id="approval-title"><span data-i18n="Write approval required">Write approval required</span></h4>
+            <p><span data-i18n="Tool: ">Tool: </span><code id="approval-tool"></code><span data-i18n=". Review the exact arguments.">. Review the exact arguments.</span></p>
             <div id="approval-summary"></div>
-            <p class="actions"><button type="button" id="approve" class="primary"><span class="button-label">Approve write</span><span class="button-end"><span class="icon icon--check-circle" aria-hidden="true"></span></span></button><button type="button" id="reject" class="danger">Reject</button></p>
-            <details id="approval-details"><summary>Exact arguments &amp; hash</summary><pre id="approval-args"></pre><p class="hint">Argument hash: <code id="approval-hash"></code></p></details>
+            <p class="actions"><button type="button" id="approve" class="primary"><span class="button-label"><span data-i18n="Approve write">Approve write</span></span><span class="button-end"><span class="icon icon--check-circle" aria-hidden="true"></span></span></button><button type="button" id="reject" class="danger"><span data-i18n="Reject">Reject</span></button></p>
+            <details id="approval-details"><summary><span data-i18n="Exact arguments &amp; hash">Exact arguments &amp; hash</span></summary><pre id="approval-args"></pre><p class="hint">Argument hash: <code id="approval-hash"></code></p></details>
           </section>
           <p id="write-outcome" class="write-outcome" role="status" aria-live="polite" hidden></p>
           <section id="result" class="result" aria-labelledby="result-title" hidden>
@@ -153,23 +153,23 @@
             <ul id="sources"></ul>
           </section>
           <p id="failure" class="error" role="alert" hidden></p>
-          <details id="run-details" class="run-details"><summary>Run &amp; token details</summary>
+          <details id="run-details" class="run-details"><summary><span data-i18n="Run &amp; token details">Run &amp; token details</span></summary>
             <p id="goal-preview" class="message message--user" hidden></p>
             <dl class="run-meta">
-              <div><dt>Steps</dt><dd id="steps"></dd></div>
-              <div><dt>Model activity</dt><dd id="metrics-calls"></dd></div>
-              <div class="run-id-row"><dt>Run timing</dt><dd id="metrics-timing"></dd></div>
-              <div class="run-id-row"><dt>Tokens</dt><dd id="metrics-tokens"></dd></div>
-              <div class="run-id-row"><dt>Token breakdown</dt><dd id="metrics-breakdown"></dd></div>
-              <div class="run-id-row"><dt>Run ID</dt><dd><code id="run-id"></code></dd></div>
+              <div><dt><span data-i18n="Steps">Steps</span></dt><dd id="steps"></dd></div>
+              <div><dt><span data-i18n="Model activity">Model activity</span></dt><dd id="metrics-calls"></dd></div>
+              <div class="run-id-row"><dt><span data-i18n="Run timing">Run timing</span></dt><dd id="metrics-timing"></dd></div>
+              <div class="run-id-row"><dt><span data-i18n="Tokens">Tokens</span></dt><dd id="metrics-tokens"></dd></div>
+              <div class="run-id-row"><dt><span data-i18n="Token breakdown">Token breakdown</span></dt><dd id="metrics-breakdown"></dd></div>
+              <div class="run-id-row"><dt><span data-i18n="Run ID">Run ID</span></dt><dd><code id="run-id"></code></dd></div>
             </dl><p id="metrics-note" class="hint"></p>
           </details>
           <details class="trace-details">
-            <summary>Execution trace <span class="icon icon--chevron-right" aria-hidden="true"></span></summary>
+            <summary><span data-i18n="Execution trace">Execution trace </span><span class="icon icon--chevron-right" aria-hidden="true"></span></summary>
             <div class="table-wrap">
               <table>
-                <caption>Model decisions, tool calls, approvals, and execution results</caption>
-                <thead><tr><th scope="col">Step</th><th scope="col">Type</th><th scope="col">Tool</th><th scope="col">Arguments</th><th scope="col">Status</th><th scope="col">ms</th><th scope="col">Result</th></tr></thead>
+                <caption><span data-i18n="Model decisions, tool calls, approvals, and execution results">Model decisions, tool calls, approvals, and execution results</span></caption>
+                <thead><tr><th scope="col"><span data-i18n="Step">Step</span></th><th scope="col"><span data-i18n="Type">Type</span></th><th scope="col"><span data-i18n="Tool">Tool</span></th><th scope="col"><span data-i18n="Arguments">Arguments</span></th><th scope="col"><span data-i18n="Status">Status</span></th><th scope="col">ms</th><th scope="col"><span data-i18n="Result">Result</span></th></tr></thead>
                 <tbody id="trace"></tbody>
               </table>
             </div>

@@ -32,6 +32,7 @@
     "exam:campaign": "node scripts/exam-campaign.js",
     "exam:package": "node scripts/exam-package.js",
     "exam:restore-check": "node scripts/exam-restore-check.js",
-    "qa:rehearsal": "node scripts/qa-agent-rehearsal.js"
+    "qa:rehearsal": "node scripts/qa-agent-rehearsal.js",
+    "qa:i18n": "node scripts/qa-i18n-browser.js"
   }
 }

@@ -339,3 +339,9 @@ details > summary { cursor: pointer; padding-block: 7px; font-size: 11px; font-w
   [data-mode="exam"] .run-meta { grid-template-columns: repeat(2,minmax(0,1fr)); }
   [data-mode="exam"] #approval-summary dl > div { grid-template-columns: 1fr; gap: 1px; }
 }
+/* Locale belongs to UI only, independent of goals and saved run content. */
+.locale-control { display: flex; align-items: center; gap: .4rem; font-size: .8rem; }
+.locale-control select { width: auto; min-height: 36px; padding: .3rem .5rem; }
+.mode-toolbar { flex-wrap: wrap; }
+html[lang="vi"] .nav-link { white-space: normal; }
+html[lang="vi"] .nav-link > [data-i18n] { min-width: 0; overflow-wrap: anywhere; }

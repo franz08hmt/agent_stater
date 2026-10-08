@@ -8,6 +8,7 @@ import { setupConfiguration } from './configuration.js';
 import { readRunSession, rememberRun } from './run-session.js';
 import { setupExamMode, modeContext } from './exam-mode.js';
 import { approvalRows } from './approval-presentation.js';
+import { t, setupLocale, currentLocale, errorExplanation } from './i18n.js';
 
 const $ = (id) => document.getElementById(id);
 const setText = (id, value) => { if ($(id).textContent !== value) $(id).textContent = value; };
@@ -22,6 +23,7 @@ let current = null;
 let pollTimer = null;
 let configuration = null, ready = false, restoring = true, creating = false;
 let selection = null, approvalSignature = null;
+let draftsCache = [], proposalsCache = [];
 const storage = { getItem: (key) => window.localStorage.getItem(key), setItem: (key, value) => window.localStorage.setItem(key, value), removeItem: (key) => window.localStorage.removeItem(key) };
 
 function updateCurrentNav(moveFocus = false) {
@@ -35,6 +37,12 @@ window.addEventListener('hashchange', () => updateCurrentNav(true));
 updateCurrentNav();
 setupExamMode(document, storage, () => updateCurrentNav());
 const updateContext = () => { $('mode-context').textContent = modeContext(current, selection); };
+setupLocale(document, storage, () => {
+  configuration?.refresh(); updateContext();
+  $('mode-state').textContent = t(document.documentElement.dataset.mode === 'exam' ? 'Exam' : 'Standard');
+  if (current) render(current);
+  renderDrafts(); renderProposals();
+});
 
 async function api(path, options = {}) {
   const res = await fetch(path, {
@@ -62,18 +70,22 @@ function showError(message) {
 
 async function loadDrafts() {
   const { drafts } = await api('/api/drafts');
+  draftsCache = drafts; renderDrafts();
+}
+function renderDrafts() {
+  const drafts = draftsCache;
   const list = $('drafts');
   list.replaceChildren();
   if (!drafts.length) {
-    const empty = el('li', 'No drafts yet. ', 'hint');
-    const link = el('a', 'Open Agent');
+    const empty = el('li', t('No drafts yet. '), 'hint');
+    const link = el('a', t('Open Agent'));
     link.href = '#configuration';
-    empty.append(link, ' to create one.');
+    empty.append(link, t(' to create one.'));
     list.append(empty);
   }
   for (const d of drafts) {
     const li = el('li');
-    li.append(el('strong', d.title), el('span', `Sources: ${d.source_ids.join(', ')} · ${d.draft_id}`, 'hint'));
+    li.append(el('strong', d.title), el('span', `${t('Sources')}: ${d.source_ids.join(', ')} · ${d.draft_id}`, 'hint'));
     list.append(li);
   }
 }
@@ -81,15 +93,18 @@ async function loadDrafts() {
 async function loadProposals() {
   const list = $('proposals'); $('proposals-error').hidden = true;
   try {
-    const { proposals } = await api('/api/proposals?limit=20'); list.replaceChildren();
-    if (!proposals.length) list.append(el('li', 'No proposals yet.', 'hint'));
+    const { proposals } = await api('/api/proposals?limit=20'); proposalsCache = proposals; renderProposals();
+  } catch (err) { $('proposals-error').hidden = false; $('proposals-error').textContent = `${t('Proposals unavailable')}: ${err.message}`; }
+}
+function renderProposals() {
+    const list = $('proposals'), proposals = proposalsCache; list.replaceChildren();
+    if (!proposals.length) list.append(el('li', t('No proposals yet.'), 'hint'));
     for (const p of proposals) {
       const li = el('li');
-      li.append(el('strong', p.action), el('span', `Changes: ${JSON.stringify(p.changes)}`), el('span', p.reason));
+      li.append(el('strong', p.action), el('span', `${t('Changes')}: ${JSON.stringify(p.changes)}`), el('span', p.reason));
       for (const r of p.references) li.append(el('span', `${r.role}: ${r.dataset_id} / ${r.record_id} · ${r.source_id} · snapshot ${r.dataset_version}`, 'hint'));
-      li.append(el('span', `${p.proposal_id} · ${p.created_at} · Not applied`, 'hint')); list.append(li);
+      li.append(el('span', `${p.proposal_id} · ${p.created_at} · ${t('Not applied')}`, 'hint')); list.append(li);
     }
-  } catch (err) { $('proposals-error').hidden = false; $('proposals-error').textContent = `Proposals unavailable: ${err.message}`; }
 }
 
 function render(run) {
@@ -102,14 +117,14 @@ function render(run) {
   rememberRun(storage, run.run_id);
   configuration?.setRun(run);
   const labels = run.configuration?.task.result_labels ?? { answer: 'Answer', sources: 'Sources', unresolved: 'Unresolved' };
-  $('result-title').textContent = labels.answer; $('sources-title').textContent = labels.sources;
-  $('run-configuration').textContent = `This run: ${run.configuration?.task.title ?? run.task_id ?? 'Legacy task'} · ${run.configuration?.model_profile.label ?? 'Legacy model'} · ${run.model ? `${run.model.is_mock ? 'Mock' : 'Live'} ${run.model.name}` : 'Model not recorded'}`;
+  $('result-title').textContent = labels.answer === 'Answer' ? t('Answer') : labels.answer; $('sources-title').textContent = labels.sources === 'Sources' ? t('Sources') : labels.sources;
+  $('run-configuration').textContent = `${t('This run')}: ${run.configuration?.task.title ?? run.task_id ?? t('Legacy task')} · ${run.configuration?.model_profile.label ?? t('Legacy model')} · ${run.model ? `${t(run.model.is_mock ? 'Mock' : 'Live')} ${run.model.name}` : t('Model not recorded')}`;
   $('dialogue-empty').hidden = true;
   $('run-panel').hidden = false;
   $('run-panel').setAttribute('aria-busy', String(run.status === 'running'));
   $('goal-preview').textContent = run.goal;
   $('goal-preview').hidden = false;
-  setText('status', STATUS_TEXT[run.status] || run.status);
+  setText('status', t(STATUS_TEXT[run.status] || run.status));
   $('status').className = `status is-${run.status}`;
   $('run-id').textContent = run.run_id;
   $('steps').textContent = `${run.steps_used} / ${run.configuration?.limits.max_steps ?? $('steps').dataset.max ?? '?'}`;
@@ -126,7 +141,7 @@ function render(run) {
 
   const pending = run.approvals.find((a) => a.approval_id === run.pending_approval);
   $('approval').hidden = !pending;
-  const signature = pending ? `${pending.approval_id}:${pending.args_hash}` : null;
+  const signature = pending ? `${pending.approval_id}:${pending.args_hash}:${currentLocale()}` : null;
   if (pending && signature !== approvalSignature) {
     $('approval-tool').textContent = pending.tool;
     $('approval-args').textContent = JSON.stringify(pending.arguments, null, 2);
@@ -135,16 +150,16 @@ function render(run) {
     $('approval-summary').replaceChildren();
     const summary = $('approval-summary'), list = el('dl');
     for (const [label, value] of approvalRows(pending, run.configuration?.task)) {
-      const row = el('div'); row.append(el('dt', label), el('dd', value)); list.append(row);
+      const row = el('div'); row.append(el('dt', t(label)), el('dd', value)); list.append(row);
     }
     summary.append(list);
-    if (pending.result_kind === 'proposal') summary.append(el('p', 'Internal proposal only; changes are not applied.', 'hint'));
+    if (pending.result_kind === 'proposal') summary.append(el('p', t('Internal proposal only; changes are not applied.'), 'hint'));
   }
   approvalSignature = signature;
 
   const writeOutcome = latestWriteOutcome(run.approvals);
   $('write-outcome').hidden = !writeOutcome;
-  setText('write-outcome', writeOutcome?.message || '');
+  setText('write-outcome', t(writeOutcome?.message || ''));
   $('write-outcome').className = `write-outcome ${writeOutcome?.status || ''}`;
 
   $('result').hidden = !run.final;
@@ -154,12 +169,12 @@ function render(run) {
     $('unresolved').textContent = run.final.unresolved ? `${labels.unresolved}: ${run.final.unresolved}` : '';
     const sources = $('sources');
     sources.replaceChildren();
-    if (!run.final.source_ids.length) sources.append(el('li', 'No source cited — read the unresolved explanation.', 'hint'));
+    if (!run.final.source_ids.length) sources.append(el('li', t('No source cited — read the unresolved explanation.'), 'hint'));
     for (const id of run.final.source_ids) sources.append(el('li', id));
   }
 
   $('failure').hidden = !run.failure;
-  $('failure').textContent = run.failure ? `${run.failure.code}: ${run.failure.message}` : '';
+  $('failure').textContent = run.failure ? `${run.failure.code}: ${errorExplanation(run.failure.code)} ${run.failure.message}` : '';
 
   const body = $('trace');
   body.replaceChildren();
@@ -283,20 +298,20 @@ async function boot() {
       ready = configured; $('start').disabled = !ready || restoring || creating || ['running', 'awaiting_approval'].includes(current?.status);
     });
     const saved = readRunSession(storage);
-    if (saved.invalid) showError('Saved run ID is invalid. You can start a new run.');
+    if (saved.invalid) showError(t('Saved run ID is invalid. You can start a new run.'));
     if (saved.id) {
       try {
         const { run } = await api(`/api/runs/${saved.id}`); render(run);
         window.location.hash = '#dialogue'; schedulePoll();
       } catch (err) {
         if (err.code === 'run_not_found') rememberRun(storage, null);
-        showError(`Could not restore the viewed run: ${err.message}. You can start a new run.`);
+        showError(`${t('Could not restore the viewed run')}: ${err.message}. ${t('You can start a new run.')}`);
       }
     }
     await loadDrafts();
     await loadProposals();
   } catch (err) {
-    $('model-badge').textContent = 'Backend unavailable'; showError(err.message);
+    $('model-badge').textContent = t('Backend unavailable'); showError(err.message);
   } finally { restoring = false; configuration?.refresh(); }
 }
 boot();
