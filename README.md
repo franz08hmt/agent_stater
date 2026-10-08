@@ -1,5 +1,7 @@
 # AI Agent Starter
 
+Đợt 4 bổ sung **Exam mode** bật/tắt trên header, giữ Standard làm mặc định. Desktop đặt Configure/Goal cạnh Result/approval; mobile xếp dọc. Status, thời gian, requests, answer/write outcome và nguồn hiện trực tiếp; tokens, trace và raw arguments/hash ở details. **378 tests**, 16 eval, demos và năm Chrome QA đạt; 0 request LLM thật trong đợt UI. Xem [cách dùng và bằng chứng Exam mode](docs/EXAM_MODE.md). Backend contracts, catalog thật 6 task và dữ liệu không đổi; live stability và thời gian sinh viên đổi đề vẫn cần chốt riêng.
+
 Đợt 3 có CLI tạo task từ ba template notes/dataset-read/proposal, preview mặc định, apply/register có kiểm tra an toàn và acceptance qua runner/store thật. **370 tests**, 16 eval và các demo/scripted đạt; Chrome desktop/mobile kiểm chứng hai task sinh mới, đúng metadata và proposal/reload/approve. Không gọi LLM thật trong đợt này; chưa đo thời gian sinh viên đổi đề. Live stability của proposal vẫn cần chốt riêng. Grounding/budgets/approval/idempotency và regression ID columns giữ nguyên.
 
 Đổi đề: xem [checklist một trang](docs/EXAM_SCAFFOLD.md), [spec/acceptance/publication contract](docs/SCAFFOLD_CONTRACT.md) và mẫu đầy đủ trong `templates/`. Luồng tối thiểu sau khi tự điền spec:
@@ -401,7 +403,7 @@ Restart khôi phục approval đúng cấu hình cũ nếu còn hợp lệ. Mấ
 
 **Check model** là hành động chủ động, không chạy khi mở trang/đổi select. Một probe tối đa 1 HTTP, retry tắt, timeout tối đa 5 giây, output cap 64, input cố định không chứa dữ liệu học tập. Metrics riêng ghi vào audit; thiếu usage giữ null + dự phòng, không ghi 0 token thật. Mock hiển thị simulation, 0 HTTP. Backend configured, endpoint responded và probe protocol valid là ba thông tin khác nhau. Kết quả có thời điểm; probe chỉ chứng minh kết nối/giao thức lúc thử, không chứng minh đúng nghiệp vụ. Ollama cold start có thể vượt 5 giây; timeout không được gọi PASS, có thể kiểm tra lại bằng một lần bấm sau khi model đã warm.
 
-Reload chỉ lưu/đọc `agent-studio.viewed-run` trong localStorage, giá trị duy nhất là run_id. Backend GET + polling phục hồi running/approval/terminal, không gửi lại goal, không tự approve và không gọi LLM do reload. ID sai/mất có thông báo và cho tạo run mới. **New run** xóa lựa chọn run đang xem và goal, giữ lịch sử backend; chọn lại cấu hình mong muốn nếu trang vừa reload.
+Reload lưu/đọc `agent-studio.viewed-run` trong localStorage, chỉ chứa run_id; preference riêng `agent-studio.ui-mode` chỉ chứa `standard` hoặc `exam`. Backend GET + polling phục hồi running/approval/terminal, không gửi lại goal, không tự approve và không gọi LLM do reload. ID sai/mất có thông báo và cho tạo run mới. **New run** xóa lựa chọn run đang xem và goal, giữ lịch sử backend và mode; chọn lại cấu hình mong muốn nếu trang vừa reload. Details giữ trạng thái mở trong polling, không lưu sang reload. Probe cũ chỉ giữ trong phiên trang, reload hiển thị chưa kiểm tra. Không bổ sung fullscreen.
 
 ```powershell
 npm test

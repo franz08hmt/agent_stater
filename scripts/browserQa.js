@@ -44,9 +44,9 @@ export async function browserQa() {
       await send('Input.dispatchMouseEvent', { type: 'mousePressed', button: 'left', clickCount: 1, ...point });
       await send('Input.dispatchMouseEvent', { type: 'mouseReleased', button: 'left', clickCount: 1, ...point });
     },
-    async screenshot(name, width = 1280) {
-      await send('Emulation.setDeviceMetricsOverride', { width, height: 960, deviceScaleFactor: 1, mobile: width < 600 });
-      const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true });
+    async screenshot(name, width = 1280, { height = 960, fullPage = true } = {}) {
+      await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: width < 600 });
+      const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: fullPage });
       await writeFile(join(artifacts, `${name}-${width}.png`), Buffer.from(shot.data, 'base64'));
     },
     async close() {

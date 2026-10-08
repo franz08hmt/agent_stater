@@ -27,6 +27,7 @@
     "qa:proposals": "node scripts/qa-proposals-browser.js",
     "qa:scaffold": "node scripts/qa-scaffold-browser.js",
     "qa:metrics": "node scripts/qa-metrics-browser.js",
-    "qa:configuration": "node scripts/qa-configuration-browser.js"
+    "qa:configuration": "node scripts/qa-configuration-browser.js",
+    "qa:exam": "node scripts/qa-exam-browser.js"
   }
 }

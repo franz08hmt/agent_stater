@@ -1,5 +1,13 @@
 # Thích ứng khi nhận đề
 
+## Demo bằng Exam mode (đợt 4)
+
+Sau acceptance và restart, bấm **Exam mode** trên header, chọn task/profile, nhập Goal hoặc example rồi Run. Desktop trên 960px đặt cấu hình và kết quả cạnh nhau; mobile xếp Configure → Result. Overview/Agent/Dialogue cùng workbench trong Exam, hash vẫn xác định mục điều hướng/focus; Saved drafts mở danh sách draft/proposal riêng. Bấm lại để về Standard (mặc định).
+
+Tools/data và mô tả policy mở ở **Enabled tools & data** trước Run. Approval hiện action, subject/target/record/source/snapshot, changes và reason; mở **Exact arguments & hash** nếu cần JSON/hash đầy đủ. Chỉ approve sau khi đọc; saved proposal luôn Not applied. Requests/status/active time/answer/sources hiện trực tiếp; **Run & token details** chứa usage, estimates, repairs/retries, Run ID/goal; trace ở phần riêng. Không suy saved từ lời model hoặc completed từ một tool thành công.
+
+Preference enum lưu riêng với run_id. Mode/New run/reload không đổi runtime của run, không tự probe/approve/chạy lại model. Active run khóa goal/select/examples; completed cho chọn cấu hình của run tiếp theo, còn header/Result luôn ghi rõ run lịch sử. Kết quả probe chỉ chứng minh thời điểm thử, mất cache khi reload; không fullscreen tự động hoặc nút fullscreen trong đợt này. Xem [hướng dẫn và QA](docs/EXAM_MODE.md), chạy `npm run qa:exam` bằng Chrome local/fake HTTP/store tạm, không cloud.
+
 ## Template đổi đề nhanh (đợt 3)
 
 Dùng [checklist một trang](docs/EXAM_SCAFFOLD.md) và [contract chi tiết](docs/SCAFFOLD_CONTRACT.md). Sao chép `templates/notes.spec.json`, `dataset-read.spec.json` hoặc `proposal.spec.json` thành spec mới trong templates; tự điền mission/data/schema/tools/examples/cases và expected độc lập. Không TODO, key/model/endpoint hoặc trường lạ. Dữ liệu là assets mới có file/content hoặc tham chiếu file data hiện có; id_column tùy chọn được giữ, proposal có canonical fields và role mapping của đúng policy đăng ký.
@@ -17,7 +25,7 @@ Acceptance chạy runner/registry/store thật trong temp với scripted model v
 
 Restart server bằng Ctrl+C rồi `npm run exam:start`, reload UI và chọn task/profile; chỉ chủ động probe/warm/live. Mock dataset mặc định không giải tùy ý goal task mới. Mẫu JSON đọc dùng item_key, hai CSV proposal dùng class_code/room_code; ticket-status JSON ticket_id được regression kiểm chứng. notes_dir bắt buộc nền, không cấp thêm search_notes. Proposal không áp dụng CSV/JSON; save_draft vẫn notes-only. Join/formula/timetable/booking/action/policy/field mapping mới cần code và test, không chỉ sửa mission.
 
-Đợt 3: 370 tests, eval16, datasets3/budgets2/smoke6/rehearsal8/proposal5 và Chrome scaffold đạt; live NOT_RUN, không cloud. Chưa đo thời gian sinh viên đổi đề. Có thể phát triển UI Exam mode sau đợt này, nhưng chưa kết luận model ổn định/sẵn sàng thi trên đề mới.
+Mốc lịch sử đợt 3: 370 tests, eval16, datasets3/budgets2/smoke6/rehearsal8/proposal5 và Chrome scaffold đạt; live NOT_RUN, không cloud. Đợt 4 hiện đã bổ sung Exam mode như hướng dẫn trên; chưa kết luận model ổn định/sẵn sàng thi trên đề mới và chưa đo thời gian sinh viên đổi đề.
 
 ## Proposal từ dataset (đợt 2)
 

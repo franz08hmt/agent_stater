@@ -14,12 +14,14 @@ test('mode preference stores only a defined enum under its own key; unavailable/
   assert.equal(readModePreference(blocked), 'standard'); assert.doesNotThrow(() => rememberMode(blocked, 'exam'));
 });
 test('mode toggle updates DOM semantics and preference without navigating, changing selection, or starting any activity', () => {
-  const nodes = Object.fromEntries(['exam-mode','mode-state'].map((id) => [id, { textContent: '', attrs: {}, setAttribute(k,v) { this.attrs[k]=v; }, addEventListener(_e,fn) { this.click=fn; } }]));
+  const nodes = Object.fromEntries(['exam-mode','mode-state','app-header'].map((id) => [id, { textContent: '', attrs: {}, setAttribute(k,v) { this.attrs[k]=v; }, addEventListener(_e,fn) { this.click=fn; } }]));
   const document = { documentElement: { dataset: {} }, getElementById: (id) => nodes[id] };
   const storage = { getItem: () => 'exam', setItem(k,v) { this.saved=[k,v]; } }; let changes=0;
   const mode = setupExamMode(document, storage, () => changes++);
   assert.equal(mode.current(), 'exam'); assert.equal(nodes['exam-mode'].attrs['aria-pressed'], 'true');
+  assert.equal(nodes['app-header'].attrs['aria-labelledby'], 'exam-title');
   nodes['exam-mode'].click(); assert.equal(mode.current(), 'standard'); assert.equal(nodes['exam-mode'].attrs['aria-pressed'], 'false');
+  assert.equal(nodes['app-header'].attrs['aria-labelledby'], 'page-title');
   assert.deepEqual(storage.saved, ['agent-studio.ui-mode','standard']); assert.equal(changes, 2);
 });
 test('Exam workspace visibility is semantic; saved records remains separate and hash chooses the focus heading', () => {
