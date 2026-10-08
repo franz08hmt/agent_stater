@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createProposalTool } from '../src/tools/createProposal.js';
 import { buildSystemPrompt } from '../config/prompts.js';
-import { TASK, LIMITS, harness, final } from './helpers.js';
+import { TASK, LIMITS, harness, final, tool } from './helpers.js';
 import { saveDraft } from '../src/tools/saveDraft.js';
 
 test('new runs carry goal language policy; legacy prompt remains compatible without it', async () => {
@@ -35,10 +35,10 @@ test('proposal final accepts finite VI or EN equivalents; contradicting outcome 
 test('draft write intent comes from original request, never quoted or negated text', () => {
   const ctx = (goal) => ({ run: { goal, retrieved_source_ids: ['http-status'] }, retriever: { has: () => true } });
   const args = { source_ids: ['http-status'] };
-  for (const goal of ['Do not save a draft.', 'Đừng lưu bản nháp.', 'Explain "save a draft".', 'Giải thích `lưu bản nháp`.']) {
+  for (const goal of ['Do not save a draft.', 'Đừng lưu bản nháp.', 'Explain "save a draft".', 'Giải thích `lưu bản nháp`.', 'Explain how to save a draft.', 'Giải thích từ lưu và bản nháp.', 'Users save drafts; explain why.', 'Users read and save drafts.', 'Tóm tắt HTTP và không lưu bản nháp.', 'Summarize HTTP and do not ever save a draft.']) {
     assert.match(saveDraft.checkRules(args, ctx(goal)).join(), /save_not_requested/);
   }
-  for (const goal of ['Tóm tắt HTTP và lưu bản nháp.', 'Summarize HTTP and save a draft.']) assert.deepEqual(saveDraft.checkRules(args, ctx(goal)), []);
+  for (const goal of ['Tóm tắt HTTP và lưu bản nháp.', 'Summarize HTTP and save a draft.', 'Tổng hợp HTTP và lưu bản nháp.', 'Save HTTP.', 'Hãy tạo bản nháp HTTP.', 'Please write a draft.']) assert.deepEqual(saveDraft.checkRules(args, ctx(goal)), []);
 });
 
 test('VI/EN finite draft confirmations distinguish saved, rejected and unknown without rewriting output', () => {
@@ -51,6 +51,22 @@ test('VI/EN finite draft confirmations distinguish saved, rejected and unknown w
     for (const answer of [vi, en]) assert.deepEqual(saveDraft.checkFinal({ answer }, run), []);
     const wrong = state === 'executed' ? 'Không lưu bản nháp.' : 'Đã lưu bản nháp.';
     assert.ok(saveDraft.checkFinal({ answer: wrong }, run).length);
+  }
+});
+
+test('mentioning save in a VI/EN explanation cannot create approval even after a real lookup', async () => {
+  for (const goal of ['Explain how to save a draft about HTTP.', 'Giải thích từ lưu và bản nháp HTTP.', 'Tóm tắt HTTP và không lưu bản nháp.']) {
+    const h = await harness({ replies: [tool('search_notes', { query: 'HTTP 429', limit: 1 }),
+      tool('save_draft', { title: 'HTTP draft', content: 'HTTP 429.', source_ids: ['http-status'] }),
+      final('Không lưu bản nháp.', ['http-status'])] });
+    try {
+      const run = await h.run(goal);
+      assert.equal(run.status, 'completed');
+      assert.equal(run.approvals.length, 0);
+      assert.equal((await h.store.listDrafts()).length, 0);
+      assert.match(run.trace.find((entry) => entry.kind === 'tool' && entry.tool_name === 'save_draft').summary, /save_not_requested/);
+      assert.deepEqual(run.retrieved_source_ids, ['http-status']);
+    } finally { await h.cleanup(); }
   }
 });
 

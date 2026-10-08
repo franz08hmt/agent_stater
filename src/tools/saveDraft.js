@@ -1,7 +1,6 @@
 // WRITE tool. Never runs on the model's say-so: the runner parks the call in
 // "awaiting_approval" and only a matching human approval executes it.
 
-import { tokenize } from '../retrieval/keywordSearch.js';
 import { CONFIRMATIONS, writeOutcome } from '../agent/writeLanguage.js';
 
 export const saveDraft = {
@@ -39,12 +38,16 @@ export const saveDraft = {
   checkRules(args, ctx) {
     const errors = [];
     const original = (ctx.run?.goal || '').replace(/"[^"]*"|'[^']*'|`[^`]*`|“[^”]*”|‘[^’]*’/g, ' ');
-    const goal = tokenize(original);
-    const negated = /\b(?:do not|never|without|don't|khong|dung)\s+(?:save|store|create|write|luu|tao|ghi)\b/.test(goal.join(' '))
-      || /don't\s+(save|store|write|create)/i.test(original);
-    const saveRequested = goal.some((word) => ['luu', 'save', 'store'].includes(word))
-      || (goal.includes('ban') && goal.includes('nhap') && goal.some((word) => ['tao', 'viet', 'ghi'].includes(word)))
-      || (goal.includes('draft') && goal.some((word) => ['create', 'write'].includes(word)));
+    // Authorization preserves conjunctions/negations. Retrieval tokenization
+    // drops stopwords such as "and", "và", "không" and is unsuitable here.
+    const goal = original.toLowerCase().normalize('NFD').replace(/\p{M}/gu, '').replace(/đ/g, 'd').trim();
+    const negated = /\b(?:do not|never|without|don't|khong|dung)\s+(?:(?:ever|please|duoc|nen|bao gio)\s+)*(?:save|store|create|write|luu|tao|viet|ghi)\b/.test(goal);
+    // A direct imperative, or a summary command followed by a write command.
+    // Narrative mentions/questions and quoted text never grant write permission.
+    const imperative = (verbs) => new RegExp(`^(?:(?:please|hay)\\s+)?(?:(?:${verbs})\\b|(?:summarize|tom tat|tong hop)\\b[\\s\\S]*?\\b(?:and(?: then)?|then|va|roi)\\s+(?:(?:please|hay)\\s+)?(?:${verbs})\\b)`).test(goal);
+    const saveRequested = imperative('luu|save|store')
+      || (/\bban nhap\b/.test(goal) && imperative('tao|viet|ghi'))
+      || (/\bdraft\b/.test(goal) && imperative('create|write'));
     if (!saveRequested || negated) errors.push('save_not_requested: the original unquoted goal did not explicitly request saving a draft.');
     for (const id of args.source_ids) {
       if (!ctx.retriever.has(id)) errors.push(`source_id "${id}" does not exist in the notes.`);
