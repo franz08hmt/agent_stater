@@ -1,8 +1,8 @@
 # Mục 6: mở máy, kiểm tra và diễn tập đổi đề
 
-**Cập nhật sau review ngày 2026-10-08:** hai P2 đã sửa, 260 tests đạt; server 8787 đã được launcher xác minh đúng project. Smoke live mới 18/18; compare ticket vẫn FAIL và ticket empty còn REVIEW_REQUIRED. Xem phần cuối; các số và blocker ngày 2026-10-07 là lịch sử, không dùng làm trạng thái hiện tại.
+**Đợt 1 ngày 2026-10-08:** 271 tests và mọi nhóm offline đạt; `compare_counts` live qwen3:8b đạt tickets-compare **3/3**, 6 HTTP, 0 repair/retry. Đợt này chỉ kiểm chứng lại live ticket compare; evidence 18/18 smoke trước đây đã stale sau đổi runtime/task/grader. Xem phần cuối; không dùng số hoặc blocker lịch sử làm trạng thái hiện tại.
 
-Hai đề dưới đây là **dữ liệu giả lập**, không phải dự đoán đề thi. Dùng `query_dataset` hiện có; không thêm tool nghiệp vụ, join hoặc công thức tùy ý. `save_draft` chỉ nhận nguồn ghi chú. Nếu đề thật yêu cầu ghi từ bảng, cần một tool ghi với business rules, approval và idempotency riêng.
+Hai đề dưới đây là **dữ liệu giả lập**, không phải dự đoán đề thi. Dùng engine `query_dataset` hiện có; ticket có thêm interface nhỏ `compare_counts` để so số lượng, không thêm join hoặc công thức tùy ý. `save_draft` chỉ nhận nguồn ghi chú. Nếu đề thật yêu cầu ghi từ bảng, cần một tool ghi với business rules, approval và idempotency riêng.
 
 ## Mở máy → warm → kiểm tra → UI
 
@@ -41,7 +41,7 @@ Mở URL launcher in, chọn đúng Task và Model trong Configuration, đọc t
 “Xây trợ lý tra cứu/thống kê ticket hỗ trợ giả lập. Cho phép lọc chính xác theo team/status, đếm và so sánh hai tập. Câu trả lời phải trích nguồn snapshot/query. Không truy cập dataset khác hoặc ghi dữ liệu.”
 
 - Task `rehearsal-tickets`, config `config/rehearsal-tickets.task.json`, dataset ID `tickets`, file `data/datasets/tickets.json`.
-- 6 bản ghi; `id`, `team`, `status` kiểu string; `hours` numeric scale 0 (cộng chính xác nguyên). Team/status phân biệt hoa thường. Chỉ bật read tool `query_dataset`.
+- 6 bản ghi; `id`, `team`, `status` kiểu string; `hours` numeric scale 0 (cộng chính xác nguyên). Team/status phân biệt hoa thường. Bật read tools `query_dataset` và `compare_counts`; tool sau chỉ nhận dataset_id/filters/compare_filters, hai arrays bắt buộc, không operation/field/limit/null.
 - Input: goal ngôn ngữ tự nhiên hoặc quyết định scripted trong acceptance suite. Output: contract final cũ `answer`, `source_ids`, `unresolved`; observation có dataset version/query và kết quả backend tính, source ID đầy đủ được chép nguyên.
 
 | Case ID | Input / query cần chứng minh | Đáp án xác định |
@@ -207,3 +207,43 @@ Evidence ở `var/exam/`, đọc bằng `exam:report -- --id=...`:
 - Toàn lượt review: `review-campaign-51578acf-f3c8-49b2-988c-75a15ee439f7`, **117 HTTP/159880 provider tokens/3 repairs/0 retry**, có **1 request thiếu usage, 400 estimated reservation**; gồm baseline stale/probe timeout/UI, không che các lần lỗi. Không cloud. Readiness accounting riêng chỉ83 HTTP/116185 tokens của fresh suites/warm/probe, không gồm UI/baseline stale.
 
 Để chốt đi thi: chỉ chọn những goal đã3PASS trên cùng cấu hình và đọc lại câu trả lời/nguồn. Compare ticket cần model/goal được kiểm chứng thêm; ticket empty cần review dạng trả lời. Sinh viên tự làm cả hai đề với timer/edit/error notes; không dùng 9 giây của agent để ước lượng thời gian bài thi. Full live eval/injection và model weights bên ngoài vẫn không được bảo đảm bởi hash.
+
+## Đợt 1 — interface so số lượng và chốt kiểm chứng
+
+Checkpoint code `f7bb5c9` (fixture/fingerprint), `699aa48` (tool/ticket/grader integration). `compare_counts` dùng engine cũ; xem contract và JSON shape trong [EXAM_ADAPTATION.md](../EXAM_ADAPTATION.md). Không sửa runner, grounding, approval/idempotency, budgets, repair limits hoặc timeout production. Query_dataset cũ vẫn hỗ trợ lookup/count/sum/compare; task mặc định và hai dataset mẫu cũ giữ nguyên.
+
+Fixture persistence cũ tái hiện FAIL khi durable save bị trì hoãn 2600 ms: hết vòng polling trong lúc snapshot còn 0 request. Fixture mới có các gates request-received/save-entered/atomic-save-completed/response; chỉ release response sau khi đọc được pending snapshot. Deadline riêng fixture 20 giây lớn hơn test deadline 10 giây để không kết thúc request trước assertions; không thay production. Giữ request=1, pending reservation=1, restart interrupted, budget/unknown usage và provider không bị gọi lại.
+
+Fingerprint hash tên+nội dung của `eval/checks.js`, cases, suite theo thứ tự ổn định; dependency khác trong src/config được runtime hash bao phủ. Grader checks không import thêm dependency ngoài cây runtime. Copy fixtures có eval/. Regression đổi grader/runtime làm stale, docs-only Git commit chỉ commit_changed. Không hash secret/var/.git/docs.
+
+| Kiểm chứng | Kết quả thực tế |
+|---|---|
+| npm test | 271/271, 0 skipped |
+| Eval ghi chú | 16/16, mock/backend evidence |
+| Demo dataset / ngân sách | 3/3 scripted / 2/2 fake HTTP |
+| Smoke / rehearsal mock | 6/6 / 8/8, 0 HTTP LLM |
+| Warm local 8B | PASS, 1 HTTP, 48 provider tokens, 13222 ms |
+| tickets-compare live | 3/3 liên tiếp, 6 HTTP, 13638 provider tokens, 28982 ms script |
+| Browser / live các case khác | NOT_RUN trong đợt này; không thay UI |
+| Thời gian sinh viên đổi đề | NOT_RUN, chưa đo thực tế |
+
+Profile `ollama-qwen3`, name qwen3:8b, identity `7867f9fea9937415429deaebcbc1043a2aac9d7441edf08991d9c948457833bf`; output800, temperature0, JSON mode, reasoning none. Task fingerprint `69e96236ba6239d59207bf5729b83ffa965d5051003c1534eefee2de02147f47`, dataset version `369ed3dab97b530d8f965f08f5a1fb1f87907b5074b3dd30e6f8922b8c04e346`. Existing run limits12 HTTP/100000 estimated token budget/6 steps/2 repairs và model timeout120000 ms giữ nguyên; không sửa .env. Trials thật tự chọn compare_counts, chỉ gửi dataset_id/filters/compare_filters, đúng hai nhóm, nhận [2,1]/gt, cite nguồn đã trả đầy đủ; không repair/retry. Thứ tự filters có thể khác acceptance; grader kiểm tra cùng điều kiện AND và source thực của query đó. Đọc tay cả ba final thấy đúng số/quan hệ và không có nội dung bổ sung ngoài form; unresolved chỉ whitespace.
+
+Chỉ chạy một suite live, giữ mọi trial. Warm riêng1 HTTP nên suite đặt cap11 để cả đợt không vượt12:
+
+```powershell
+npm run exam:model -- --profile=ollama-qwen3 --action=warm
+npm run exam:rehearsal -- --live --profile=ollama-qwen3 --only=tickets-compare --repeat=3 --max-requests=11
+```
+
+Tổng warm+suite **7/12 HTTP, 13686 provider tokens, 42122 ms model time, 0 repairs/retries/unknown usage**. Không probe thêm, cloud hoặc tải model. PASS chỉ cho scope này, không tuyên bố model ổn định toàn bộ.
+
+Reports giữ ở var/exam, đọc bằng `npm run exam:report -- --id=<ID>`:
+
+- Live: `rehearsal-beeba670-a0ea-4538-949a-544a03dc5712`.
+- Warm: `warm-b48b825d-9861-49a7-bb50-051876ad3585`.
+- Scripted: `smoke-a8f478eb-ca9d-464c-9ade-22521e91ab7a`, `rehearsal-853c299b-b294-414d-87e7-720572aa0b45`.
+- Offline verification: `verification-a0dbd684-6a7a-4a5c-b80c-391896170d10`.
+- Tổng scope đợt1: `round-one-a30a21d0-2c3b-4fdd-9d9c-08e6b58422ac`; exam_readiness REVIEW_REQUIRED, other live/student/browser NOT_RUN. Báo cáo thất bại cũ không bị xóa và được nhận diện stale; docs-only checkpoint cuối không làm evidence mới stale.
+
+Không còn blocker trong phạm vi đợt1 để bắt đầu một đợt proposal từ dataset riêng. Chưa chốt sẵn sàng đi thi: cần sinh viên tự diễn tập có timer và kiểm chứng goal định demo trên cấu hình mới. Ticket empty trước đây còn REVIEW_REQUIRED; chưa thử lại trong đợt này. Save_draft vẫn chưa nhận nguồn dataset; đề yêu cầu ghi từ bảng cần tool ghi/approval/idempotency riêng, không coi read wrapper này đã giải quyết.

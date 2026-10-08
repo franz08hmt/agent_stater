@@ -404,3 +404,11 @@ npm run qa:configuration
 Chrome QA dùng fake HTTP và profile/store tạm: selector/tools/data/examples, Mock/Live/unavailable; keyboard/focus, desktop 1280/mobile 390, probe success/503/429/timeout/invalid protocol/thiếu usage; reload running/approval/completed/failed/budget stop, approve/reject/replay và invalid/missing run. Mỗi click probe gửi đúng một HTTP; không cloud. Mock offline chỉ hỗ trợ rule-based ghi chú và ba ví dụ dataset được giao; dùng model thật cho đề mới. Launcher có từ mục 6; chưa có deployment, CRUD/preview hàng dữ liệu hoặc cost/quota toàn tài khoản.
 
 Live local mục 5 (2026-10-07): probe đầu timeout 5s, 1 HTTP, usage unavailable (400 estimated). Probe sau hai run dataset thành công với 1 HTTP, **42 input + 6 output = 48 provider tokens**, ~2.2s. Hai trial tổng sản phẩm: **1/2 PASS**, trial đầu bịa `products-12345`, bị chặn sau 2 repair (3 HTTP/4278 tokens); trial sau query đúng, `stationery = 30.30`, source `ds-products-db151dcee06f7c46` (2 HTTP/2920 tokens/0 repair). Không sử dụng cloud; chưa chạy full eval:live trong đợt này. Giữ cả kết quả thất bại làm bằng chứng giới hạn.
+
+## So sánh số lượng bản ghi
+
+`compare_counts` là read tool, không cần approval. Chỉ nhận ba trường bắt buộc `dataset_id`, `filters`, `compare_filters`; `[]` chọn toàn bộ snapshot. Không nhận `operation`, `field`, `limit`, `null` hoặc khóa lạ. Tool dùng lại engine `query_dataset` với operation compare không field/limit: trả hai số lượng, `relation: lt/eq/gt`, query, snapshot, provenance đầy đủ và source ID. Observation vẫn giới hạn 1500 ký tự; runner/grounding không đổi.
+
+Chỉ task `rehearsal-tickets` hiện bật tool này. Đề mới thêm `compare_counts` vào `allowed_tools` và khai báo dataset trong task JSON đã đăng ký catalog; không sửa agent loop. Các phép cộng/so tổng tiếp tục dùng `query_dataset` với numeric field. Ví dụ hình dạng lời gọi và hướng dẫn trong [EXAM_ADAPTATION.md](EXAM_ADAPTATION.md).
+
+Readiness fingerprint gồm runtime JS `src/config` và dependency grader có thứ tự cố định: `eval/checks.js`, `src/operations/cases.js`, `src/operations/suite.js`. Đổi logic grader làm báo cáo cũ stale; chỉ đổi tài liệu/commit thì báo `commit_changed`, không stale. Kết quả đợt ổn định hiện tại được ghi ở [docs/EXAM_REHEARSAL.md](docs/EXAM_REHEARSAL.md).

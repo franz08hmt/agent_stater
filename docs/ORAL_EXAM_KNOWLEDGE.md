@@ -91,7 +91,7 @@ Nhận mission, safety rules, protocol JSON, mô tả/schema tool được bật
 |---|---|---|
 | `study-notes` | 7 Markdown ở [data/notes](../data/notes): agent loop, RAG, HTTP, idempotency, giữa kỳ, cuối kỳ, bản chép diễn đàn chứa injection | `search_notes`, `save_draft` |
 | `datasets-demo` | [products.json](../data/datasets/products.json): 4 dòng, id/name/category/price/stock; [classes.csv](../data/datasets/classes.csv): 4 dòng, id/course/day/room/students | `query_dataset` |
-| `rehearsal-tickets` | [tickets.json](../data/datasets/tickets.json): 6 dòng, id/team/status/hours | `query_dataset` |
+| `rehearsal-tickets` | [tickets.json](../data/datasets/tickets.json): 6 dòng, id/team/status/hours | `query_dataset`, `compare_counts` |
 | `rehearsal-rooms` | [rooms.csv](../data/datasets/rooms.csv): 5 dòng, id/room/location/capacity | `query_dataset` |
 
 Task bảng hiện vẫn khai báo thư mục notes hợp lệ theo schema chung, nhưng không có `search_notes` nên model không được tra cứu các notes đó. Metadata UI chỉ hiện dữ liệu tương ứng tool được bật.
@@ -113,6 +113,8 @@ Không. Model chỉ truyền `dataset_id` đã được task cho phép. File/c�
 Tool read-only có bốn operation: `lookup`, `count`, `sum`, `compare`. Filter trong một nhóm nối bằng **AND**. String chỉ `eq/ne`, so sánh chính xác và phân biệt hoa thường. Number hỗ trợ `eq/ne/lt/lte/gt/gte`; giá trị filter gửi bằng decimal string. Không có SQL, OR tùy ý, join, công thức hoặc group-by tổng quát.
 
 `compare` dùng `filters` và `compare_filters`: bỏ `field` để so sánh counts; thêm numeric `field` để so sánh sums. `limit` chỉ dùng lookup, mặc định 5, tối đa 10; aggregates tính trên **toàn bộ** dòng khớp.
+
+Task ticket hiện ưu tiên [compareCounts.js](../src/tools/compareCounts.js): interface chỉ nhận dataset_id/filters/compare_filters, cả ba bắt buộc, không operation/field/limit/null. Đây là wrapper gọi cùng engine compare không field; không viết lại phép lọc, provenance hoặc source ID. Lý do: qwen3:8b từng thêm optional arguments sai khi so counts; schema nhỏ làm rõ ý định và backend vẫn từ chối mọi arguments sai. Bật theo task allow-list, không tự cấp cho task khác.
 
 ### Q10. Ví dụ nào dễ mở code và dự đoán đáp án?
 
@@ -343,7 +345,7 @@ Thiết kế nhỏ cho demo, không khẳng định có transaction/distributed 
 
 Tool là chức năng backend model được phép **đề xuất** sử dụng; có name/access/requiresApproval/description/schema/checkRules/execute. Component là module đảm nhiệm một phần kiến trúc. API endpoint là giao diện HTTP của ứng dụng/provider. UI không gọi `execute()` trực tiếp.
 
-`BUILTIN_TOOLS` đăng ký `search_notes`, `save_draft`, `query_dataset`; task allow-list quyết định subset được bật, và subset đó được dùng cả để mô tả cho model lẫn để kiểm tra thực thi.
+`BUILTIN_TOOLS` đăng ký `search_notes`, `save_draft`, `query_dataset`, `compare_counts`; task allow-list quyết định subset được bật, và subset đó được dùng cả để mô tả cho model lẫn để kiểm tra thực thi.
 
 ### Q35. Backend kiểm tra tool call theo thứ tự nào?
 

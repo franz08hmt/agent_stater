@@ -453,3 +453,27 @@ từ chối khởi động; giải thích được, không nhìn tài liệu, v�
 - `src/store/fileStore.js` — trừ khi đề bắt buộc dùng database.
 
 Nếu buộc phải sửa những file này, chạy lại `npm test` ngay sau mỗi thay đổi.
+
+## Đề cần so sánh số lượng hai nhóm
+
+Thêm `compare_counts` vào `allowed_tools` của task, khai báo các dataset/cột/scale trong `data.datasets` và đăng ký task ID trong `config/catalog.json`. Có thể chỉ bật `compare_counts`; thêm `query_dataset` nếu đề cần lookup/count/sum. Startup từ chối tool bảng không có dataset. Task mặc định không tự có quyền mới. Restart server để nạp snapshot mới; run đang hoạt động thuộc cấu hình đã đổi bị xử lý theo cơ chế `task_changed` hiện có.
+
+Tool chỉ đọc, không cần approval; tất cả ba arguments đều bắt buộc. Ví dụ **hình dạng** (thay ID/cột/giá trị theo đề):
+
+```json
+{
+  "type": "tool_call",
+  "tool": "compare_counts",
+  "arguments": {
+    "dataset_id": "items",
+    "filters": [{ "field": "group", "op": "eq", "value": "A" }],
+    "compare_filters": [{ "field": "group", "op": "eq", "value": "B" }]
+  }
+}
+```
+
+`[]` chọn toàn bộ dữ liệu. Các điều kiện là AND; nhóm có thể giao nhau, không bị loại trừ lẫn nhau. Chuỗi eq/ne phân biệt hoa thường; numeric value là chuỗi decimal đúng scale, dùng cùng operators và giới hạn tối đa 8 điều kiện mỗi nhóm như `query_dataset`. Không gửi operation/field/limit/null/đường dẫn/khóa lạ; backend từ chối, không tự sửa arguments. `values[0]` thuộc filters, `values[1]` thuộc compare_filters; relation so trái với phải. Phép cộng và so tổng dùng `query_dataset` với field numeric, không dùng tool này.
+
+Kết quả dùng lại engine/provenance/source ID của query_dataset, kể cả nhóm rỗng. Final phải chép nguồn đã trả trong chính run. Viết acceptance qua runner: kiểm tra điều kiện/snapshot, hai count, gán đúng nhóm, relation, citation và không write. Case tham khảo `tickets-compare` trong `src/operations/cases.js`; grader lấy reference từ tool khai báo trong case. Ghi nguồn dataset qua `save_draft` vẫn chưa được hỗ trợ.
+
+Khi sửa logic chấm readiness, bổ sung dependency ngoài `src/config` vào danh sách `GRADER_FILES` ở `src/operations/context.js`. Hiện danh sách có `eval/checks.js`, cases và suite; hash tên+nội dung theo thứ tự ổn định. Bản sao project dùng để kiểm thử phải có `eval/`. Không hash .env/var/.git/tài liệu; docs-only commit không làm stale.
