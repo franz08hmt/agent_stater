@@ -33,6 +33,14 @@ test('a missing task file fails before startup', async () => {
   await assert.rejects(loadTaskConfig({ root: ROOT, file: join(ROOT, 'config', 'missing-task.json') }), /missing task file/);
 });
 
+test('compare_counts is scoped to ticket permissions and requires an allowed dataset at startup', async () => {
+  const task = await loadTaskConfig({ root: ROOT, file: join(ROOT, 'config/rehearsal-tickets.task.json') });
+  assert.ok(task.allowedTools.includes('compare_counts'));
+  assert.ok(task.allowedTools.includes('query_dataset'));
+  assert.equal((await loadTaskConfig({ root: ROOT })).allowedTools.includes('compare_counts'), false);
+  await assert.rejects(validateTaskConfig({ ...good, allowed_tools: ['compare_counts'] }, ROOT), /compare_counts requires at least one allowed dataset/);
+});
+
 test('task config rejects unknown tools, duplicates and write without retrieval', async () => {
   await assert.rejects(validateTaskConfig({ ...good, allowed_tools: ['shell'] }, ROOT), /allowed_tools/);
   await assert.rejects(validateTaskConfig({ ...good, allowed_tools: ['search_notes', 'search_notes'] }, ROOT), /duplicate/i);

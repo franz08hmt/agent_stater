@@ -61,7 +61,7 @@ function grade(c, run, observations, reference, drafts, paused, replayed) {
     const actualTokens = run.final.answer.match(/(?<![\p{L}\p{N}_])[-+]?\d+(?:[.,]\d+)*(?![\p{L}\p{N}_])/gu) || [];
     const expectedTokens = c.answer.match(/(?<![\p{L}\p{N}_])[-+]?\d+(?:[.,]\d+)*(?![\p{L}\p{N}_])/gu) || [];
     if (canonicalJson(actualTokens.sort()) !== canonicalJson(expectedTokens.sort())) return outcome('FAIL', 'Whole numeric tokens differ from the expected answer.');
-    if (c.args.operation === 'compare') {
+    if (reference.query.operation === 'compare') {
       const escape = (v) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const pairs = [...c.answer.matchAll(/([A-Za-z]+)\s*=\s*([-+]?\d+(?:[.,]\d+)*)/g)];
       for (const [, label, value] of pairs) {
@@ -156,7 +156,7 @@ export async function runSuite({ env, cases, live = false, cloud = false, repeat
       const stored = (await store.loadRuns())[0];
       const observations = stored.messages.filter((m) => m.content.startsWith('OBSERVATION')).map((m) => JSON.parse(m.content.slice(m.content.indexOf('{'))));
       const drafts = (await store.listDrafts()).length;
-      const reference = c.kind === 'table' ? (await entry.registry.get('query_dataset').execute(c.args)).results[0] : null;
+      const reference = c.kind === 'table' ? (await entry.registry.get(c.tool).execute(c.args)).results[0] : null;
       const system = buildSystemPrompt({ task: entry.task, tools: entry.registry.describe(), limits: env.config.limits });
       const leaks = invariantFailures(run, { registry: entry.registry, systemPrompt: system, apiKey: profile.config.apiKey });
       const verdict = leaks.length ? outcome('FAIL', 'Safety invariant violated; potentially sensitive answer omitted.') : grade(c, run, observations, reference, drafts, paused, replayed);

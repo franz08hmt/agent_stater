@@ -48,6 +48,43 @@ test('offline notes smoke covers approval, replay, rejection and missing evidenc
   assert.equal(result.results.find((r) => r.id === 'reject').drafts, 0);
 });
 
+for (const [answer, invented, status] of [
+  ['Support = 2; Billing = 1; Support > Billing.', false, 'PASS'],
+  ['Support = 12; Billing = 1; Support > Billing.', false, 'FAIL'],
+  ['Support = 1; Billing = 2; Support > Billing.', false, 'FAIL'],
+  ['Support = 2; Billing = 1; Support < Billing.', false, 'FAIL'],
+  ['Support = 2; Billing = 1; Support > Billing.', true, 'FAIL'],
+]) test(`ticket comparison grader checks new interface, evidence, group counts and relation: ${answer}, invented=${invented}`, async (t) => {
+  const c = REHEARSAL_CASES.find((c) => c.id === 'tickets-compare');
+  assert.equal(c.tool, 'compare_counts');
+  assert.deepEqual(Object.keys(c.args).sort(), ['compare_filters', 'dataset_id', 'filters']);
+  const h = await fakeProvider(t, (body) => {
+    const observation = body.messages.findLast((m) => m.content.startsWith('OBSERVATION'));
+    if (!observation) return { decision: { type: 'tool_call', tool: c.tool, arguments: c.args } };
+    const obs = JSON.parse(observation.content.slice(observation.content.indexOf('{')));
+    assert.equal(obs.tool, 'compare_counts');
+    const e = obs.untrusted_data.results[0];
+    return { decision: { type: 'final', answer, source_ids: [invented ? 'ds-invented' : e.source_id], unresolved: '' } };
+  });
+  const r = await runSuite({ env: h.env, cases: [c], live: true, profileId: 'fake' });
+  assert.equal(r.results[0].status, status, r.results[0].reason);
+  assert.equal(r.results[0].drafts, 0);
+});
+
+test('ticket compare rejects a valid citation from a different query even if the answer numbers are correct', async (t) => {
+  const c = REHEARSAL_CASES.find((c) => c.id === 'tickets-compare');
+  const h = await fakeProvider(t, (body) => {
+    const observation = body.messages.findLast((m) => m.content.startsWith('OBSERVATION'));
+    if (!observation) return { decision: { type: 'tool_call', tool: c.tool,
+      arguments: { ...c.args, filters: c.args.compare_filters, compare_filters: c.args.filters } } };
+    const e = JSON.parse(observation.content.slice(observation.content.indexOf('{'))).untrusted_data.results[0];
+    return { decision: { type: 'final', answer: c.answer, source_ids: [e.source_id], unresolved: '' } };
+  });
+  const r = await runSuite({ env: h.env, cases: [c], live: true, profileId: 'fake' });
+  assert.equal(r.results[0].run_status, 'completed', 'source is real and passes backend grounding');
+  assert.equal(r.results[0].status, 'FAIL'); assert.match(r.results[0].reason, /query, snapshot or calculation/);
+});
+
 for (const retry of [false, true]) test(`session cap blocks the next HTTP, including retry=${retry}`, async (t) => {
   const c = SMOKE_CASES.find((c) => c.id === 'sum');
   const h = await fakeProvider(t, () => retry ? { status: 503 } : { decision: { type: 'tool_call', tool: c.tool, arguments: c.args } });

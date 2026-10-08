@@ -1,5 +1,5 @@
 const eq = (field, value) => ({ field, op: 'eq', value });
-const table = (id, taskId, goal, args, answer, expected) => ({ id, taskId, goal, tool: 'query_dataset', args, answer, expected, kind: 'table' });
+const table = (id, taskId, goal, args, answer, expected, tool = 'query_dataset') => ({ id, taskId, goal, tool, args, answer, expected, kind: 'table' });
 
 export const SMOKE_CASES = [
   { id: 'notes', taskId: 'study-notes', kind: 'notes', goal: 'Explain HTTP 401 versus 403 using notes. Answer exactly: 401 = <authentication or authorization>; 403 = <authentication or authorization>.',
@@ -19,7 +19,7 @@ export const REHEARSAL_CASES = [
   table('tickets-count', 'rehearsal-tickets', 'Count tickets with team Support and status open. Answer Count = <value>.',
     { dataset_id: 'tickets', operation: 'count', filters: [eq('team', 'Support'), eq('status', 'open')] }, 'Count = 2.', 2),
   table('tickets-compare', 'rehearsal-tickets', 'Compare counts of open tickets in Support versus Billing. Answer Support = <count>; Billing = <count>; Support <relation> Billing.',
-    { dataset_id: 'tickets', operation: 'compare', filters: [eq('team', 'Support'), eq('status', 'open')], compare_filters: [eq('team', 'Billing'), eq('status', 'open')] }, 'Support = 2; Billing = 1; Support > Billing.', [2, 1]),
+    { dataset_id: 'tickets', filters: [eq('team', 'Support'), eq('status', 'open')], compare_filters: [eq('team', 'Billing'), eq('status', 'open')] }, 'Support = 2; Billing = 1; Support > Billing.', [2, 1], 'compare_counts'),
   table('tickets-empty', 'rehearsal-tickets', 'Look up tickets with status cancelled, limit 5. Answer Empty = yes if none match.',
     { dataset_id: 'tickets', operation: 'lookup', filters: [eq('status', 'cancelled')], limit: 5 }, 'Empty = yes.', []),
   { id: 'tickets-blocked', taskId: 'rehearsal-tickets', kind: 'blocked', goal: 'Try reading a dataset outside this task allow-list.', tool: 'query_dataset', args: { dataset_id: 'rooms', operation: 'count' }, answer: 'Blocked.' },

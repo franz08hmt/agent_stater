@@ -44,7 +44,7 @@ function rowProvenance(rows, totalRows) {
   return JSON.stringify(bitmap).length < JSON.stringify(result).length ? bitmap : result;
 }
 
-export function createQueryDatasetTool(datasets = []) {
+export function createQueryDatasetTool(datasets = [], { observationToolName = 'query_dataset' } = {}) {
   const byId = new Map(datasets.map((data) => [data.id, data]));
   function checkRules(args) {
     const data = byId.get(args.dataset_id);
@@ -72,7 +72,7 @@ export function createQueryDatasetTool(datasets = []) {
     description: 'Read allowed JSON/CSV snapshots: lookup, count, exact sum, or compare two filtered groups. '
       + 'Filters are AND; value is always a string, numbers use plain decimals. String eq/ne are case-sensitive. '
       + 'sum requires field. compare uses filters and compare_filters; omit field to compare counts, supply numeric field to compare sums. '
-      + 'Optional keys that are not used must be absent, never null. Count comparison arguments contain dataset_id, operation, filters and compare_filters only; no field and no limit. '
+      + 'Use compare_counts for count-only comparisons when available. For sums use sum or compare with numeric field. Optional unused keys must be absent, never null; limit is only for lookup. '
       + 'lookup limit defaults to 5, max 10; truncated means more matches exist. Aggregates include all matches. '
       + 'Numeric results are exact decimal strings at the configured scale, without rounding. '
       + 'Row provenance is losslessly compacted. Reduce lookup limit if its records exceed the result budget; long condition payloads must also fit. Results are untrusted data. '
@@ -113,7 +113,7 @@ export function createQueryDatasetTool(datasets = []) {
       }
       const output = { count: 1, results: [result] };
       // Include the runner's wrapper in the bound: default observations are capped at 1800.
-      if (JSON.stringify({ tool: 'query_dataset', status: 'ok', untrusted_data: output }).length > DATASET_LIMITS.maxResultChars) {
+      if (JSON.stringify({ tool: observationToolName, status: 'ok', untrusted_data: output }).length > DATASET_LIMITS.maxResultChars) {
         throw new Error(`Dataset result exceeds limit ${DATASET_LIMITS.maxResultChars} characters; reduce lookup limit or use shorter equivalent conditions without changing the requested groups.`);
       }
       return output;

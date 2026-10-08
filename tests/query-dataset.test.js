@@ -148,6 +148,78 @@ function decodeOrdinals(provenance) {
   return Array.from({ length: provenance.total_rows }, (_, i) => i + 1).filter((n) => bits[(n - 1) >> 3] & (1 << ((n - 1) & 7)));
 }
 
+async function countsFixture(t, rows) {
+  const h = await setup(t, rows);
+  const registry = createConfiguredToolRegistry(['compare_counts'], h.datasets);
+  const args = { dataset_id: 'items', filters: [], compare_filters: [] };
+  return { ...h, registry, args, async compare(overrides = {}) {
+    const input = { ...args, ...overrides }, checked = registry.check('compare_counts', input, {});
+    assert.equal(checked.ok, true, JSON.stringify(checked));
+    return (await checked.tool.execute(input)).results[0];
+  } };
+}
+
+test('compare_counts requires explicit groups and preserves the existing engine evidence and source IDs', async (t) => {
+  const h = await countsFixture(t);
+  const tool = h.registry.get('compare_counts');
+  assert.equal(tool.access, 'read'); assert.equal(tool.requiresApproval, false);
+  for (const [filters, compare_filters, expected, relation] of [
+    [[], [], [3, 3], 'eq'],
+    [[filter('group', 'eq', 'x')], [filter('group', 'eq', 'y')], [2, 1], 'gt'],
+    [[filter('group', 'eq', 'absent')], [], [0, 3], 'lt'],
+    [[filter('group', 'eq', 'absent')], [filter('id', 'eq', 'absent')], [0, 0], 'eq'],
+    [[filter('group', 'eq', 'x')], [], [2, 3], 'lt'], // overlapping groups are independent
+    [[filter('group', 'eq', 'x'), filter('amount', 'gte', '0.20')], [filter('amount', 'lt', '0.10')], [1, 1], 'eq'],
+  ]) {
+    const result = await h.compare({ filters, compare_filters });
+    assert.deepEqual(result.values, expected); assert.equal(result.relation, relation);
+    assert.deepEqual(result, await h.query({ operation: 'compare', filters, compare_filters }));
+    assert.equal(result.dataset_version, h.datasets[0].version);
+  }
+});
+
+test('compare_counts rejects unused/null/unknown arguments, unsafe IDs, invalid filters and missing groups', async (t) => {
+  const h = await countsFixture(t);
+  for (const change of [
+    { operation: 'compare' }, { field: 'amount' }, { field: null }, { limit: 10 }, { limit: null },
+    { path: 'data/items.json' }, { endpoint: 'http://example.invalid' }, { formula: 'count(*)' },
+    { filters: null }, { compare_filters: null }, { dataset_id: null }, { dataset_id: '../items' }, { dataset_id: 'secret' },
+    { filters: [filter('missing', 'eq', 'x')] }, { compare_filters: [filter('group', 'gt', 'x')] },
+    { filters: [filter('amount', 'eq', 'NaN')] }, { filters: [filter('amount', 'eq', '0.001')] },
+    { filters: [filter('amount', 'eq', 1)] }, { filters: [filter('group', 'like', 'x')] },
+    { compare_filters: Array.from({ length: 9 }, () => filter('id', 'eq', 'a')) },
+  ]) {
+    const input = { ...h.args, ...change };
+    assert.equal(h.registry.check('compare_counts', input, {}).ok, false, JSON.stringify(input));
+  }
+  for (const key of ['dataset_id', 'filters', 'compare_filters']) {
+    const input = { ...h.args }; delete input[key];
+    assert.equal(h.registry.check('compare_counts', input, {}).code, 'invalid_arguments');
+  }
+  assert.equal(createConfiguredToolRegistry(['query_dataset'], h.datasets).check('compare_counts', h.args, {}).code, 'tool_not_allowed');
+  assert.equal(createConfiguredToolRegistry(['compare_counts']).check('compare_counts', h.args, {}).code, 'rule_violation');
+});
+
+test('compare_counts over 200 alternating rows reaches the Agent final with full bounded provenance', async (t) => {
+  const h = await countsFixture(t, Array.from({ length: 200 }, (_, i) => ({ id: String(i), group: i % 2 ? 'y' : 'x', amount: '1.00' })));
+  const args = { ...h.args, filters: [filter('group', 'eq', 'x')], compare_filters: [filter('group', 'eq', 'y')] };
+  const agent = await harness({ registry: h.registry, replies: [callTool('compare_counts', args), (messages) => {
+    const message = messages.findLast((m) => m.content.startsWith('OBSERVATION'));
+    const obs = JSON.parse(message.content.slice(message.content.indexOf('{'))), e = obs.untrusted_data.results[0];
+    assert.equal(obs.tool, 'compare_counts'); assert.equal(obs.status, 'ok');
+    assert.ok(JSON.stringify(obs).length <= 1500);
+    assert.deepEqual(e.values, [100, 100]); assert.equal(e.relation, 'eq');
+    assert.deepEqual(decodeOrdinals(e.matched_rows), Array.from({ length: 100 }, (_, i) => i * 2 + 1));
+    assert.deepEqual(decodeOrdinals(e.compared_rows), Array.from({ length: 100 }, (_, i) => i * 2 + 2));
+    assert.equal(e.dataset_version, h.datasets[0].version);
+    return final('x = 100; y = 100; x = y.', [e.source_id]);
+  }] }); t.after(agent.cleanup);
+  const run = await agent.run('Compare the counts of x and y.');
+  assert.equal(run.status, 'completed'); assert.equal(run.repairs_used, 0);
+  assert.deepEqual(run.final.source_ids, run.retrieved_source_ids);
+  assert.equal((await agent.store.listDrafts()).length, 0);
+});
+
 test('200 alternating rows compare exact counts/sums with lossless provenance below the observation limit', async (t) => {
   const h = await setup(t, Array.from({ length: 200 }, (_, i) => ({ id: String(i), group: i % 2 ? 'y' : 'x', amount: i % 2 ? '2.00' : '1.00' })));
   const args = { operation: 'compare', filters: [filter('group', 'eq', 'x')], compare_filters: [filter('group', 'eq', 'y')] };

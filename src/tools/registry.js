@@ -5,14 +5,16 @@ import { validate } from './schema.js';
 import { searchNotes } from './searchNotes.js';
 import { saveDraft } from './saveDraft.js';
 import { queryDataset, createQueryDatasetTool } from './queryDataset.js';
+import { compareCounts, createCompareCountsTool } from './compareCounts.js';
 
-export const BUILTIN_TOOLS = Object.freeze({ search_notes: searchNotes, save_draft: saveDraft, query_dataset: queryDataset });
+export const BUILTIN_TOOLS = Object.freeze({ search_notes: searchNotes, save_draft: saveDraft, query_dataset: queryDataset, compare_counts: compareCounts });
 
 export function createConfiguredToolRegistry(names, datasets = []) {
   if (!Array.isArray(names) || !names.length || names.some((name) => !Object.hasOwn(BUILTIN_TOOLS, name))) {
     throw new Error('Task allowed_tools contains an unavailable tool.');
   }
-  return createToolRegistry(names.map((name) => name === 'query_dataset' ? createQueryDatasetTool(datasets) : BUILTIN_TOOLS[name]));
+  const datasetFactories = { query_dataset: createQueryDatasetTool, compare_counts: createCompareCountsTool };
+  return createToolRegistry(names.map((name) => datasetFactories[name] ? datasetFactories[name](datasets) : BUILTIN_TOOLS[name]));
 }
 
 const MAX_ARGUMENT_BYTES = 6000;

@@ -59,7 +59,7 @@ export async function buildCatalog({ tasks, profiles, defaultTaskId, defaultProf
       data: { retrieval: registry.get('search_notes') ? retriever.kind : 'structured tables',
         note_count: registry.get('search_notes') ? retriever.sourceCount : 0,
         notes: registry.get('search_notes') ? retriever.describe() : [],
-        datasets: registry.get('query_dataset') ? task.datasets.map((d) => ({ id: d.id, columns: d.columns, row_count: d.rows.length, version: d.version })) : [] },
+        datasets: registry.get('query_dataset') || registry.get('compare_counts') ? task.datasets.map((d) => ({ id: d.id, columns: d.columns, row_count: d.rows.length, version: d.version })) : [] },
     };
     taskMap.set(task.id, { task, registry, retriever, metadata });
   }

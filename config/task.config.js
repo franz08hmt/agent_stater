@@ -39,7 +39,9 @@ export async function validateTaskConfig(raw, root) {
   if (errors.length) invalid(errors.join('; ').replace('allowed_tools: items must be unique', 'allowed_tools: duplicate tools'));
   if (new Set(raw.sample_inputs.map((x) => x.label.toLowerCase())).size !== raw.sample_inputs.length) invalid('sample_inputs: duplicate labels');
   if (raw.allowed_tools.includes('save_draft') && !raw.allowed_tools.includes('search_notes')) invalid('save_draft requires search_notes for grounded drafts.');
-  if (raw.allowed_tools.includes('query_dataset') && !raw.data.datasets?.length) invalid('query_dataset requires at least one allowed dataset in data.datasets.');
+  for (const tool of ['query_dataset', 'compare_counts']) {
+    if (raw.allowed_tools.includes(tool) && !raw.data.datasets?.length) invalid(`${tool} requires at least one allowed dataset in data.datasets.`);
+  }
   let datasets;
   try { datasets = await loadDatasets(raw.data.datasets, root); }
   catch (err) { invalid(err.message); }
