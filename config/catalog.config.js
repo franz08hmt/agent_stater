@@ -47,15 +47,15 @@ export async function loadCatalog({ root, config, file = join(root, 'config/cata
       config: { ...config.model, provider: def.provider, name: def.name || '', baseUrl: def.base_url || '', apiKey: resolveCredentials && def.api_key_env ? process.env[def.api_key_env] || '' : '',
         jsonMode: def.json_mode ?? true, reasoningEffort: def.reasoning_effort ?? '' } };
   });
-  return buildCatalog({ tasks, profiles, defaultTaskId: raw.default_task_id, defaultProfileId: raw.default_model_profile_id });
+  return buildCatalog({ tasks, profiles, defaultTaskId: raw.default_task_id, defaultProfileId: raw.default_model_profile_id, virtualFiles, root });
 }
 
-export async function buildCatalog({ tasks, profiles, defaultTaskId, defaultProfileId }) {
+export async function buildCatalog({ tasks, profiles, defaultTaskId, defaultProfileId, virtualFiles, root }) {
   const taskMap = new Map(), profileMap = new Map();
   for (const task of tasks) {
     if (!task?.fingerprint || !task.allowedTools?.length || taskMap.has(task.id)) throw new Error('Catalog tasks must be validated and unique.');
     const registry = createConfiguredToolRegistry(task.allowedTools, task.datasets, task);
-    const retriever = await createKeywordRetriever({ dir: task.dataDir });
+    const retriever = await createKeywordRetriever({ dir: task.dataDir, virtualFiles, root });
     const tools = registry.describe().map(({ name, access, requires_approval, description }) => ({ name, access, requires_approval, description }));
     const metadata = { id: task.id, title: task.title, allowed_tools: [...task.allowedTools], tools,
       sample_inputs: structuredClone(task.sampleInputs), result_labels: { ...task.resultLabels },

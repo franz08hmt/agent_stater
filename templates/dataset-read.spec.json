@@ -1,0 +1,152 @@
+{
+  "version": 1,
+  "template": "dataset-read",
+  "task": {
+    "id": "exam-inventory",
+    "title": "Fictional Inventory",
+    "mission": "Use allowed dataset tools for fictional inventory. Backend performs exact sums; copy exact query sources, including zero matches. Never save data.",
+    "data": {
+      "notes_dir": "data/notes",
+      "datasets": [
+        {
+          "id": "inventory",
+          "file": "data/exam-inventory/items.json",
+          "id_column": "item_key",
+          "columns": [
+            {
+              "name": "item_key",
+              "type": "string"
+            },
+            {
+              "name": "group",
+              "type": "string"
+            },
+            {
+              "name": "cost",
+              "type": "number",
+              "scale": 2
+            }
+          ]
+        }
+      ]
+    },
+    "allowed_tools": [
+      "query_dataset",
+      "compare_counts"
+    ],
+    "sample_inputs": [
+      {
+        "label": "Supply sum",
+        "goal": "Sum cost for supply group in inventory."
+      }
+    ],
+    "result_labels": {
+      "answer": "Answer",
+      "sources": "Sources",
+      "unresolved": "Unresolved"
+    }
+  },
+  "assets": [
+    {
+      "file": "data/exam-inventory/items.json",
+      "content": "[{\"item_key\":\"I1\",\"group\":\"supply\",\"cost\":\"12.30\"},{\"item_key\":\"I2\",\"group\":\"supply\",\"cost\":\"3.20\"},{\"item_key\":\"I3\",\"group\":\"device\",\"cost\":\"40.00\"}]\n"
+    }
+  ],
+  "cases": [
+    {
+      "id": "happy",
+      "kind": "read",
+      "goal": "Sum supply costs.",
+      "tool": "query_dataset",
+      "args": {
+        "dataset_id": "inventory",
+        "operation": "sum",
+        "field": "cost",
+        "filters": [
+          {
+            "field": "group",
+            "op": "eq",
+            "value": "supply"
+          }
+        ]
+      },
+      "expected": {
+        "matched_count": 2,
+        "value": "15.50"
+      },
+      "answer": "Supply = 15.50."
+    },
+    {
+      "id": "missing",
+      "kind": "empty",
+      "goal": "Find missing inventory key.",
+      "tool": "query_dataset",
+      "args": {
+        "dataset_id": "inventory",
+        "operation": "lookup",
+        "filters": [
+          {
+            "field": "item_key",
+            "op": "eq",
+            "value": "none"
+          }
+        ],
+        "limit": 2
+      },
+      "expected": {
+        "matched_count": 0,
+        "record_ids": []
+      },
+      "answer": "No matching records."
+    },
+    {
+      "id": "compare",
+      "kind": "read",
+      "goal": "Compare supply/device counts.",
+      "tool": "compare_counts",
+      "args": {
+        "dataset_id": "inventory",
+        "filters": [
+          {
+            "field": "group",
+            "op": "eq",
+            "value": "supply"
+          }
+        ],
+        "compare_filters": [
+          {
+            "field": "group",
+            "op": "eq",
+            "value": "device"
+          }
+        ]
+      },
+      "expected": {
+        "matched_count": 2,
+        "compared_count": 1,
+        "values": [
+          "2",
+          "1"
+        ],
+        "relation": "gt"
+      },
+      "answer": "Supply = 2; device = 1; supply > device."
+    },
+    {
+      "id": "permission",
+      "kind": "blocked",
+      "goal": "Try to save a draft.",
+      "tool": "save_draft",
+      "args": {
+        "title": "Attempt",
+        "content": "Test",
+        "source_ids": [
+          "missing"
+        ]
+      },
+      "expected": {
+        "code": "tool_not_allowed"
+      }
+    }
+  ]
+}

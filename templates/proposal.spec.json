@@ -1,0 +1,192 @@
+{
+  "version": 1,
+  "template": "proposal",
+  "task": {
+    "id": "exam-class-proposal",
+    "title": "Fictional Room Proposals",
+    "mission": "Retrieve both class and target room by lookup, copy exact source IDs, then create an internal proposal only when explicitly requested. Backend checks capacity. Human approval is required; changes are not applied.",
+    "data": {
+      "notes_dir": "data/notes",
+      "datasets": [
+        {
+          "id": "classes",
+          "file": "data/exam-class-proposal/classes.csv",
+          "id_column": "class_code",
+          "columns": [
+            {
+              "name": "class_code",
+              "type": "string"
+            },
+            {
+              "name": "room",
+              "type": "string"
+            },
+            {
+              "name": "students",
+              "type": "number",
+              "scale": 0
+            }
+          ]
+        },
+        {
+          "id": "rooms",
+          "file": "data/exam-class-proposal/rooms.csv",
+          "id_column": "room_code",
+          "columns": [
+            {
+              "name": "room_code",
+              "type": "string"
+            },
+            {
+              "name": "room",
+              "type": "string"
+            },
+            {
+              "name": "capacity",
+              "type": "number",
+              "scale": 0
+            }
+          ]
+        }
+      ]
+    },
+    "allowed_tools": [
+      "query_dataset",
+      "create_proposal"
+    ],
+    "sample_inputs": [
+      {
+        "label": "Move class proposal",
+        "goal": "Create a proposal to move class C1 to room B202 (room ID R2)."
+      }
+    ],
+    "result_labels": {
+      "answer": "Answer",
+      "sources": "Sources",
+      "unresolved": "Unresolved"
+    },
+    "proposal_policies": [
+      {
+        "policy_id": "class-room",
+        "datasets": {
+          "subject": "classes",
+          "target": "rooms"
+        }
+      }
+    ]
+  },
+  "assets": [
+    {
+      "file": "data/exam-class-proposal/classes.csv",
+      "content": "class_code,room,students\r\nC1,A101,30\r\n"
+    },
+    {
+      "file": "data/exam-class-proposal/rooms.csv",
+      "content": "room_code,room,capacity\r\nR1,A101,40\r\nR2,B202,60\r\nR3,B201,20\r\n"
+    }
+  ],
+  "cases": [
+    {
+      "id": "approve",
+      "kind": "proposal",
+      "goal": "Create a proposal to move class C1 to room B202 (room ID R2). Let the backend check capacity.",
+      "action": "class_room",
+      "references": [
+        {
+          "role": "subject",
+          "dataset_id": "classes",
+          "record_id": "C1"
+        },
+        {
+          "role": "target",
+          "dataset_id": "rooms",
+          "record_id": "R2"
+        }
+      ],
+      "changes": {
+        "room": "B202"
+      },
+      "decision": "approve",
+      "expected": {
+        "proposals": 1,
+        "outcome": "saved"
+      }
+    },
+    {
+      "id": "reject",
+      "kind": "proposal",
+      "goal": "Create a proposal to move class C1 to room B202 (room ID R2). Let the backend check capacity.",
+      "action": "class_room",
+      "references": [
+        {
+          "role": "subject",
+          "dataset_id": "classes",
+          "record_id": "C1"
+        },
+        {
+          "role": "target",
+          "dataset_id": "rooms",
+          "record_id": "R2"
+        }
+      ],
+      "changes": {
+        "room": "B202"
+      },
+      "decision": "reject",
+      "expected": {
+        "proposals": 0,
+        "outcome": "not_saved"
+      }
+    },
+    {
+      "id": "capacity",
+      "kind": "proposal",
+      "goal": "Create a proposal to move class C1 to room B201 (room ID R3). Let the backend check capacity.",
+      "action": "class_room",
+      "references": [
+        {
+          "role": "subject",
+          "dataset_id": "classes",
+          "record_id": "C1"
+        },
+        {
+          "role": "target",
+          "dataset_id": "rooms",
+          "record_id": "R3"
+        }
+      ],
+      "changes": {
+        "room": "B201"
+      },
+      "decision": "approve",
+      "expected": {
+        "proposals": 0,
+        "outcome": "blocked",
+        "error_contains": "capacity"
+      }
+    },
+    {
+      "id": "missing",
+      "kind": "empty",
+      "goal": "Find missing class.",
+      "tool": "query_dataset",
+      "args": {
+        "dataset_id": "classes",
+        "operation": "lookup",
+        "filters": [
+          {
+            "field": "class_code",
+            "op": "eq",
+            "value": "none"
+          }
+        ],
+        "limit": 2
+      },
+      "expected": {
+        "matched_count": 0,
+        "record_ids": []
+      },
+      "answer": "No matching class."
+    }
+  ]
+}

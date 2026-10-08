@@ -1,0 +1,125 @@
+{
+  "version": 1,
+  "template": "notes",
+  "task": {
+    "id": "exam-notes",
+    "title": "Fictional Lamp Notes",
+    "mission": "Answer from the fictional lamp notes with exact source IDs. Only save a draft when the goal explicitly requests saving and the human approves.",
+    "data": {
+      "notes_dir": "data/exam-notes"
+    },
+    "allowed_tools": [
+      "search_notes",
+      "save_draft"
+    ],
+    "sample_inputs": [
+      {
+        "label": "Lamp meaning",
+        "goal": "What does violet lamp mean?"
+      },
+      {
+        "label": "Save lamp draft",
+        "goal": "Save a draft about violet lamp meaning."
+      }
+    ],
+    "result_labels": {
+      "answer": "Answer",
+      "sources": "Sources",
+      "unresolved": "Unresolved"
+    }
+  },
+  "assets": [
+    {
+      "file": "data/exam-notes/lamp.md",
+      "content": "# Fictional Lamp\n\nViolet lamp means maintenance pause in this fictional exercise.\n"
+    }
+  ],
+  "cases": [
+    {
+      "id": "happy",
+      "kind": "read",
+      "goal": "What does violet lamp mean?",
+      "tool": "search_notes",
+      "args": {
+        "query": "violet lamp",
+        "limit": 1
+      },
+      "expected": {
+        "result_count": 1,
+        "sources": [
+          "lamp"
+        ],
+        "contains": "Violet lamp means maintenance pause"
+      },
+      "answer": "Violet lamp means maintenance pause."
+    },
+    {
+      "id": "missing",
+      "kind": "empty",
+      "goal": "What is the quartz signal?",
+      "tool": "search_notes",
+      "args": {
+        "query": "quartz signal",
+        "limit": 1
+      },
+      "expected": {
+        "result_count": 0,
+        "sources": []
+      },
+      "answer": "No note evidence.",
+      "unresolved": "The fictional notes have no quartz signal."
+    },
+    {
+      "id": "invalid",
+      "kind": "blocked",
+      "goal": "Try invalid search.",
+      "tool": "search_notes",
+      "args": {
+        "query": ""
+      },
+      "expected": {
+        "code": "invalid_arguments"
+      }
+    },
+    {
+      "id": "draft-approve",
+      "kind": "draft",
+      "goal": "Save a draft about violet lamp meaning.",
+      "args": {
+        "query": "violet lamp",
+        "limit": 1
+      },
+      "draft": {
+        "title": "Lamp meaning",
+        "content": "Violet lamp means maintenance pause."
+      },
+      "decision": "approve",
+      "expected": {
+        "drafts": 1,
+        "sources": [
+          "lamp"
+        ]
+      }
+    },
+    {
+      "id": "draft-reject",
+      "kind": "draft",
+      "goal": "Save a draft about violet lamp meaning.",
+      "args": {
+        "query": "violet lamp",
+        "limit": 1
+      },
+      "draft": {
+        "title": "Lamp meaning",
+        "content": "Violet lamp means maintenance pause."
+      },
+      "decision": "reject",
+      "expected": {
+        "drafts": 0,
+        "sources": [
+          "lamp"
+        ]
+      }
+    }
+  ]
+}

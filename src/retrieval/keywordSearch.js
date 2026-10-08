@@ -9,7 +9,7 @@
 // Passage = { source_id, title, passage, text, score }
 
 import { readdir, readFile } from 'node:fs/promises';
-import { join, extname, basename } from 'node:path';
+import { join, extname, basename, relative } from 'node:path';
 
 // Removing accents makes different Vietnamese words collide ("đề" exam / "để" so that,
 // "mã" code / "mà", "đăng" / "đang", "thi" exam / "thì"). Only words that are almost
@@ -40,10 +40,13 @@ function parseNote(sourceId, raw) {
   return { sourceId, title, passages };
 }
 
-export async function createKeywordRetriever({ dir }) {
-  const files = (await readdir(dir)).filter((f) => extname(f) === '.md').sort();
+export async function createKeywordRetriever({ dir, root, virtualFiles }) {
+  const prefix = root ? `${relative(root, dir).replaceAll('\\', '/')}/` : '';
+  const virtual = [...(virtualFiles?.keys() || [])].filter((f) => f.startsWith(prefix) && !f.slice(prefix.length).includes('/') && f.endsWith('.md'));
+  const disk = await readdir(dir).catch((err) => { if (err.code === 'ENOENT' && virtual.length) return []; throw err; });
+  const files = [...new Set([...disk.filter((f) => extname(f) === '.md'), ...virtual.map((f) => f.slice(prefix.length))])].sort();
   const docs = [];
-  for (const f of files) docs.push(parseNote(basename(f, '.md'), await readFile(join(dir, f), 'utf8')));
+  for (const f of files) docs.push(parseNote(basename(f, '.md'), virtualFiles?.get(`${prefix}${f}`) ?? await readFile(join(dir, f), 'utf8')));
   return createRetrieverFromDocs(docs);
 }
 
