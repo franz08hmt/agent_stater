@@ -160,9 +160,9 @@ Provenance dùng ranges hoặc bitmap base64 không mất thông tin, giúp 200 
 
 ### Q14. Project có dùng embedding không? Có vector database không?
 
-**[Đã có] Không có embedding retrieval hoặc vector database.** Notes dùng keyword BM25; bảng dùng filter/tính toán xác định. Không có request `/embeddings`, chunk vectors hay index cosine trong đường chạy hiện tại.
+**[Đã có, chỉ ở task `sunrise-clinic-rag`] Có embedding retrieval với index vector cục bộ; không có vector database/ANN.** Các task notes khác vẫn dùng keyword BM25 và bảng dùng filter/tính toán xác định, không gọi embedding. Task Sunrise gọi Ollama `/api/embed` (model `embeddinggemma`) khi tạo index (`npm run rag:index`) và một lần cho mỗi truy vấn. **Trên máy này `embeddinggemma` chưa cài** nên truy xuất thật chưa được đo (xem Q67–Q76).
 
-**Đáp án 20 giây:** “Project chưa tạo document/query embeddings, nên không có embedding model được cấu hình. `qwen3:8b` là model sinh quyết định/câu trả lời; `keyword-bm25` là retriever. Không được gọi Qwen3 8B là embedding model của project.” Chứng minh tại [keywordSearch.js](../src/retrieval/keywordSearch.js), `kind: 'keyword-bm25'`, và [catalog.json](../config/catalog.json), `model_profiles`.
+**Đáp án 20 giây:** “Task notes dùng `keyword-bm25`, không embedding. Task Sunrise dùng `embeddinggemma` làm embedding model và `vector-cosine` làm retriever; `qwen3:8b` chỉ sinh quyết định/câu trả lời. Không được gọi Qwen3 8B là embedding model.” Chứng minh tại [keywordSearch.js](../src/retrieval/keywordSearch.js), `kind: 'keyword-bm25'`, và [catalog.json](../config/catalog.json), `model_profiles`.
 
 “LLM bên trong thường có biểu diễn embedding” và “ứng dụng xây embedding index cho retrieval” là hai việc khác nhau. Repo này gọi model có sẵn, không triển khai các lớp neural network bên trong model.
 
@@ -189,7 +189,7 @@ Từ hiếm có trọng số cao hơn; tf có hiệu ứng bão hòa; length nor
 
 Một paragraph là một chunk/passage; title được lấy từ `# `, dòng bắt đầu `>` được bỏ khỏi body như metadata. Source ID của note là tên file không extension, passage number là vị trí đoạn. Bỏ dấu có thể làm các từ khác nghĩa trùng nhau; paraphrase/từ đồng nghĩa có thể không match.
 
-### Q17. Embedding là gì và hoạt động thế nào? [Kiến thức nền, chưa triển khai retrieval]
+### Q17. Embedding là gì và hoạt động thế nào? [Kiến thức nền; triển khai ở task Sunrise: Q67–Q70]
 
 Embedding biểu diễn dữ liệu bằng vector số. Với sentence embedding, một encoder tạo vector cho câu/đoạn; similarity như cosine được dùng để so sánh biểu diễn ngữ nghĩa. Ví dụ phương pháp Sentence-BERT tạo sentence embeddings và so sánh bằng cosine. [Nguồn nền: bài báo Sentence-BERT](https://aclanthology.org/D19-1410/).
 
@@ -213,15 +213,15 @@ Không kết luận embedding luôn tốt hơn. Phải eval theo câu hỏi, ng�
 
 Viết retriever mới tương thích `search(query,{limit})`, `has(sourceId)` và result `{source_id,title,passage,text,score}`. Tích hợp catalog còn cần metadata `kind`, `sourceCount`, `describe()` hoặc thích nghi tương ứng. Chỗ tạo retriever hiện tại là **`buildCatalog()` trong [catalog.config.js](../config/catalog.config.js)**. Hướng dẫn cũ nói thay một dòng trong `src/app.js` thuộc kiến trúc trước catalog, không đủ cho code hiện tại.
 
-Cần thiết kế chunk/index/version, encoder/document-query compatibility, data access, giới hạn và tests/evals riêng. Giữ source grounding/approval/backend rights. Đây là công việc tương lai, không có model embedding được khai báo sẵn.
+Cần thiết kế chunk/index/version, encoder/document-query compatibility, data access, giới hạn và tests/evals riêng. Giữ source grounding/approval/backend rights. Task Sunrise đã làm đúng việc này (Q67–Q70); với task notes khác đây vẫn là công việc nếu đề yêu cầu.
 
-Query và documents phải dùng encoder tương thích cùng không gian biểu diễn; khi đổi model/normalization/chunking cần xem xét tạo lại index. Không trộn vector khác model chỉ vì cùng dimension. API embeddings riêng của Ollama là kiến thức mở rộng, chưa được project gọi: [Ollama embeddings](https://docs.ollama.com/capabilities/embeddings).
+Query và documents phải dùng encoder tương thích cùng không gian biểu diễn; khi đổi model/normalization/chunking cần xem xét tạo lại index. Không trộn vector khác model chỉ vì cùng dimension. Task Sunrise gọi API embeddings của Ollama: [Ollama embeddings](https://docs.ollama.com/capabilities/embeddings).
 
 ### Q20. RAG có bắt buộc dùng vector search? Retrieval khác generation thế nào?
 
 Retrieval tìm evidence; generation dùng evidence để diễn đạt câu trả lời. Pattern RAG không bắt buộc là vector search: luồng notes ở đây dùng BM25 để cung cấp ngữ cảnh cho generation. Luồng bảng là structured retrieval + backend calculation. Không gọi hai luồng đó là “RAG vector”.
 
-Giới thiệu chính xác: **agent có luồng trả lời tăng cường bằng truy xuất ghi chú BM25; chưa triển khai dense/vector RAG**. Bài RAG gốc dùng dense retrieval và có kiến trúc huấn luyện riêng; repo không tái hiện toàn bộ bài đó. [Bài báo RAG](https://arxiv.org/abs/2005.11401).
+Giới thiệu chính xác: **các task notes dùng truy xuất BM25; riêng task Sunrise có dense/vector RAG (embedding + exact cosine) nhưng chưa đo chất lượng với embedding thật**. Bài RAG gốc dùng dense retrieval và có kiến trúc huấn luyện riêng; repo không tái hiện toàn bộ bài đó. [Bài báo RAG](https://arxiv.org/abs/2005.11401).
 
 ### Q21. Token của BM25, token của LLM và embedding có giống nhau không?
 
@@ -520,7 +520,7 @@ Các nội dung chưa xác định nên bổ sung theo đề/câu hỏi giảng 
 | Chủ đề cần bổ sung | Trạng thái hiện tại | Bằng chứng cần có trước khi viết đáp án |
 |---|---|---|
 | Bộ câu hỏi/tiêu chí chấm thực tế của giảng viên | Chưa được cung cấp | Đề/rubric hoặc câu đã hỏi, không tự đoán là yêu cầu bắt buộc |
-| Embedding model/dimension/vector DB/hybrid retrieval | Chưa triển khai/chưa chọn | Thiết kế mới + code + eval; không gắn tên một model embedding tùy ý |
+| Embedding thật `embeddinggemma`, ANN/vector DB, hybrid, reranking | Task Sunrise đã có code embedding + exact cosine nhưng model **chưa cài**; ANN/DB/hybrid/rerank chưa có | `ollama pull embeddinggemma` (do người dùng), `rag:index`, đo bằng `rag:retrieve`/`rag:eval --live`; không claim ANN |
 | Quantization, VRAM/RAM, context limit và tokenizer chính xác của model trên máy | Chưa đối chiếu đầy đủ | Metadata model đã tải, cấu hình/hardware thực tế, nguồn provider phù hợp |
 | Native function calling, streaming, reranking | Chưa có trong đường hiện tại | Code và tests tương ứng nếu thực sự bổ sung |
 | Lưu/chỉnh bản ghi dataset, join/công thức mới | Ngoài tools hiện có | Tool mới, business rules, quyền, approval/idempotency và acceptance |
@@ -621,9 +621,9 @@ Ví dụ minh họa giao thức, không phải transcript/evidence của một r
 | Không nên nói | Nói chính xác |
 |---|---|
 | Em dùng Ollama làm LLM | Em dùng Qwen3 8B; Ollama chạy/phục vụ model |
-| Qwen3 8B là embedding model của em | Project chưa có document/query embedding model |
+| Qwen3 8B là embedding model của em | Embedding model là `embeddinggemma` (chưa cài trên máy này); Qwen3 8B chỉ sinh câu trả lời |
 | Em train bằng cách thêm notes/sửa prompt | Em thay dữ liệu truy xuất/input inference, không cập nhật weights |
-| BM25 là vector search ngữ nghĩa | BM25 chấm từ khóa; không có dense embedding index |
+| BM25 là vector search ngữ nghĩa | BM25 chấm từ khóa; chỉ task Sunrise có dense embedding index |
 | Có RAG là không hallucination | Retrieval/grounding giảm rủi ro; vẫn cần eval ngữ nghĩa |
 | Có source ID là answer chắc chắn đúng | Membership đúng chưa chứng minh nguồn hỗ trợ từng câu |
 | Model tính tổng và tự ghi database | Backend tính số và kiểm tra/phê duyệt ghi; proposal không apply |
@@ -691,7 +691,85 @@ Mở [followups.js backend](../src/agent/followups.js): request theo grammar h�
 
 Backend giữ nguồn, numeric tokens và literals/IDs; outcome ghi phải là finite VI/EN đúng approval/store. Proposal saved vẫn **applied:false**. Văn xuôi read là **REVIEW_REQUIRED** vì kiểm nguồn/số không chứng minh mọi ý đúng; không tự sửa output model để báo PASS. Yêu cầu nghiệp vụ mới tạo run mới. Final/trace/metrics/approval gốc không bị ghi đè; reload chỉ GET, đổi task/New run không trộn context.
 
-## 13. Học trên điện thoại và cập nhật bản HTML
+## 13. Bài thi RAG Sunrise: vấn đáp và sửa nhỏ
+
+Phần này dành cho đề “Build a RAG Chatbot” (KB-B Sunrise Family Clinic). Mọi con số lấy từ [SUNRISE_RAG_EXAM.md](SUNRISE_RAG_EXAM.md). **Embedding thật `embeddinggemma` chưa cài trên máy này; chất lượng truy xuất thật chưa được đo.** Kết quả live hiện có chỉ là HYBRID (LLM thật + embedding giả).
+
+### Q67. Pipeline RAG của bài Sunrise chạy từ KB đến câu trả lời thế nào?
+
+**[Đã có]** KB → chunk → embedding → index JSON → (mỗi câu hỏi) embed query → cosine → top-3 + section bắt buộc → LLM → final có `source_ids` → backend kiểm.
+
+**Đáp án 20 giây:** “KB chia thành 11 chunk theo section. `rag:index` gọi `embeddinggemma` để tạo vector cho từng chunk và lưu vào `index.json`. Khi có câu hỏi, model gọi tool `search_kb`; backend embed câu hỏi, so cosine với 11 vector, lấy 3 chunk gần nhất và luôn thêm section 1 và 10. Model chỉ được trả lời từ các chunk đó và phải trích đúng `source_id`; backend từ chối nguồn chưa từng được hiển thị.”
+
+Mở theo thứ tự: [chunker.js](../src/rag/chunker.js) `chunkMarkdown`, [indexBuilder.js](../src/rag/indexBuilder.js) `buildTaskIndex`, [retriever.js](../src/rag/retriever.js) `search`, [searchKb.js](../src/tools/searchKb.js) `checkFinal`. UI hiện “section — source_id” và khối Retrieved chunks.
+
+### Q68. Chunking thế nào? Vì sao 1200/100? Overlap dùng khi nào?
+
+**[Đã có]** Mỗi `## N.` là một chunk nếu ≤ 1200 **ký tự** (không phải token). KB thật cho 11 chunk, lớn nhất 709 ký tự nên không section nào bị tách và overlap 100 ký tự **chưa được dùng**.
+
+**Đáp án 20 giây:** “Em chunk theo ranh giới section vì mỗi section là một chủ đề trọn vẹn và source_id trỏ về đúng section. Chỉ khi một section dài hơn 1200 ký tự mới tách theo khối, hàng bảng (lặp header), mục danh sách, câu; phần tách có overlap 100 ký tự để không mất ngữ cảnh ở chỗ cắt.”
+
+Con số 1200/100 là lựa chọn thiết kế, không phải kết quả tối ưu đã đo. Đổi `retrieval.chunking.max_chars` trong [sunrise.task.json](../config/sunrise.task.json) thì phải `rag:index` lại (Q75). Ranh giới: bảng không bị cắt giữa hàng; câu dẫn kết thúc bằng “:” dính với khối sau.
+
+### Q69. Embedding model nào? Prefix là gì? Vì sao không dùng Qwen3?
+
+**[Đã có code; model chưa cài]** `embeddinggemma` qua Ollama `POST /api/embed`, `truncate:false`, không retry, không theo redirect, kiểm tra model/dimension/số vector trả về.
+
+**Đáp án 20 giây:** “Qwen3 là model sinh văn bản, không phải embedding model. Em dùng embeddinggemma. Model này cần prefix: câu hỏi là `task: search result | query: …`, tài liệu là `title: … | text: …`. Template và `preprocessing_version` được ghi trong index; đổi chúng thì index cũ bị coi là stale.”
+
+Mở [embedding.js](../src/rag/embedding.js) (`createOllamaEmbedder`, `applyTemplate`) và `embedding_profiles` trong [catalog.json](../config/catalog.json). Trên máy này model chưa cài: `rag:index` in `BLOCKED … ollama pull embeddinggemma` và thoát mã 3; tôi không tự tải.
+
+### Q70. Vector store và cosine hoạt động thế nào? Vì sao không dùng ANN?
+
+**[Đã có]** Index là JSON, vector chuẩn hóa đơn vị, tìm **exact cosine**: duyệt cả N=11 chunk, mỗi chunk d chiều ⇒ **O(N×d)**.
+
+**Đáp án 20 giây:** “Cosine của hai vector đơn vị bằng tích vô hướng. Với 11 chunk, duyệt hết là nhanh và cho kết quả chính xác nên không cần ANN như HNSW. Em không claim độ phức tạp dưới tuyến tính.”
+
+[vectorIndex.js](../src/rag/vectorIndex.js): `buildIndexDocument`, `publishIndex` (ghi atomic: file tạm, fsync, validate, rename), `checkFreshness` (so checksum KB, kích thước chunk, embedding name/digest/dimension, template), `cosineRank`. Giới hạn: không dùng được cho KB rất lớn; không có tìm kiếm lai (hybrid) hay rerank.
+
+### Q71. Vì sao backend luôn thêm section 1 và 10, dù cosine không chọn?
+
+**[Đã có]** Section 10 (Updates) **ghi đè** các section trước (phí da liễu 450,000 → 500,000; Bao Viet ở Thu Duc tạm ngưng), section 1 nói phạm vi hai chi nhánh và quy tắc ưu tiên Updates. Câu hỏi “phí da liễu” có thể kéo section 4 lên top mà không kéo section 10.
+
+**Đáp án 20 giây:** “Đây là chính sách của em, không phải điểm cosine: các chunk đó được đánh dấu `required` và được dedup. Nếu ngân sách ký tự không đủ, backend bỏ chunk semantic yếu nhất, không bao giờ bỏ chunk required.”
+
+[retriever.js](../src/rag/retriever.js): `forced`, vòng `while (observationSize(...) > maxChars)`. Giới hạn: nếu KB khác, phải đổi `required_sections`; chính sách này làm tăng số token mỗi lượt.
+
+### Q72. Hệ thống nói “không biết” thế nào? Grounding bảo đảm gì và không bảo đảm gì?
+
+**[Đã có]** Mission yêu cầu: không tìm thấy ⇒ nói KB không cung cấp, `source_ids: []`, mô tả khoảng trống ở `unresolved`. Backend: `final` trước khi gọi `search_kb` bị từ chối; `source_ids` phải là tập con các chunk **đã hiển thị trong chính run** (ledger = đúng các chunk đưa cho model).
+
+**Đáp án 20 giây:** “Backend bảo đảm nguồn trích dẫn có thật và đã được đưa cho model. Nó không bảo đảm câu trả lời đúng: model vẫn có thể hiểu sai hay tự mâu thuẫn. Em cũng gặp đúng trường hợp đó khi chạy thử: với câu telehealth follow-up, `qwen3:8b` vừa nói ‘free’ vừa nói ‘không free’.”
+
+[searchKb.js](../src/tools/searchKb.js) `checkFinal`, `captureRetrieval`. Điểm similarity cao không chứng minh câu hỏi đã được trả lời (nêu trong mô tả tool và mission).
+
+### Q73. Goal tiếng Việt hay tiếng Anh được xử lý ra sao? Embedding có hiểu tiếng Việt không?
+
+**[Đã có chính sách; chất lượng chưa đo]** Goal VI ⇒ trả lời VI; goal EN ⇒ EN; goal nói rõ ngôn ngữ trả lời thì yêu cầu đó thắng (ví dụ ca X01/X02). Ngôn ngữ giao diện độc lập; không có lượt dịch.
+
+**Đáp án 20 giây:** “Mission yêu cầu trả lời theo ngôn ngữ của goal. Model tự viết query tìm kiếm; `embeddinggemma` là model đa ngôn ngữ nên có thể truy xuất KB tiếng Anh bằng câu hỏi tiếng Việt, nhưng em chưa đo điều đó vì model chưa cài.” Grader có 27 case gồm VI/EN và hai chiều chéo; kiểm ngôn ngữ trả lời bằng bộ phát hiện bảo thủ ([acceptance.js](../src/rag/acceptance.js) `detectLanguage`).
+
+### Q74. Nếu model bị rate limit hoặc hỏng thì sao? Dự phòng đã xác minh chưa?
+
+**[Một phần]** Không retry tự động HTTP 429/lỗi; lỗi provider làm run dừng với mã `model_*` và phiên `rag:eval` dừng ngay (BLOCKED, các case còn lại NOT_RUN). Dự phòng cấu hình sẵn: `qwen3:4b` local (profile `ollama-qwen3-4b`) và profile `env` (cloud, quota theo project).
+
+**Đáp án 20 giây:** “Em đổi profile model trên UI sang `qwen3:4b` local. Nhưng em chỉ xác minh được warm và probe giao thức; ở một câu Sunrise thật nó trả JSON không hợp lệ ở lượt cuối và chưa có lượt repair vì hết cap thử nghiệm, nên em không claim dự phòng đã sẵn sàng.”
+
+### Q75. Thầy bảo đổi `top_k` hoặc kích thước chunk ngay tại chỗ — làm thế nào và khác nhau gì?
+
+**[Đã có test]** `top_k` chỉ ảnh hưởng lúc truy vấn ⇒ sửa [sunrise.task.json](../config/sunrise.task.json) rồi **khởi động lại server**, không cần index lại (giữ `top_k + số section required ≤ context.max_chunks`, nếu không validation báo lỗi). Kích thước chunk thay đổi chính các chunk và vector ⇒ phải `npm run rag:index -- --task=sunrise-clinic-rag` rồi restart; trước đó UI báo `stale_config` và nút Run bị tắt.
+
+**Đáp án 20 giây:** “Index lưu chunking, embedding model/digest/dimension, template và checksum KB. Mỗi lần tải, `checkFreshness` so sánh; lệch thì từ chối thay vì dùng vector cũ. `top_k` không nằm trong index nên không làm stale.” Kiểm ngay: `npm run rag:retrieve -- --task=sunrise-clinic-rag --query="…"` in xếp hạng đầy đủ và chunk nào đưa cho model.
+
+### Q76. Em đã chứng minh gì và chưa chứng minh gì? Nói trung thực thế nào?
+
+**[Đã có]** Offline: unit/integration tests với Ollama giả, bộ chấm có mutation, harness mock 27/27 (chỉ chứng minh wiring). Browser: `npm run qa:rag` (Chromium thật, 1366×768 và 390 px, bàn phím, in, reload). Live: 8 câu HYBRID với `qwen3:8b` thật nhưng embedding giả: 5 PASS, 2 REVIEW, 1 FAIL do **encoder giả** không truy xuất section 2; một câu trả lời tự mâu thuẫn.
+
+**Đáp án 20 giây:** “Em chưa chứng minh được chất lượng truy xuất thật vì chưa cài embeddinggemma. Em chứng minh được kiến trúc, accounting, grounding, UI debug và hành vi của LLM thật với embedding giả. PASS tự động chỉ nghĩa các kiểm tra số tiền/nguồn/ngôn ngữ đạt, không phải mọi câu văn đều đúng.”
+
+Không nói: “đã đúng mọi câu”, “grounding đảm bảo đúng”, “đã demo-ready” (chưa có case nào đạt 3 lần liên tiếp), hay “dự phòng đã xác minh”.
+
+## 14. Học trên điện thoại và cập nhật bản HTML
 
 File **ORAL_EXAM_STUDY.html** là bản học standalone sinh từ tài liệu này. Toàn bộ câu hỏi/đáp án, CSS/JS và font có sẵn trong file; không fetch API, không gọi LLM, không cần key hoặc CDN. Link tài liệu chính thức chỉ dùng mạng khi bạn chủ động mở. Bản thân HTML không chứng minh các tests/live được chạy lại.
 

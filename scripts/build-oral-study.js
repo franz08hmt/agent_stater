@@ -17,7 +17,7 @@ for (const match of markdown.matchAll(/\[[^\]]+\]\(([^\s)]+)\)/g)) {
   resources[ref] = await readFile(path, 'utf8');
 }
 resources['font-license'] = await readFile(resolve(root, 'public/assets/fonts/OFL.txt'), 'utf8') + '\n\nHeroicons:\n' + await readFile(resolve(root, 'public/assets/icons/LICENSE'), 'utf8');
-const essential = new Set([1, 3, 11, 14, 15, 17, 20, 21, 22, 23, 25, 28, 35, 36, 38, 39, 42, 49, 53, 54, 55, 56, 57, 58, 59, 60]);
+const essential = new Set([1, 3, 11, 14, 15, 17, 20, 21, 22, 23, 25, 28, 35, 36, 38, 39, 42, 49, 53, 54, 55, 56, 57, 58, 59, 60, 67, 69, 70, 72, 75]);
 const questions = parsed.questions.map(q => ({ ...q, essential: essential.has(Number(q.id.slice(1))), search: normalizeSearch(`${q.title} ${q.body}`) }));
 const icon = name => `<svg aria-hidden="true"><use href="#icon-${name}"/></svg>`;
 const content = parsed.chapters.map((chapter, index) => `<section class="chapter" id="${chapter.id}"><h2>${escapeHtml(chapter.title)}</h2>${chapter.intro.trim() ? `<details class="chapter-notes"><summary>Bản đồ / hướng dẫn của chương</summary><section class="background-content">${renderMarkdown(chapter.intro)}</section></details>` : ''}${questions.filter(q => q.chapter === index).map(q => `<details class="question" id="${q.id}" data-known="false"><summary><span class="q-number">${q.label}</span><h3>${escapeHtml(q.title)}</h3>${icon('chevron-right')}</summary><section class="answer">${renderMarkdown(q.body)}</section><button type="button" class="mark" data-mark="${q.id}" aria-pressed="false">Đánh dấu đã nắm</button></details>`).join('')}</section>`).join('\n');

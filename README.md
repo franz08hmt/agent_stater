@@ -1,5 +1,28 @@
 # AI Agent Starter
 
+## Bài thi RAG: Sunrise Family Clinic (KB-B, MSSV 22110068)
+
+Task `sunrise-clinic-rag` trả lời câu hỏi bệnh nhân **chỉ từ** Patient Guide của phòng khám bằng RAG vector. Chi tiết, bảng yêu cầu → cài đặt → kiểm chứng, hướng dẫn đổi nhỏ và giới hạn: [docs/SUNRISE_RAG_EXAM.md](docs/SUNRISE_RAG_EXAM.md).
+
+| Thành phần | Giá trị |
+| --- | --- |
+| LLM | Ollama local `qwen3:8b` (profile `ollama-qwen3`); dự phòng `qwen3:4b` (chưa xác minh đầy đủ) hoặc profile `env` trong `.env` |
+| Embedding model | `embeddinggemma` qua Ollama `/api/embed` — **chưa cài trên máy này**: tự chạy `ollama pull embeddinggemma` |
+| Chunk | mỗi section `## N.` một chunk, tối đa **1200 ký tự**, overlap **100** ký tự (ký tự, không phải token) → 11 chunk |
+| Truy xuất | exact cosine (O(N×d), không ANN), top-k **3** + section **1** và **10** do backend luôn thêm; tối đa 6 chunk/6000 ký tự |
+| Vector store | `var/rag/sunrise-clinic-rag/index.json` (Git-ignored, tạo bằng `rag:index`) |
+
+```powershell
+ollama pull embeddinggemma                                         # bạn tự chạy một lần (~622 MB)
+npm run rag:index -- --task=sunrise-clinic-rag                      # tạo index bằng embedding thật
+npm run rag:retrieve -- --task=sunrise-clinic-rag --query="What is the current dermatology fee?"
+npm run exam:start                                                  # chọn "Sunrise Clinic RAG"; mở "Retrieved chunks", nút Print
+npm run rag:eval -- --profile=mock                                  # harness offline (chỉ chứng minh wiring)
+npm run qa:rag                                                      # Chromium thật: UI chunk, in, VI/EN, reload
+```
+
+Mỗi câu trả lời hiện “section — source_id”; khối **Retrieved chunks** liệt kê query, hạng, điểm cosine, loại match (semantic/required), section, chunk và toàn văn; **Print retrieved chunks** in đúng khối đó. KB không có đáp án ⇒ trả lời không biết, `source_ids: []`. Chưa có embedding thật nên **chất lượng truy xuất thật chưa được đo**; kết quả live hiện có chỉ là HYBRID (LLM thật + embedding giả), xem mục 8 của tài liệu trên.
+
 **Chốt ba P2 ngày 09/10/2026, runtime adb6e86:** 423 tests/16 eval và regressions/Chrome QA đạt. Gate chặn câu hỏi/miêu tả tạo nhầm approval; CLI chạy trên source sạch không var và FAIL/exit1 khi expected sai. Live phiên mới cap20: sum và draft approve/replay mỗi ca 3 PASS; ticket final sai bị chặn ở cap, giữ BLOCKED. Đã agent rehearsal trong project tạm; student NOT_RUN. Xem [receipt/goal demo](docs/FREEZE_P2_VERIFICATION.md). Số liệu đợt 08/10 bên dưới là lịch sử; chưa overall READY, không chạy thêm model sau cap.
 
 **Cập nhật 08/10/2026:** [Bộ dụng cụ thích nghi đề](docs/ADAPTATION_KIT.md), [UI VI/EN và diễn đạt lại](docs/LANGUAGE_AND_FOLLOWUPS.md), [kiểm chứng mới](docs/ADAPTATION_VERIFICATION.md). Một selector đổi UI; goal quyết định answer, không answer_language selector. Follow-up chỉ diễn đạt lại run đang xem, không tool/ghi hoặc sửa lịch sử. Catalog giữ nguyên.

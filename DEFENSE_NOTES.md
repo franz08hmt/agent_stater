@@ -79,7 +79,7 @@ Bản này dùng **tìm kiếm từ khóa BM25** (chấm điểm theo tần su�
 - Ưu: không cần model embedding, chạy tức thì, dễ giải thích vì sao đoạn nào được chọn.
 - Nhược: câu hỏi dùng từ khác tài liệu sẽ bị trượt; trùng từ khóa chưa chắc đã trả lời được câu hỏi
   (ví dụ "Phòng thi giữa kỳ ở đâu?" vẫn trả về đoạn có chữ "giữa kỳ").
-- Muốn tìm theo nghĩa: thay retriever trong `src/retrieval/` bằng embedding + vector index, giữ nguyên interface.
+- Muốn tìm theo nghĩa: task `sunrise-clinic-rag` đã dùng embedding + vector index (xem [docs/SUNRISE_RAG_EXAM.md](docs/SUNRISE_RAG_EXAM.md)); các task notes khác vẫn BM25 và có thể chuyển tương tự.
 
 Backend kiểm tra mọi `source_id` trong câu trả lời cuối **phải thuộc kết quả đã truy xuất trong run**. Backend
 **không** kiểm tra được đoạn đó có thật sự ủng hộ câu trả lời hay không — phần đó cần đánh giá bằng eval và đọc tay.
@@ -137,7 +137,7 @@ Mục tiêu: *"Tóm tắt về idempotency và lưu bản nháp"*
 | Protocol JSON tự định nghĩa (không dùng native tool calling) | Chạy cả với model nhỏ không hỗ trợ tool calling; dễ in ra và giải thích | Phải tự parse và repair |
 | Lưu file JSON | Không cần cài database | Không phù hợp nhiều người dùng đồng thời |
 | Polling 600 ms thay vì WebSocket | Đơn giản, đủ cho demo | Trễ tối đa ~0,6 giây |
-| BM25 thay vì embedding | Không cần thêm model, giải thích được | Trượt khi khác từ ngữ |
+| BM25 cho task notes; embedding + cosine cho Sunrise | BM25 không cần model; Sunrise cần tìm theo nghĩa | BM25 trượt khi khác từ ngữ; vector cần `embeddinggemma`, index và đánh giá riêng |
 | Không lưu chuỗi suy nghĩ của model | Không cần để giải thích chương trình; tránh lộ nội dung không kiểm soát | Trace chỉ có hành động + quan sát |
 
 Giới hạn còn lại:

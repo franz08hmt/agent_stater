@@ -46,7 +46,13 @@ test('documentation preserves stable legacy questions, adds language/adaptation 
   assert.match(parsed.questions.find(q => q.id === 'q61').body, /không có selector/);
   assert.match(parsed.questions.find(q => q.id === 'q64').body, /asset_code/);
   assert.match(parsed.questions.find(q => q.id === 'q66').body, /REVIEW_REQUIRED/);
-  assert.match(parsed.questions.find(q => q.id === 'q14').body, /không có embedding model/);
+  // Q14 used to say the project had no embedding model; since the Sunrise task it must say exactly where embeddings exist and that the model is not installed here.
+  const q14 = parsed.questions.find(q => q.id === 'q14').body;
+  assert.match(q14, /chỉ ở task `sunrise-clinic-rag`/);
+  assert.match(q14, /`embeddinggemma` chưa cài/);
+  assert.match(q14, /Không được gọi Qwen3 8B là embedding model/);
+  for (let i = 67; i <= 76; i++) assert.ok(parsed.questions.some(q => q.id === `q${i}`), `Sunrise q${i}`);
+  assert.match(parsed.questions.find(q => q.id === 'q76').body, /chưa chứng minh được chất lượng truy xuất thật/);
   assert.match(parsed.questions.find(q => q.id === 'q49').body, /42 PASS, 8 FAIL, 1 BLOCKED/);
   assert.match(parsed.questions.find(q => q.id === 'q56').body, /không cập nhật trọng số/);
 });

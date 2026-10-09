@@ -172,12 +172,22 @@ không sửa chúng chỉ để đổi nhiệm vụ.
 | Tài liệu tra cứu | `data/notes/*.md` | Xóa file mẫu, thêm file mới. Tên file = `source_id` (chỉ `a-z 0-9 -`). Dòng `# ` đầu tiên là tiêu đề; dòng bắt đầu bằng `>` bị bỏ qua khi tìm kiếm; mỗi đoạn cách nhau một dòng trống là một "passage" |
 | Dữ liệu dạng bảng (sản phẩm, lịch, đơn hàng…) | File JSON/CSV dưới `data/` + khai báo `data.datasets` | Dùng `query_dataset` sẵn có cho lọc, đếm, tổng, so sánh; không cần sửa vòng lặp |
 | Nơi lưu kết quả | `src/store/fileStore.js` | Đã có `createDraftOnce(key, data)` chống ghi trùng — tái dùng cho bản ghi mới |
-| Cần tìm theo nghĩa (đề yêu cầu embedding / vector) | `src/retrieval/` | Viết retriever mới cùng interface `search(query,{limit})`, `has(id)`, `kind`; đổi 1 dòng trong `src/app.js`. **Không** gọi BM25 hiện tại là vector search |
+| Cần tìm theo nghĩa (đề yêu cầu embedding / vector) | `src/rag/`, `src/tools/searchKb.js`, `config/sunrise.task.json` | **Đã có một task vector hoàn chỉnh** (`sunrise-clinic-rag`: chunk → embedding Ollama → index JSON → exact cosine). Đổi KB/tham số theo mục B.0 bên dưới. Các task notes khác vẫn dùng BM25 (`src/retrieval/`); **không** gọi BM25 là vector search |
+
+### B.0. Task vector (Sunrise): đổi KB hoặc tham số
+
+Chi tiết và bảng “đổi nhỏ trực tiếp”: [docs/SUNRISE_RAG_EXAM.md](docs/SUNRISE_RAG_EXAM.md) mục 6.
+
+1. KB mới: đặt file `.md` vào `data/sunrise/` (mỗi `## N.` là một section/chunk), trỏ `retrieval.kb_file` trong `config/sunrise.task.json`, sửa `required_sections` (các section “ghi đè”/phạm vi mà backend phải luôn đưa vào), `sample_inputs` và `mission`.
+2. Đổi `top_k` hoặc `context.*`: chỉ cần restart. Đổi `chunking`, KB, embedding profile hoặc template: **bắt buộc** `npm run rag:index -- --task=sunrise-clinic-rag` rồi restart; index cũ bị từ chối (`stale_kb`/`stale_config`).
+3. Embedding thật cần `ollama pull embeddinggemma` do người dùng tự chạy; thiếu model ⇒ `BLOCKED`, exit 3.
+4. Catalog tối đa 8 task và hiện đã có **7**: chỉ còn một slot cho `exam:scaffold`.
+5. Chưa có embedding thật trên máy này nên truy xuất thật chưa được đo; kết quả live hiện có là HYBRID (LLM thật + embedding giả).
 
 ### B.1. Đổi dataset JSON/CSV trong thời gian thi
 
 Tool `query_dataset` là **read**, `requiresApproval: false`. Đây là tra cứu bảng có cấu trúc;
-retrieval ghi chú vẫn là BM25. Không có embedding/vector, SQL, join hay query engine tổng quát.
+retrieval ghi chú của các task notes vẫn là BM25 (task Sunrise riêng dùng vector, xem B.0). `query_dataset` không có embedding/vector, SQL, join hay query engine tổng quát.
 Hai bộ dữ liệu nhỏ **giả lập**: `data/datasets/products.json` (sản phẩm) và
 `data/datasets/classes.csv` (lịch học). Task mẫu đầy đủ nằm ở `config/datasets-demo.task.json`;
 task ghi chú mặc định trong `config/task.json` vẫn giữ nguyên.

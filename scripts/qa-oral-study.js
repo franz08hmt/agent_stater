@@ -45,7 +45,7 @@ try {
   await search('trong so');
   assert.ok(await read(visible) > 0, 'accent-free content search');
   await search('zz-no-match-zz'); assert.equal(await read('document.getElementById("empty").hidden'), false);
-  await search(''); await click('#essential'); assert.equal(await read(visible), 26);
+  await search(''); await click('#essential'); assert.equal(await read(visible), 31);
   await search('model free'); await click('#quiz-mode');
   assert.equal(await read('document.getElementById("quiz-answer").hidden'), true);
   assert.match(await read('document.getElementById("quiz-question").textContent'), /free/);
@@ -53,7 +53,7 @@ try {
   await click('#quiz-known'); assert.match(await read('document.getElementById("progress-label").textContent'), new RegExp(`1 / ${questionCount}`));
   await send('Page.reload');
   await until(() => read(`document.getElementById("progress-label")?.textContent.startsWith("1 / ${questionCount}")`), 'progress reload');
-  await click('#essential'); await click('#unlearned'); assert.equal(await read(visible), 25);
+  await click('#essential'); await click('#unlearned'); assert.equal(await read(visible), 30);
   await click('#unlearned'); await click('#essential'); await search('Code nào là LLM');
   await click('#q23 summary');
   await browser.screenshot('study-inference', 390, { height: 844, fullPage: false });
