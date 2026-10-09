@@ -4,7 +4,8 @@
 // Calls only the embedding endpoint: no generation LLM. Exit codes: 0 ok, 1 failure, 2 usage,
 // 3 BLOCKED (Ollama not running, or the embedding model is not installed).
 
-import { relative } from 'node:path';
+import { dirname, join, relative } from 'node:path';
+import { writeFile } from 'node:fs/promises';
 import { loadEnvironment } from '../src/operations/context.js';
 import { buildTaskIndex, BlockedError } from '../src/rag/indexBuilder.js';
 import { publishIndex, describeIndex } from '../src/rag/vectorIndex.js';
@@ -34,6 +35,8 @@ if (args) {
     console.log(`Embedding model ${profile.name} (profile ${profile.id}), request cap ${maxRequests}, timeout ${timeoutMs} ms.`);
     const { doc, accounting, inspected } = await buildTaskIndex({ task: entry.task, profile, maxRequests, timeoutMs });
     await publishIndex(entry.task.retrieval.indexFile, doc);
+    // Side record for `npm run rag:eval`: embedding HTTP requests already spent by this build count against a live session's cap.
+    await writeFile(join(dirname(entry.task.retrieval.indexFile), 'index-build.json'), JSON.stringify({ index_id: doc.index_id, embedding_requests: accounting.requests, failed: accounting.failed, at: new Date().toISOString() }, null, 2));
     const meta = describeIndex(doc);
     console.log('\nINDEX BUILT');
     console.log(`  file          ${relative(root, entry.task.retrieval.indexFile).replaceAll('\\', '/')}  (Git-ignored runtime data)`);

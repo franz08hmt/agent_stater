@@ -37,6 +37,7 @@
     "qa:rag": "node scripts/qa-rag-browser.js",
     "exam:adaptation": "node scripts/verify-adaptation.js",
     "rag:index": "node scripts/rag-index.js",
-    "rag:retrieve": "node scripts/rag-retrieve.js"
+    "rag:retrieve": "node scripts/rag-retrieve.js",
+    "rag:eval": "node scripts/rag-eval.js"
   }
 }

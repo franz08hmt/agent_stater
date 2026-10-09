@@ -156,14 +156,14 @@ try {
 
   // ── 3. the KB does not contain the answer: honest "I don't know" ──
   {
-    const f = await sunriseFixture(shim, { replies: [call('parking spaces and car park'), final('The Sunrise guide does not say whether the clinic has parking.', [], 'No section of the guide mentions parking.')] });
+    const f = await sunriseFixture(shim, { replies: [call('dental braces orthodontics'), final('The Sunrise guide does not mention dental braces.', [], 'No section of the guide covers dental services.')] });
     const app = await f.serve();
     await open(app);
-    await type('#goal', 'Does the clinic have free parking?');
+    await type('#goal', 'Does the clinic offer dental braces?');
     await click('#start');
     await status('Completed');
     assert.match(await text('#sources li'), /No source cited/);
-    assert.match(await text('#unresolved'), /No section of the guide mentions parking/);
+    assert.match(await text('#unresolved'), /No section of the guide covers dental services/);
     assert.equal(await visible('#retrieval-details'), true, 'the chunks that were searched are still inspectable');
     await click('#retrieval-details > summary');
     assert.ok((await read("document.querySelectorAll('#retrieval-calls .retrieval-item').length")) >= 2);

@@ -11,7 +11,7 @@ export const PROJECT_ROOT = resolve(fileURLToPath(new URL('../../', import.meta.
 export const hash = (value) => createHash('sha256').update(typeof value === 'string' ? value : JSON.stringify(value)).digest('hex');
 // Direct grader dependencies outside the src/config runtime tree are explicit.
 // File names participate in the hash; stable ordering avoids filesystem order.
-const GRADER_FILES = ['eval/cases.json', 'eval/checks.js', 'eval/run-eval.js', 'eval/sunrise-acceptance.json', 'src/operations/cases.js', 'src/operations/suite.js',
+const GRADER_FILES = ['eval/cases.json', 'eval/checks.js', 'eval/run-eval.js', 'eval/fake-ollama.js', 'eval/sunrise-acceptance.json', 'eval/sunrise-mock.js', 'eval/sunrise-reference-answers.json', 'src/operations/cases.js', 'src/operations/suite.js',
   'scripts/exam-campaign.js', 'templates/rehearsal-rentals.spec.json', 'scripts/verify-adaptation.js', 'templates/asset-loan.spec.json'].sort();
 export function supportsNode(version, range) {
   if (!/^>=\d+\.\d+\.\d+$/.test(range)) throw new Error('Unsupported package Node engine range.');
