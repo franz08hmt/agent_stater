@@ -49,6 +49,14 @@ export const VI = Object.freeze({
   'provider reported': 'provider báo', 'estimated / reserved': 'ước lượng / dự phòng', 'mixed': 'hỗn hợp', 'budget': 'ngân sách', 'Mock, no HTTP': 'Mô phỏng, không HTTP', 'Provider reported input': 'Input provider báo', 'output': 'output', 'calls': 'lượt gọi', 'repairs': 'lượt sửa', 'retries': 'lượt gửi lại', 'waiting': 'chờ duyệt', 'total': 'tổng',
   'Mock token reservations are simulated. ': 'Dự phòng token mock là mô phỏng. ', 'Token budget uses estimates when usage is missing; billed tokens may differ.': 'Ngân sách dùng ước lượng khi thiếu usage; token tính phí có thể khác.', ' Timing was interrupted by restart.': ' Đo thời gian bị gián đoạn do restart.',
   'Saved run ID is invalid. You can start a new run.': 'Run ID đã lưu không hợp lệ. Có thể tạo lượt chạy mới.', 'Could not restore the viewed run': 'Không khôi phục được lượt chạy đang xem', 'You can start a new run.': 'Có thể tạo lượt chạy mới.',
+  'Retrieved chunks': 'Đoạn đã truy xuất', 'Print retrieved chunks': 'In các đoạn đã truy xuất', 'Retrieved chunks unavailable': 'Không đọc được các đoạn đã truy xuất',
+  'No chunk was retrieved in this run.': 'Lượt chạy này chưa truy xuất được đoạn nào.', 'Search': 'Lần tìm', 'Index': 'Chỉ mục', 'chunk(s) given to the model': 'đoạn đã đưa cho model',
+  'weaker match(es) dropped by the size budget': 'kết quả yếu hơn bị bỏ do giới hạn kích thước', 'rank': 'hạng', 'cosine': 'cosine', 'chunk': 'đoạn', 'chars': 'ký tự', 'cited in the answer': 'được trích trong câu trả lời',
+  'Semantic match': 'Khớp ngữ nghĩa', 'Required context': 'Ngữ cảnh bắt buộc', 'Semantic match + required context': 'Khớp ngữ nghĩa + ngữ cảnh bắt buộc',
+  'Embedding requests': 'Request embedding', 'embedding HTTP request(s)': 'HTTP request embedding', 'input tokens': 'token đầu vào', 'input tokens unavailable': 'không có dữ liệu token đầu vào', 'failed': 'thất bại',
+  'Embedding model': 'Model embedding', 'Cited sources': 'Nguồn được trích', 'none': 'không có', 'Vector index': 'Chỉ mục vector', 'KB chunks': 'đoạn KB', 'ready': 'sẵn sàng', 'dimensions': 'chiều',
+  'sections': 'mục', 'vector cosine': 'vector cosine', 'missing': 'chưa có', 'invalid': 'không hợp lệ', 'stale_kb': 'KB đã đổi', 'stale_config': 'cấu hình đã đổi',
+  'The vector index is not ready; build it, then restart the server.': 'Chỉ mục vector chưa sẵn sàng; hãy tạo chỉ mục rồi khởi động lại server.',
 });
 let locale = 'en';
 export const TOOL_HINTS = Object.freeze({ search_notes: 'Search allowed notes using BM25 keywords.', query_dataset: 'Lookup, filter, count, sum and compare allowed dataset snapshots.',

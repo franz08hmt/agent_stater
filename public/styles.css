@@ -345,3 +345,31 @@ details > summary { cursor: pointer; padding-block: 7px; font-size: 11px; font-w
 .mode-toolbar { flex-wrap: wrap; }
 html[lang="vi"] .nav-link { white-space: normal; }
 html[lang="vi"] .nav-link > [data-i18n] { min-width: 0; overflow-wrap: anywhere; }
+
+/* Retrieved-chunks debug view. Full text, no inner scrolling, so it works in Exam mode and on mobile. */
+.retrieval-details { margin: 0 0 13px; padding: 0 10px 10px; border: 1px solid #e5ecee; border-radius: 9px; background: #fff; font-size: 11px; }
+.retrieval-details > summary { min-height: 36px; }
+.retrieval-details .actions { margin: 6px 0; }
+.retrieval-call { margin-top: 10px; }
+.retrieval-call h5 { font-size: 11px; overflow-wrap: anywhere; }
+.retrieval-items { display: grid; gap: 8px; margin: 8px 0 0; padding: 0; list-style: none; }
+.retrieval-item { display: grid; gap: 4px; min-width: 0; padding: 8px; border: 1px solid var(--line); border-left-width: 4px; border-radius: 8px; overflow-wrap: anywhere; }
+.retrieval-item.match-semantic { border-left-color: #0a705c; }
+.retrieval-item.match-required { border-left-color: #d49a3a; }
+.retrieval-item.match-semantic-required { border-left-color: #355dad; }
+.retrieval-item pre { max-height: none; overflow-x: visible; }
+#print-sheet { display: none; }
+@media print {
+  body.printing-retrieval { background: #fff; color: #000; }
+  body.printing-retrieval > :not(#print-sheet) { display: none !important; }
+  body.printing-retrieval #print-sheet { display: block; padding: 0; font-size: 11pt; }
+  #print-sheet h1 { margin: 0 0 8pt; font-size: 16pt; }
+  #print-sheet .print-facts { display: grid; gap: 2pt; margin: 0 0 10pt; }
+  #print-sheet .print-facts > div { display: grid; grid-template-columns: 34mm minmax(0, 1fr); gap: 6pt; }
+  #print-sheet dt { font-weight: 700; }
+  #print-sheet dd { margin: 0; overflow-wrap: anywhere; }
+  #print-sheet .retrieval-items { display: block; }
+  #print-sheet .retrieval-item { margin-bottom: 8pt; border: 1px solid #000; border-left-width: 4px; break-inside: avoid; page-break-inside: avoid; }
+  #print-sheet .hint { color: #000; font-size: 9pt; }
+  #print-sheet pre { border: 1px solid #888; background: #fff; color: #000; font-size: 9pt; overflow: visible; }
+}

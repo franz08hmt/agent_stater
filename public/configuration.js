@@ -32,18 +32,23 @@ export async function setupConfiguration(api, onChange) {
   }
   function refresh() {
     const t = task(), p = profile();
+    const vector = t.data.vector;
     for (const option of $('model-select').options) {
       const item = catalog.model_profiles.find((profile) => profile.id === option.value);
       option.textContent = `${item.label}${item.status === 'unavailable' ? ` — ${translate('unavailable')}` : ''}`;
     }
     $('task-select').disabled = locked || probing; $('model-select').disabled = locked || probing;
-    setText('configuration-status', `${translate(locked ? 'Selections locked for this active run. ' : 'Applies to the next run. ')}${translate('Backend configured; model ')}${p.status === 'configured' ? translate('configuration valid') : `${translate('unavailable')}: ${p.reason}`}.`);
+    setText('configuration-status', `${translate(locked ? 'Selections locked for this active run. ' : 'Applies to the next run. ')}${translate('Backend configured; model ')}${p.status === 'configured' ? translate('configuration valid') : `${translate('unavailable')}: ${p.reason}`}.${vector && vector.index_status !== 'ready' ? ` ${translate('The vector index is not ready; build it, then restart the server.')}` : ''}`);
     setText('selected-model-state', `${translate(p.is_mock ? 'Mock' : 'Live')} · ${p.name} · ${translate(p.status)}`);
     setText('model-badge', `${translate(p.is_mock ? 'Mock' : 'Live')} · ${p.name}${p.status === 'unavailable' ? ` · ${translate('unavailable')}` : ''}`);
     $('model-badge').className = `badge ${p.is_mock ? 'is-mock' : 'is-live'}`;
     $('profile-title').textContent = t.title;
-    $('knowledge').textContent = `${t.data.note_count ?? t.data.notes.length} ${translate('note sources')}; ${t.data.datasets.length} ${translate('datasets')}`;
-    $('retrieval-kind').textContent = t.data.retrieval;
+    $('knowledge').textContent = vector ? `${vector.chunk_count} ${translate('KB chunks')} · ${vector.kb_title}` : `${t.data.note_count ?? t.data.notes.length} ${translate('note sources')}; ${t.data.datasets.length} ${translate('datasets')}`;
+    $('retrieval-kind').textContent = vector ? `${t.data.retrieval} · ${vector.embedding_model}` : t.data.retrieval;
+    $('vector-fact').hidden = !vector;
+    if (vector) setText('vector-index', vector.index_status === 'ready'
+      ? `${translate('ready')} · ${vector.index_id.slice(0, 12)} · ${vector.index_dimension} ${translate('dimensions')} · ${vector.chunking.max_chars}/${vector.chunking.overlap_chars} ${translate('chars')} · top-k ${vector.top_k} + ${translate('sections')} ${vector.required_sections.join(', ')}`
+      : `${translate(vector.index_status)}: ${vector.index_reason} — npm run rag:index -- --task=${t.id}`);
     const writes = t.tools.filter((x) => x.access === 'write');
     $('write-policy').textContent = writes.length ? `${writes.length} ${translate('write tool(s), approval required')}` : translate('Read-only');
     if (renderedTaskId !== `${t.id}:${currentLocale()}`) {
@@ -55,7 +60,7 @@ export async function setupConfiguration(api, onChange) {
       }
       const data = $('task-data'); data.replaceChildren();
       if (t.data.notes.length) {
-        data.append(node('p', `${translate('Allowed note sources')} (BM25; ${translate('showing')} ${t.data.notes.length} ${translate('of')} ${t.data.note_count ?? t.data.notes.length}):`));
+        data.append(node('p', `${translate('Allowed note sources')} (${vector ? translate('vector cosine') : 'BM25'}; ${translate('showing')} ${t.data.notes.length} ${translate('of')} ${t.data.note_count ?? t.data.notes.length}):`));
         const notes = node('ul'); for (const n of t.data.notes) notes.append(node('li', `${n.source_id} — ${n.title} (${n.passage_count} ${translate('passages')})`)); data.append(notes);
       }
       for (const d of t.data.datasets) {
@@ -76,7 +81,7 @@ export async function setupConfiguration(api, onChange) {
     const probe = probes.get(p.id);
     setText('probe-summary', probing ? translate('Checking model…') : probeFailures.get(p.id) ?? (p.status !== 'configured' ? translate('Model unavailable') : !probe ? translate('Connection not checked') : `${probe.is_mock ? translate('Mock simulation') : probe.error ? probe.error.message : translate('Probe protocol valid')} · ${new Date(probe.checked_at).toLocaleTimeString()}`));
     $('probe-model').disabled = locked || probing || p.status !== 'configured';
-    onChange({ ready: p.status === 'configured' && !locked && !probing, task: t, profile: p });
+    onChange({ ready: p.status === 'configured' && !locked && !probing && (!vector || vector.index_status === 'ready'), task: t, profile: p });
   }
   for (const id of ['task-select', 'model-select']) $(id).addEventListener('change', refresh);
   $('probe-model').addEventListener('click', async () => {

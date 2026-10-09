@@ -10,6 +10,7 @@ import { setupExamMode, modeContext } from './exam-mode.js';
 import { approvalRows } from './approval-presentation.js';
 import { t, setupLocale, currentLocale, errorExplanation } from './i18n.js';
 import { setupFollowups } from './followups.js';
+import { retrievalModel, renderCalls, renderPrintSheet, embeddingSummary } from './retrieval-view.js';
 
 const $ = (id) => document.getElementById(id);
 const setText = (id, value) => { if ($(id).textContent !== value) $(id).textContent = value; };
@@ -25,6 +26,7 @@ let pollTimer = null;
 let configuration = null, ready = false, restoring = true, creating = false;
 let selection = null, approvalSignature = null;
 let draftsCache = [], proposalsCache = [];
+let retrieval = { key: null, painted: null, view: null };
 const followups = setupFollowups(api, document);
 const storage = { getItem: (key) => window.localStorage.getItem(key), setItem: (key, value) => window.localStorage.setItem(key, value), removeItem: (key) => window.localStorage.removeItem(key) };
 
@@ -135,6 +137,10 @@ function render(run) {
   $('elapsed').textContent = `${(run.active_ms / 1000).toFixed(1)} s`;
   const metrics = formatRunMetrics(run.metrics);
   for (const key of ['requests', 'tokens', 'calls', 'timing', 'note', 'breakdown']) $(`metrics-${key}`).textContent = metrics[key];
+  const embeddings = embeddingSummary(run.metrics?.embeddings);
+  $('metrics-embeddings-row').hidden = !embeddings;
+  $('metrics-embeddings').textContent = embeddings ?? '';
+  syncRetrieval(run);
 
   const busy = run.status === 'running' || run.status === 'awaiting_approval';
   $('goal').disabled = busy;
@@ -174,7 +180,7 @@ function render(run) {
     const sources = $('sources');
     sources.replaceChildren();
     if (!run.final.source_ids.length) sources.append(el('li', t('No source cited — read the unresolved explanation.'), 'hint'));
-    for (const id of run.final.source_ids) sources.append(el('li', id));
+    for (const id of run.final.source_ids) sources.append(el('li', run.source_labels?.[id] ? `${run.source_labels[id]} — ${id}` : id));
   }
 
   $('failure').hidden = !run.failure;
@@ -196,6 +202,48 @@ function render(run) {
     body.append(tr);
   }
 }
+
+// The retrieved-chunks view reads stored data only (GET /api/runs/:id/retrieval): no model or embedding request.
+// It is fetched when a run first shows retrieval or its retrieval/accounting/status changes, never on every poll tick,
+// and only the inner container is rebuilt, so the <details> open state survives polling.
+function paintRetrieval() {
+  const key = `${retrieval.key}:${currentLocale()}`;
+  if (!retrieval.view || retrieval.painted === key) return;
+  retrieval.painted = key;
+  const model = retrievalModel(retrieval.view);
+  renderCalls(document, $('retrieval-calls'), model);
+  $('retrieval-summary').textContent = `${t('Cited sources')}: ${model.cited.length ? model.cited.join(', ') : t('none')} · ${model.embeddings ?? t('Unavailable')}`;
+}
+async function syncRetrieval(run) {
+  const e = run.metrics?.embeddings;
+  const wanted = Boolean(run.retrieval_calls || e?.requests);
+  $('retrieval-details').hidden = !wanted;
+  if (!wanted) { retrieval = { key: null, painted: null, view: null }; return; }
+  const key = `${run.run_id}:${run.status}:${run.retrieval_calls ?? 0}:${e?.requests ?? 0}:${e?.failed ?? 0}`;
+  if (key === retrieval.key) { paintRetrieval(); return; }
+  retrieval = { key, painted: null, view: retrieval.view?.run_id === run.run_id ? retrieval.view : null };
+  try {
+    const { retrieval: view } = await api(`/api/runs/${run.run_id}/retrieval`);
+    if (retrieval.key !== key) return;
+    retrieval.view = view; $('retrieval-error').hidden = true; paintRetrieval();
+  } catch (err) { $('retrieval-error').hidden = false; $('retrieval-error').textContent = `${t('Retrieved chunks unavailable')}: ${err.message}`; }
+}
+async function printRetrieval() {
+  if (!current) return;
+  try {
+    const view = retrieval.view?.run_id === current.run_id ? retrieval.view : (await api(`/api/runs/${current.run_id}/retrieval`)).retrieval;
+    const vector = configuration?.catalog.tasks.find((x) => x.id === current.task_id)?.data.vector;
+    renderPrintSheet(document, $('print-sheet'), view, {
+      task: current.configuration?.task.title ?? current.task_id ?? t('Legacy task'), goal: current.goal,
+      model: current.model ? `${t(current.model.is_mock ? 'Mock' : 'Live')} ${current.model.name}` : t('Model not recorded'),
+      embedding: vector ? `${vector.embedding_model} (${vector.preprocessing_version}) · ${vector.similarity}` : null,
+    });
+    // Only the print sheet is printed (see styles.css); the class is removed again right after the dialog.
+    document.body.classList.add('printing-retrieval');
+    try { window.print(); } finally { document.body.classList.remove('printing-retrieval'); }
+  } catch (err) { $('retrieval-error').hidden = false; $('retrieval-error').textContent = `${t('Retrieved chunks unavailable')}: ${err.message}`; }
+}
+$('print-retrieval').addEventListener('click', printRetrieval);
 
 function schedulePoll() {
   clearTimeout(pollTimer);
@@ -277,6 +325,8 @@ $('new-run').addEventListener('click', () => {
   current = null;
   followups.setRun(null);
   approvalSignature = null;
+  retrieval = { key: null, painted: null, view: null };
+  $('retrieval-details').hidden = true;
   rememberRun(storage, null);
   configuration?.setRun(null);
   $('run-panel').hidden = true;

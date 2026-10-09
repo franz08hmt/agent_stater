@@ -27,6 +27,7 @@ const STATIC = {
   '/app.js': ['app.js', 'text/javascript; charset=utf-8'],
   '/i18n.js': ['i18n.js', 'text/javascript; charset=utf-8'],
   '/followups.js': ['followups.js', 'text/javascript; charset=utf-8'],
+  '/retrieval-view.js': ['retrieval-view.js', 'text/javascript; charset=utf-8'],
   '/approval-outcome.js': ['approval-outcome.js', 'text/javascript; charset=utf-8'],
   '/workspace-view.js': ['workspace-view.js', 'text/javascript; charset=utf-8'],
   '/run-metrics.js': ['run-metrics.js', 'text/javascript; charset=utf-8'],

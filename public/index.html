@@ -57,6 +57,7 @@
         <div><dt><span data-i18n="Model">Model</span></dt><dd id="model-badge" class="badge" aria-live="polite"><span data-i18n="Checking model…">Checking model…</span></dd></div>
         <div><dt><span data-i18n="Knowledge">Knowledge</span></dt><dd id="knowledge"><span data-i18n="Loading…">Loading…</span></dd></div>
         <div><dt><span data-i18n="Retrieval">Retrieval</span></dt><dd id="retrieval-kind"><span data-i18n="Loading…">Loading…</span></dd></div>
+        <div id="vector-fact" hidden><dt><span data-i18n="Vector index">Vector index</span></dt><dd id="vector-index"></dd></div>
         <div><dt><span data-i18n="Write policy">Write policy</span></dt><dd id="write-policy"><span data-i18n="Checking…">Checking…</span></dd></div>
       </dl>
       <section class="drafts-card" aria-labelledby="drafts-title">
@@ -136,6 +137,7 @@
             <div><dt><span data-i18n="Status">Status</span></dt><dd><span id="status" class="status" role="status" aria-live="polite"></span></dd></div>
             <div><dt><span data-i18n="Active time">Active time</span></dt><dd id="elapsed"></dd></div>
             <div><dt><span data-i18n="Provider requests">Provider requests</span></dt><dd id="metrics-requests"></dd></div>
+            <div id="metrics-embeddings-row" class="run-id-row" hidden><dt><span data-i18n="Embedding requests">Embedding requests</span></dt><dd id="metrics-embeddings"></dd></div>
           </dl>
           <section id="approval" class="approval" aria-labelledby="approval-title" hidden>
             <h4 id="approval-title"><span data-i18n="Write approval required">Write approval required</span></h4>
@@ -153,6 +155,13 @@
             <ul id="sources"></ul>
           </section>
           <p id="failure" class="error" role="alert" hidden></p>
+          <details id="retrieval-details" class="retrieval-details" hidden>
+            <summary><span data-i18n="Retrieved chunks">Retrieved chunks</span></summary>
+            <p id="retrieval-summary" class="hint"></p>
+            <p class="actions"><button type="button" id="print-retrieval" class="secondary"><span class="icon icon--document-text" aria-hidden="true"></span><span data-i18n="Print retrieved chunks">Print retrieved chunks</span></button></p>
+            <p id="retrieval-error" class="error" role="alert" hidden></p>
+            <div id="retrieval-calls"></div>
+          </details>
           <details id="followup-panel" hidden>
             <summary data-i18n="Rephrase this result">Rephrase this result</summary>
             <p class="hint" data-i18n="This result only; no tools or new business work. Separate budget: 3 calls per run.">This result only; no tools or new business work. Separate budget: 3 calls per run.</p>
@@ -190,6 +199,7 @@
       </section>
     </section>
   </main>
+  <section id="print-sheet" aria-hidden="true"></section>
   <script type="module" src="/app.js"></script>
 </body>
 </html>

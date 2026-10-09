@@ -1,6 +1,6 @@
 // Full spec -> files -> catalog -> acceptance -> existing UI, isolated and offline.
 import assert from 'node:assert/strict';
-import { mkdtemp, cp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, cp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,6 +16,9 @@ const sourceRoot = fileURLToPath(new URL('../', import.meta.url)), root = await 
 let app, browser, calls = 0; const offline = [], specs = [];
 try {
   for (const folder of ['config', 'data']) await cp(join(sourceRoot, folder), join(root, folder), { recursive: true });
+  // The catalog holds at most 8 tasks and this QA registers 2 more; the Sunrise RAG task is unrelated to it, so the isolated copy leaves it out.
+  const catalogFile = join(root, 'config', 'catalog.json'), catalogJson = JSON.parse(await readFile(catalogFile, 'utf8'));
+  catalogJson.tasks = catalogJson.tasks.filter((entry) => entry.id !== 'sunrise-clinic-rag'); await writeFile(catalogFile, JSON.stringify(catalogJson, null, 2));
   for (const template of ['dataset-read', 'proposal']) {
     const spec = JSON.parse(await readFile(join(sourceRoot, 'templates', `${template}.spec.json`))); specs.push(spec);
     const plan = await scaffoldProject({ root, spec, register: true }); assert.equal(plan.mode, 'preview');
