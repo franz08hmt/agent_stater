@@ -36,6 +36,10 @@ const STATIC = {
   '/exam-mode.js': ['exam-mode.js', 'text/javascript; charset=utf-8'],
   '/approval-presentation.js': ['approval-presentation.js', 'text/javascript; charset=utf-8'],
   '/styles.css': ['styles.css', 'text/css; charset=utf-8'],
+  '/qa-board.html': ['qa-board.html', 'text/html; charset=utf-8'],
+  '/qa-board.css': ['qa-board.css', 'text/css; charset=utf-8'],
+  '/qa-board.js': ['qa-board.js', 'text/javascript; charset=utf-8'],
+  '/qa-board-model.js': ['qa-board-model.js', 'text/javascript; charset=utf-8'],
   '/assets/robot-pet.png': ['assets/robot-pet.png', 'image/png'],
 };
 for (const weight of ['Regular', 'Medium', 'SemiBold', 'Bold']) {

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#e9edf5">
+  <title>Questions and answers — Agent Studio</title>
+  <link rel="stylesheet" href="/qa-board.css">
+  <link rel="icon" href="/assets/robot-pet.png" type="image/png">
+</head>
+<body>
+  <header class="board-head">
+    <h1 id="board-title"><img src="/assets/robot-pet.png" width="28" height="28" alt=""><span data-i18n="Questions and answers">Questions and answers</span></h1>
+    <form class="board-controls" id="board-controls" aria-label="Board options" data-i18n-aria-label="Board options">
+      <label for="board-task"><span data-i18n="Task">Task</span><select id="board-task"></select></label>
+      <label for="board-last"><span data-i18n="Show last">Show last</span><input id="board-last" type="number" min="1" max="12" value="5" inputmode="numeric"></label>
+      <button type="button" id="board-fresh" class="secondary"><span data-i18n="Start fresh">Start fresh</span></button>
+      <button type="button" id="board-all" class="secondary"><span data-i18n="Show all">Show all</span></button>
+      <label for="board-locale"><span data-i18n="UI language">UI language</span><select id="board-locale"><option value="en">EN</option><option value="vi">VI</option></select></label>
+    </form>
+  </header>
+  <main>
+    <p id="board-state" class="hint" role="status" aria-live="polite"></p>
+    <section id="board" class="board" aria-labelledby="board-title"></section>
+  </main>
+  <script type="module" src="/qa-board.js"></script>
+</body>
+</html>

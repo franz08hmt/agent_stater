@@ -82,6 +82,7 @@ npm run exam:start                            # khởi động lại SAU khi có
 - Thiếu model: `rag:index`/`rag:retrieve` in `BLOCKED: … ollama pull embeddinggemma` và thoát mã 3, không gọi gì. Chưa có index: UI hiện lệnh cần chạy, nút Run bị tắt, `POST /api/runs` trả `409 index_not_ready`.
 - Index chỉ do lệnh `rag:index` tạo. Server, reload, đổi ngôn ngữ UI, đổi task không bao giờ embed KB.
 - Đổi KB, kích thước chunk, embedding model, template hoặc code chunk/embedding/vector ⇒ index cũ bị coi là **stale** (`stale_kb` / `stale_config`), run đang chạy lúc restart bị đánh `task_changed`.
+- **Xem nhiều câu hỏi cùng lúc:** trang `/qa-board.html` (ví dụ `http://127.0.0.1:8787/qa-board.html`) hiện các câu hỏi và trả lời gần nhất của task trên một màn hình (5 câu vừa khung 1366×768), kèm nguồn "section — source_id" và khối Retrieved chunks. Bấm **Start fresh** trước khi thầy hỏi để chỉ hiện câu mới. Trang chỉ đọc (GET), không gọi model hay embedding, tự cập nhật mỗi 1,5 giây.
 - Xem chunk: mở “Retrieved chunks” trong khối kết quả; **Print retrieved chunks** in đúng một tờ chunk (toàn văn, không bị cắt layout). Debug một câu hỏi không qua LLM: `rag:retrieve` (in toàn bộ xếp hạng, chunk nào được đưa cho model).
 - Đánh giá tự động (chỉ local, không cloud, tuần tự):
 

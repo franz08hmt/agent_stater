@@ -25,6 +25,8 @@ Mỗi câu trả lời hiện “section — source_id”; khối **Retrieved ch
 
 **Tính toán:** task có thêm tool `calculate` (số học chính xác, chỉ đọc). Mọi số tiền trong câu trả lời cuối phải được trích từ chunk hoặc do backend tính; số lạ bị từ chối và model nhận sẵn phép tính đúng (ví dụ 600,000 giảm 10% = 540,000). Chi tiết và kết quả thử với model thật: mục 8.6 của [docs/SUNRISE_RAG_EXAM.md](docs/SUNRISE_RAG_EXAM.md).
 
+**Hiển thị hỏi–đáp cho giảng viên:** mở `http://127.0.0.1:8787/qa-board.html` ở cửa sổ/tab thứ hai. Trang liệt kê các câu hỏi và câu trả lời gần nhất (mặc định 5, tối đa 12) cùng nguồn, tự cập nhật khi chạy; nút **Start fresh** ẩn các câu đã hỏi trước đó, **Retrieved chunks** mở các đoạn đã đưa cho model. Trang chỉ đọc: không gọi model, không gọi embedding.
+
 **Chốt ba P2 ngày 09/10/2026, runtime adb6e86:** 423 tests/16 eval và regressions/Chrome QA đạt. Gate chặn câu hỏi/miêu tả tạo nhầm approval; CLI chạy trên source sạch không var và FAIL/exit1 khi expected sai. Live phiên mới cap20: sum và draft approve/replay mỗi ca 3 PASS; ticket final sai bị chặn ở cap, giữ BLOCKED. Đã agent rehearsal trong project tạm; student NOT_RUN. Xem [receipt/goal demo](docs/FREEZE_P2_VERIFICATION.md). Số liệu đợt 08/10 bên dưới là lịch sử; chưa overall READY, không chạy thêm model sau cap.
 
 **Cập nhật 08/10/2026:** [Bộ dụng cụ thích nghi đề](docs/ADAPTATION_KIT.md), [UI VI/EN và diễn đạt lại](docs/LANGUAGE_AND_FOLLOWUPS.md), [kiểm chứng mới](docs/ADAPTATION_VERIFICATION.md). Một selector đổi UI; goal quyết định answer, không answer_language selector. Follow-up chỉ diễn đạt lại run đang xem, không tool/ghi hoặc sửa lịch sử. Catalog giữ nguyên.
