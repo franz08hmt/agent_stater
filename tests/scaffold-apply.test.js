@@ -49,7 +49,9 @@ test('catalog concurrent edit detected before atomic publication, preserving edi
 test('catalog full refuses registration rather than changing maximum or deleting tasks', async (t) => {
   const { root, spec } = await scaffoldFixture(t);
   const sample = (await scaffoldFixture(t, 'notes')).spec;
-  for (let i = 0; i < 2; i++) {
+  // Fill the catalog to its maximum of 8, whatever number of tasks the project already registers.
+  const registered = JSON.parse(await readFile(join(root, 'config', 'catalog.json'), 'utf8')).tasks.length;
+  for (let i = 0; i < 8 - registered; i++) {
     const next = structuredClone(sample); next.task.id = `extra-${i}`; next.task.allowed_tools = ['search_notes'];
     next.task.sample_inputs = [next.task.sample_inputs[0]];
     next.cases = next.cases.filter((c) => c.kind !== 'draft'); next.assets = i ? [] : next.assets;

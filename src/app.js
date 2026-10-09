@@ -6,6 +6,7 @@
 //   POST /api/model-profiles/:id/probe  {}        bounded explicit probe
 //   POST /api/runs                 {goal, task_id?, model_profile_id?}    start (202)
 //   GET  /api/runs/:id                            poll a run
+//   GET  /api/runs/:id/retrieval                  chunks shown to the model in that run (read-only)
 //   POST /api/runs/:id/approvals/:aid  {decision, args_hash}   approve / reject a write
 //   POST /api/runs/:id/stop                       stop a run
 //   GET  /api/drafts                              drafts written so far (read-only)
@@ -144,6 +145,7 @@ export async function createApp({ config, model, task, catalog, varDir, publicDi
           return send(res, 200, { followup: await followups.ask(runId, body.request) });
         }
       }
+      if (req.method === 'GET' && parts[3] === 'retrieval' && parts.length === 4) return send(res, 200, { retrieval: runner.getRetrieval(runId) });
       if (req.method === 'GET' && parts.length === 3) return send(res, 200, { run: runner.getRun(runId) });
       if (req.method === 'POST' && parts[3] === 'stop' && parts.length === 4) return send(res, 200, { run: await runner.stopRun(runId) });
       if (req.method === 'POST' && parts[3] === 'approvals' && parts[4] && parts.length === 5) {

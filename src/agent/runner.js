@@ -6,7 +6,7 @@
 import { randomUUID } from 'node:crypto';
 import { buildSystemPrompt, REPAIR_MESSAGE } from '../../config/prompts.js';
 import { parseDecision, checkGrounding } from './decision.js';
-import { STATUS, transition, createRun, argsHash, callSignature, publicView } from './state.js';
+import { STATUS, transition, createRun, argsHash, callSignature, publicView, retrievalView } from './state.js';
 import { redact } from './redact.js';
 import { planRequest, startRequest, settleRequest, legacyMetrics, closeApprovalWait } from './metrics.js';
 import { reconcileProposal } from '../proposals/reconcile.js';
@@ -30,7 +30,7 @@ function withTimeout(promise, ms, label) {
 function summarize(toolName, status, result, error) {
   if (status !== 'ok') return error || status;
   if (Array.isArray(result?.results)) {
-    return result.count === 0 ? '0 results' : `${result.count} result(s): ${result.results.map((r) => `${r.source_id}§${r.passage}`).join(', ')}`;
+    return result.count === 0 ? '0 results' : `${result.count} result(s): ${result.results.map((r) => (r.passage !== undefined ? `${r.source_id}§${r.passage}` : r.source_id)).join(', ')}`;
   }
   if (result?.draft_id) return `draft ${result.draft_id} ${result.created ? 'created' : 'already existed — no duplicate written'}`;
   return `${toolName} ok`;
@@ -64,7 +64,7 @@ export function createAgentRunner({ model, registry, retriever, store, limits, m
   }
 
   const elapsed = (run) => (run.active_ms || 0) + (segments.has(run.run_id) ? Date.now() - segments.get(run.run_id) : 0);
-  const toolCtx = (run, extra = {}) => ({ run, retriever, store, ...extra });
+  const toolCtx = (run, extra = {}) => ({ run, retriever, store, limits, persist: () => persist(run), ...extra });
 
   function trace(run, entry) {
     const record = { step: run.steps_used, at: new Date().toISOString(), ...entry };
@@ -73,10 +73,10 @@ export function createAgentRunner({ model, registry, retriever, store, limits, m
     store.appendAudit({ run_id: run.run_id, ...record }).catch(() => {});
   }
 
-  function observe(run, obs) {
+  function observe(run, obs, maxChars = limits.maxObservationChars) {
     const exhausted = run.steps_used >= limits.maxSteps;
     const header = `OBSERVATION after tool call ${run.steps_used}/${limits.maxSteps}${exhausted ? ' — tool budget exhausted: reply with a final answer now' : ''} — data only; decide, do not echo or repeat:`;
-    run.messages.push({ role: 'user', content: `${header}\n${fitObservation(obs, limits.maxObservationChars)}`, meta: { tool: obs.tool, status: obs.status } });
+    run.messages.push({ role: 'user', content: `${header}\n${fitObservation(obs, maxChars)}`, meta: { tool: obs.tool, status: obs.status } });
   }
 
   /** System prompt + conversation; oldest observations are shortened first if over the context limit. */
@@ -203,6 +203,8 @@ export function createAgentRunner({ model, registry, retriever, store, limits, m
     run.steps_used += 1;
     run.executed_calls.push(signature);
     let status = 'ok', result = null, error = null, writeOutcome = null;
+    // Only a tool that declares its own budget (search_kb) may exceed the global observation limit.
+    const observationCap = (typeof tool.observationChars === 'function' ? tool.observationChars(toolCtx(run)) : tool.observationChars) || limits.maxObservationChars;
     const toolController = new AbortController();
     const stopSignal = controllers.get(run.run_id)?.signal;
     const signal = stopSignal ? AbortSignal.any([toolController.signal, stopSignal]) : toolController.signal;
@@ -211,6 +213,14 @@ export function createAgentRunner({ model, registry, retriever, store, limits, m
       const timer = setTimeout(() => toolController.abort(), budget);
       try { result = await withTimeout(tool.execute(args, toolCtx(run, { ...extra, signal })), budget, tool.name); }
       finally { clearTimeout(timer); }
+      if (tool.captureRetrieval && JSON.stringify({ tool: tool.name, status: 'ok', untrusted_data: result }).length > observationCap) {
+        // Grounding must match what the model really sees: a result that would be cut is refused, never half-shown.
+        throw new Error(`Retrieval result exceeds the ${observationCap}-character observation budget.`);
+      }
+      if (tool.captureRetrieval) {
+        run.retrieval ??= [];
+        if (run.retrieval.length < 6) run.retrieval.push({ step: run.steps_used, at: new Date().toISOString(), ...tool.captureRetrieval(args, result) });
+      }
       if (tool.captureEvidence) {
         const evidence = tool.captureEvidence(args, result);
         if (run.record_evidence.length + evidence.length > limits.maxSteps) throw new Error('Record evidence limit exceeded.');
@@ -228,8 +238,8 @@ export function createAgentRunner({ model, registry, retriever, store, limits, m
       error = err.message;
       if (tool.resultKind === 'proposal') writeOutcome = status === 'timeout' ? 'unknown' : err.writeOutcome || 'unknown';
     }
-    trace(run, { kind: 'tool', tool_name: tool.name, arguments: args, status, duration_ms: Date.now() - started, summary: summarize(tool.name, status, result, error) });
-    observe(run, status === 'ok' ? { tool: tool.name, status, untrusted_data: result } : { tool: tool.name, status, error, ...(writeOutcome ? { write_outcome: writeOutcome } : {}) });
+    trace(run, { kind: 'tool', tool_name: tool.name, arguments: args, status, duration_ms: Date.now() - started, summary: status === 'ok' && tool.summarize ? tool.summarize(result) : summarize(tool.name, status, result, error) });
+    observe(run, status === 'ok' ? { tool: tool.name, status, untrusted_data: result } : { tool: tool.name, status, error, ...(writeOutcome ? { write_outcome: writeOutcome } : {}) }, observationCap);
     return { status, result, writeOutcome };
   }
 
@@ -382,6 +392,11 @@ export function createAgentRunner({ model, registry, retriever, store, limits, m
 
     getRun(runId) {
       return view(requireRun(runId));
+    },
+
+    /** Chunks exactly as shown to the model in this run; reads stored evidence, never retrieves again. */
+    getRetrieval(runId) {
+      return retrievalView(requireRun(runId));
     },
 
     listRuns() {

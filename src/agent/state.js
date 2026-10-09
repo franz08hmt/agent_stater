@@ -51,6 +51,7 @@ export function createRun({ goal, model, taskFingerprint = null, limits = {}, se
     trace: [],              // what the UI shows: actions and observations, no model reasoning
     retrieved_source_ids: [],
     retrieved_passages: [], // "source§paragraph" for every passage a tool returned
+    retrieval: [],          // vector retrieval calls: the chunks exactly as shown to the model (debug view)
     record_evidence: [],    // bounded lookup record IDs only, internal proposal authorization
     executed_calls: [],     // signatures of calls already made, for repeat detection
     approvals: [],          // every write proposal and what happened to it
@@ -79,6 +80,23 @@ export const callSignature = (tool, args) => `${tool}:${canonicalJson(args)}`;
 
 /** What the API returns: everything except the raw model conversation. */
 export function publicView(run) {
-  const { messages, record_evidence, task_fingerprint, model_identity, runtime_settings, ...rest } = run;
-  return structuredClone(rest);
+  const { messages, record_evidence, task_fingerprint, model_identity, runtime_settings, retrieval, ...rest } = run;
+  const view = structuredClone(rest);
+  if (retrieval?.length) {
+    // Section titles for the cited IDs, and a flag that a debug view exists. Chunk text is served separately.
+    view.retrieval_calls = retrieval.length;
+    view.source_labels = {};
+    for (const call of retrieval) for (const item of call.items) { if (Object.keys(view.source_labels).length < 40) view.source_labels[item.source_id] = item.section; }
+  }
+  return view;
+}
+
+/** Read-only view of what retrieval gave the model in one run (no vectors, no prompts, no credentials). */
+export function retrievalView(run) {
+  return {
+    run_id: run.run_id, task_id: run.task_id ?? null, status: run.status,
+    calls: structuredClone(run.retrieval ?? []),
+    embeddings: structuredClone(run.metrics?.embeddings ?? null),
+    cited_source_ids: run.final?.source_ids ?? [],
+  };
 }

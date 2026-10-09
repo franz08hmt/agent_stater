@@ -77,6 +77,7 @@ export function checkFreshness(doc, expected) {
   const e = doc.embedding;
   if (e.profile_id !== expected.embedding.profileId || e.name !== expected.embedding.name) return { status: 'stale_config', reason: 'The embedding model or profile changed.' };
   if (e.preprocessing_version !== expected.embedding.preprocessingVersion) return { status: 'stale_config', reason: 'The embedding preprocessing (prompt templates) changed.' };
+  if (expected.embedding.templatesSha256 && e.templates_sha256 !== expected.embedding.templatesSha256) return { status: 'stale_config', reason: 'The embedding prompt templates changed.' };
   if (expected.embedding.dimensions && e.dimension !== expected.embedding.dimensions) return { status: 'stale_config', reason: 'The embedding dimension changed.' };
   const same = doc.chunks.length === expected.chunks.length && doc.chunks.every((c, i) => c.source_id === expected.chunks[i].source_id && c.text_sha256 === expected.chunks[i].text_sha256);
   if (!same) return { status: 'stale_config', reason: 'Re-chunking the current knowledge base gives different chunks than the index (chunker or KB changed).' };
@@ -141,6 +142,6 @@ export function describeIndex(doc) {
   return {
     index_id: doc.index_id, kb_title: doc.kb.title, kb_checksum_sha256: doc.kb.checksum_sha256, chunk_count: doc.chunks.length,
     chunking: { unit: 'characters', ...doc.chunking }, chunker_version: doc.chunker_version, created_at: doc.created_at,
-    embedding: { profile_id: doc.embedding.profile_id, name: doc.embedding.name, digest: doc.embedding.digest ?? null, dimension: doc.embedding.dimension, preprocessing_version: doc.embedding.preprocessing_version },
+    embedding: { profile_id: doc.embedding.profile_id, name: doc.embedding.name, digest: doc.embedding.digest ?? null, dimension: doc.embedding.dimension, preprocessing_version: doc.embedding.preprocessing_version, templates_sha256: doc.embedding.templates_sha256 ?? null },
   };
 }

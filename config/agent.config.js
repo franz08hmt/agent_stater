@@ -52,6 +52,7 @@ export function loadConfig() {
     limits: {
       maxProviderRequests: int('AGENT_MAX_PROVIDER_REQUESTS', DEFAULT_BUDGETS.maxProviderRequests, 1, 1000),
       tokenBudget: int('AGENT_TOKEN_BUDGET', DEFAULT_BUDGETS.tokenBudget, 64, 100000000),
+      maxEmbeddingRequests: int('AGENT_MAX_EMBEDDING_REQUESTS', 3, 1, 20), // query-embedding HTTP requests per run (vector tasks); never retried
       maxSteps: int('AGENT_MAX_STEPS', 6, 1, 30),          // tool calls allowed per run
       maxRepairs: int('AGENT_MAX_REPAIRS', 2, 0, 5),       // retries after a malformed model reply
       toolTimeoutMs: int('TOOL_TIMEOUT_MS', 5000, 100, 60000),

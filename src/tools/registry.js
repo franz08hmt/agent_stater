@@ -8,8 +8,9 @@ import { queryDataset, createQueryDatasetTool } from './queryDataset.js';
 import { compareCounts, createCompareCountsTool } from './compareCounts.js';
 import { createProposal, createProposalTool } from './createProposal.js';
 import { checkAssetAvailability, createCheckAssetAvailabilityTool } from './checkAssetAvailability.js';
+import { searchKb } from './searchKb.js';
 
-export const BUILTIN_TOOLS = Object.freeze({ search_notes: searchNotes, save_draft: saveDraft, query_dataset: queryDataset, compare_counts: compareCounts, create_proposal: createProposal, check_asset_availability: checkAssetAvailability });
+export const BUILTIN_TOOLS = Object.freeze({ search_notes: searchNotes, save_draft: saveDraft, query_dataset: queryDataset, compare_counts: compareCounts, create_proposal: createProposal, check_asset_availability: checkAssetAvailability, search_kb: searchKb });
 
 export function createConfiguredToolRegistry(names, datasets = [], task) {
   if (!Array.isArray(names) || !names.length || names.some((name) => !Object.hasOwn(BUILTIN_TOOLS, name))) {

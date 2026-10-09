@@ -103,7 +103,7 @@ export function createOllamaEmbedder(profile) {
       const body = { model: profile.name, input: texts.length === 1 ? texts[0] : texts, truncate: false };
       if (profile.dimensions) body.dimensions = profile.dimensions;
       if (profile.keepAlive) body.keep_alive = profile.keepAlive;
-      accounting?.before(); // counts the request (and may refuse it) BEFORE any network I/O
+      await accounting?.before(); // counts (and persists) the request, and may refuse it, BEFORE any network I/O
       const started = Date.now();
       let outcome = { ok: false, usage: validatePromptEvalCount(undefined), kind: 'unavailable' };
       try {

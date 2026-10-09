@@ -1,7 +1,7 @@
 // One history load, partitioned into validated runtimes. Each runner only restores
 // its own runs; selecting another task/profile never rewrites a shared "current" runtime.
 import { createAgentRunner, AgentError } from './runner.js';
-import { STATUS, publicView, transition, argsHash } from './state.js';
+import { STATUS, publicView, retrievalView, transition, argsHash } from './state.js';
 import { closeApprovalWait, legacyMetrics } from './metrics.js';
 import { reconcileProposal } from '../proposals/reconcile.js';
 
@@ -69,10 +69,16 @@ export function createRunManager({ catalog, store, limits, modelTimeoutMs }) {
       for (const [runner, runs] of batches) await runner.init(runs);
     },
     async startRun(goal, { task_id = catalog.defaultTaskId, model_profile_id = catalog.defaultProfileId } = {}) {
+      // A vector task is declared valid without an index (so the index can be built), but it cannot run until one is ready.
+      const entry = catalog.tasks.get(task_id);
+      if (entry?.retriever?.kind === 'vector-cosine' && !entry.retriever.ready) {
+        throw new AgentError('index_not_ready', `The vector index for "${task_id}" is ${entry.retriever.status}: ${entry.retriever.reason} Build it with: npm run rag:index -- --task=${task_id}, then restart the server.`, 409);
+      }
       const runner = runtime(task_id, model_profile_id);
       const run = await runner.startRun(goal); owners.set(run.run_id, runner); return run;
     },
     getRun(id) { const runner = requireRun(id); return runner ? runner.getRun(id) : publicView(historical.get(id)); },
+    getRetrieval(id) { const runner = requireRun(id); return runner ? runner.getRetrieval(id) : retrievalView(historical.get(id)); },
     listRuns() { return [...owners.keys(), ...historical.keys()].map((id) => this.getRun(id)).sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 50); },
     idle(id) { return requireRun(id)?.idle(id) ?? Promise.resolve(); },
     stopRun(id) { const runner = requireRun(id); return runner ? runner.stopRun(id) : Promise.resolve(this.getRun(id)); },
