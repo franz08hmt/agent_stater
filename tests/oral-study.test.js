@@ -52,7 +52,7 @@ test('documentation preserves stable legacy questions, adds language/adaptation 
   assert.match(q14, /`embeddinggemma` đã cài/);
   assert.match(q14, /Không được gọi Qwen3 8B là embedding model/);
   for (let i = 67; i <= 76; i++) assert.ok(parsed.questions.some(q => q.id === `q${i}`), `Sunrise q${i}`);
-  assert.match(parsed.questions.find(q => q.id === 'q76').body, /chưa chạy LLM và embedding thật cùng nhau/);
+  assert.match(parsed.questions.find(q => q.id === 'q76').body, /mới 9 câu, mỗi câu một lần/);
   assert.match(parsed.questions.find(q => q.id === 'q49').body, /42 PASS, 8 FAIL, 1 BLOCKED/);
   assert.match(parsed.questions.find(q => q.id === 'q56').body, /không cập nhật trọng số/);
 });

@@ -693,7 +693,7 @@ Backend giữ nguồn, numeric tokens và literals/IDs; outcome ghi phải là f
 
 ## 13. Bài thi RAG Sunrise: vấn đáp và sửa nhỏ
 
-Phần này dành cho đề “Build a RAG Chatbot” (KB-B Sunrise Family Clinic). Mọi con số lấy từ [SUNRISE_RAG_EXAM.md](SUNRISE_RAG_EXAM.md). **Embedding thật `embeddinggemma` đã cài và có index thật; truy xuất thật đã đo trên 16 câu (15/16 đủ section), nhưng chưa chạy end-to-end LLM + embedding thật cùng nhau.** Kết quả LLM hiện có chỉ là HYBRID (embedding giả).
+Phần này dành cho đề “Build a RAG Chatbot” (KB-B Sunrise Family Clinic). Mọi con số lấy từ [SUNRISE_RAG_EXAM.md](SUNRISE_RAG_EXAM.md). **Embedding thật `embeddinggemma` đã cài và có index thật; truy xuất thật đã đo trên 16 câu (15/16 đủ section), và đã chạy end-to-end qua giao diện với LLM + embedding thật (9 câu, mỗi câu 1 lần: 6 PASS / 1 REVIEW / 2 FAIL).** Mẫu rất nhỏ nên chưa kết luận về độ ổn định.
 
 ### Q67. Pipeline RAG của bài Sunrise chạy từ KB đến câu trả lời thế nào?
 
@@ -717,7 +717,7 @@ Con số 1200/100 là lựa chọn thiết kế, không phải kết quả tối
 
 **Đáp án 20 giây:** “Qwen3 là model sinh văn bản, không phải embedding model. Em dùng embeddinggemma. Model này cần prefix: câu hỏi là `task: search result | query: …`, tài liệu là `title: … | text: …`. Template và `preprocessing_version` được ghi trong index; đổi chúng thì index cũ bị coi là stale.”
 
-Mở [embedding.js](../src/rag/embedding.js) (`createOllamaEmbedder`, `applyTemplate`) và `embedding_profiles` trong [catalog.json](../config/catalog.json). Máy chưa cài model thì `rag:index` in `BLOCKED … ollama pull embeddinggemma` và thoát mã 3 (không tự tải). Trên máy tác giả: 768 chiều, 1 request lập index; Ollama từng đổi digest của cùng tên model và `rag:retrieve` từ chối index cũ cho đến khi `rag:index` lại (vector đo lại cho điểm cosine y hệt). Khởi động nguội ~31 s > timeout tool 5 s nên phải nạp sẵn model bằng một lệnh `rag:retrieve`.
+Mở [embedding.js](../src/rag/embedding.js) (`createOllamaEmbedder`, `applyTemplate`) và `embedding_profiles` trong [catalog.json](../config/catalog.json). Máy chưa cài model thì `rag:index` in `BLOCKED … ollama pull embeddinggemma` và thoát mã 3 (không tự tải). Trên máy tác giả: 768 chiều, 1 request lập index; Ollama từng đổi digest của cùng tên model và `rag:retrieve` từ chối index cũ cho đến khi `rag:index` lại (vector đo lại cho điểm cosine y hệt). Khởi động nguội 6–31 s > timeout tool 5 s nên phải nạp sẵn model bằng một lệnh `rag:retrieve`. Trên GPU 6 GB, `qwen3:8b` đẩy `embeddinggemma` ra khỏi VRAM làm câu hỏi đầu hết giờ thật; đã sửa bằng `num_gpu: 0` (embedding chạy trên CPU).
 
 ### Q70. Vector store và cosine hoạt động thế nào? Vì sao không dùng ANN?
 
@@ -763,9 +763,9 @@ Mở [embedding.js](../src/rag/embedding.js) (`createOllamaEmbedder`, `applyTemp
 
 ### Q76. Em đã chứng minh gì và chưa chứng minh gì? Nói trung thực thế nào?
 
-**[Đã có]** Offline: unit/integration tests với Ollama giả, bộ chấm có mutation, harness mock 27/27 (chỉ chứng minh wiring). Browser: `npm run qa:rag` (Chromium thật, 1366×768 và 390 px, bàn phím, in, reload). Truy xuất thật: 16 câu qua `embeddinggemma`, 15/16 đủ section cần thiết; trượt S15 vì section 1 (required) chiếm một slot top-3, đề xuất `top_k: 4` chưa kiểm với LLM. Live LLM: 8 câu HYBRID với `qwen3:8b` thật nhưng embedding giả: 5 PASS, 2 REVIEW, 1 FAIL do **encoder giả**; một câu trả lời tự mâu thuẫn.
+**[Đã có]** Offline: unit/integration tests với Ollama giả, bộ chấm có mutation, harness mock 27/27 (chỉ chứng minh wiring). Browser: `npm run qa:rag` (Chromium thật, 1366×768 và 390 px, bàn phím, in, reload). Truy xuất thật: 16 câu qua `embeddinggemma`, 15/16 đủ section cần thiết. End-to-end thật qua giao diện (`qwen3:8b` + `embeddinggemma` trên CPU): 9 câu, mỗi câu 1 lần, 6 PASS / 1 REVIEW / 2 FAIL — S15 trượt vì retrieval không lấy §9; S09 tự mâu thuẫn; S18 thêm thông tin thừa và trích nguồn. Phát hiện thật: câu đầu hết giờ vì VRAM, sửa bằng `num_gpu: 0`.
 
-**Đáp án 20 giây:** “Em đã đo truy xuất thật với embeddinggemma trên 16 câu (15/16 đủ section) nhưng chưa chạy LLM và embedding thật cùng nhau. Em chứng minh được kiến trúc, accounting, grounding, UI debug và hành vi của LLM thật với embedding giả. PASS tự động chỉ nghĩa các kiểm tra số tiền/nguồn/ngôn ngữ đạt, không phải mọi câu văn đều đúng.”
+**Đáp án 20 giây:** “Em đã đo truy xuất thật với embeddinggemma trên 16 câu (15/16 đủ section) và chạy end-to-end với LLM thật qua giao diện, nhưng mới 9 câu, mỗi câu một lần nên chưa kết luận được độ ổn định. Em chứng minh được kiến trúc, accounting, grounding, UI debug và hành vi của LLM thật với embedding giả. PASS tự động chỉ nghĩa các kiểm tra số tiền/nguồn/ngôn ngữ đạt, không phải mọi câu văn đều đúng.”
 
 Không nói: “đã đúng mọi câu”, “grounding đảm bảo đúng”, “đã demo-ready” (chưa có case nào đạt 3 lần liên tiếp), hay “dự phòng đã xác minh”.
 

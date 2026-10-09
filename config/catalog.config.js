@@ -27,6 +27,8 @@ const embeddingProfileSchema = { type: 'object', additionalProperties: false,
     query_template: { type: 'string', minLength: 6, maxLength: 200 }, document_template: { type: 'string', minLength: 6, maxLength: 300 },
     keep_alive: { type: 'string', pattern: '^[0-9]{1,4}[smh]$' }, timeout_ms: { type: 'integer', minimum: 1000, maximum: 120000 },
     dimensions: { type: 'integer', minimum: 8, maximum: 4096 },
+    // 0 = run the (small) embedding model on the CPU so it never competes with the generation model for VRAM.
+    num_gpu: { type: 'integer', minimum: 0, maximum: 999 },
   } };
 const catalogSchema = { type: 'object', additionalProperties: false, required: ['default_task_id', 'default_model_profile_id', 'tasks', 'model_profiles'], properties: {
   default_task_id: id, default_model_profile_id: id,
@@ -53,9 +55,9 @@ export async function loadCatalog({ root, config, file = join(root, 'config/cata
     try { origin = new URL(def.base_url).origin; } catch { throw new Error('Embedding profile base_url is not a valid URL.'); }
     const templatesSha256 = createHash('sha256').update(JSON.stringify([def.query_template, def.document_template])).digest('hex');
     const identity = createHash('sha256').update(JSON.stringify({ id: def.id, provider: def.provider, name: def.name, origin, preprocessing: def.preprocessing_version,
-      query: def.query_template, document: def.document_template, dimensions: def.dimensions ?? null })).digest('hex');
+      query: def.query_template, document: def.document_template, dimensions: def.dimensions ?? null, num_gpu: def.num_gpu ?? null })).digest('hex');
     embeddingProfiles.set(def.id, { id: def.id, label: def.label, provider: def.provider, name: def.name, baseUrl: def.base_url, preprocessingVersion: def.preprocessing_version,
-      queryTemplate: def.query_template, documentTemplate: def.document_template, templatesSha256, dimensions: def.dimensions, keepAlive: def.keep_alive, timeoutMs: def.timeout_ms, identity });
+      queryTemplate: def.query_template, documentTemplate: def.document_template, templatesSha256, dimensions: def.dimensions, keepAlive: def.keep_alive, numGpu: def.num_gpu, timeoutMs: def.timeout_ms, identity });
   }
   const tasks = [];
   for (const def of raw.tasks) {

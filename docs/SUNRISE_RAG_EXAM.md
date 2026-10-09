@@ -9,8 +9,8 @@ Tài liệu này là hợp đồng vận hành của bài thi. Mọi mục dư�
 | Phần | Trạng thái |
 | --- | --- |
 | Code RAG, UI debug, in chunk, CLI, grader, tests, QA browser | Hoàn thành và kiểm chứng offline/browser (số liệu ở mục 8) |
-| **Embedding thật `embeddinggemma`** | **Đã cài và đã chạy thật** (768 chiều; digest ghi trong index). Index thật tạo bằng 1 request; truy xuất thật đo trên 16 câu: **15/16** đủ section cần thiết (mục 8.4). **Chưa chạy end-to-end LLM + embedding thật** |
-| LLM thật `qwen3:8b` | Chạy local ở chế độ **HYBRID** (LLM thật + embedding **giả**), 8 câu, mục 8.3. Cap generation của đợt đã dùng 22/24 nên **chưa chạy cùng embedding thật** |
+| **Embedding thật `embeddinggemma`** | **Đã cài và đã chạy thật** (768 chiều; digest ghi trong index). Index thật tạo bằng 1 request; truy xuất thật đo trên 16 câu: **15/16** đủ section cần thiết (mục 8.4). **Đã chạy end-to-end qua giao diện** (mục 8.5): 6 PASS / 1 REVIEW / 2 FAIL trên 9 câu |
+| LLM thật `qwen3:8b` | Chạy local: HYBRID (embedding giả, mục 8.3) **và** end-to-end với embedding thật qua giao diện (mục 8.5). Mỗi câu mới chạy 1 lần nên **chưa có goal nào demo-ready** |
 | Model dự phòng `qwen3:4b` | Warm và probe giao thức **PASS**; một câu Sunrise thật trả JSON không hợp lệ ở lượt cuối và chưa kịp repair do hết cap. **Chưa xác minh là dự phòng dùng được** |
 | Push / nộp form | Nhánh đã được push lên `origin` theo yêu cầu của bạn; **nộp form/doc là việc của bạn** |
 
@@ -20,7 +20,7 @@ Tài liệu này là hợp đồng vận hành của bài thi. Mọi mục dư�
 | --- | --- |
 | LLM sinh câu trả lời | Ollama local **`qwen3:8b`** (profile `ollama-qwen3`, `http://127.0.0.1:11434/v1/`, `reasoning_effort: none`, output cap 800) |
 | LLM dự phòng | `qwen3:4b` (profile `ollama-qwen3-4b`, local) · hoặc profile `env` (Gemini/OpenAI-compatible trong `.env`; quota tính theo **project**, có thể 429 và không retry tự động) |
-| Embedding model | **`embeddinggemma`** qua Ollama `POST /api/embed` (`truncate:false`, `keep_alive:"3h"`, timeout 15 s). Không dùng `qwen3` làm embedding |
+| Embedding model | **`embeddinggemma`** qua Ollama `POST /api/embed` (`truncate:false`, `keep_alive:"3h"`, `num_gpu:0` = chạy trên CPU, timeout 15 s). Không dùng `qwen3` làm embedding |
 | Template embedding | query: `task: search result \| query: {text}` · document: `title: {title} \| text: {text}` · `preprocessing_version: embeddinggemma-v1` |
 | Chunker | `markdown-section-v1`: mỗi section `## N.` là một chunk nếu ≤ 1200 ký tự; dài hơn thì tách theo khối → hàng bảng (lặp header) → mục danh sách (giữ câu dẫn) → câu → cắt cứng |
 | Kích thước chunk | **max 1200 ký tự, overlap 100 ký tự** (đo bằng **ký tự**, không phải token). Overlap chỉ giữa các phần của *cùng một* section bị tách |
@@ -161,10 +161,33 @@ Hai điều rút ra:
 
 **Rủi ro vận hành đã quan sát:** lần nạp model đầu tiên mất 10–31 s (đo thật: 31 s khi tạo index, 10,3 s khi chạy `rag:retrieve` lúc model đã bị gỡ), trong khi tool `search_kb` chỉ chờ 5 s. Ban đầu profile đặt `keep_alive: "30m"`; vì bài thi dài 120 phút và thầy có thể hỏi sau hơn 30 phút không dùng, đã đổi thành `"3h"` (chỉ là tham số gửi cho Ollama, không đổi timeout của tool, không làm index stale). Nếu Ollama vừa khởi động lại hoặc model đã bị gỡ khỏi bộ nhớ thì query đầu vẫn có thể hết giờ. Kiểm tra bằng `curl http://127.0.0.1:11434/api/ps` (cột `expires_at`). **Trước giờ thi chạy một lệnh `npm run rag:retrieve -- --task=sunrise-clinic-rag --query="warm up"`** để nạp sẵn.
 
+### 8.5 End-to-end thật qua giao diện (`qwen3:8b` + `embeddinggemma`, embedding trên CPU)
+
+Phiên riêng, local, tuần tự, giới hạn 24 request LLM và 24 request embedding. Tôi nhập từng câu vào chat box của giao diện (task Sunrise Clinic RAG, model Local Ollama Qwen3 8B) rồi chấm 9 run bằng bộ chấm của project (`var/rag-eval/ui-session-real.json`). Mỗi câu chỉ chạy **1 lần**.
+
+**Phát hiện quan trọng nhất của phiên:** câu đầu tiên (S01) **thất bại**: `search_kb` báo `Embedding request timed out` sau 5006 ms. GPU RTX 3060 Laptop chỉ có 6 GB, `qwen3:8b` chiếm 6,0 GB nên Ollama đẩy `embeddinggemma` ra khỏi bộ nhớ và phải nạp lại ngay trong lượt hỏi (6–10 s, vượt giới hạn 5 s của tool). Hệ thống xử lý đúng nguyên tắc (không bịa, không trích nguồn, trả lời "KB không cung cấp") nhưng đó là câu trả lời sai cho người dùng. Cách sửa: thêm `num_gpu: 0` vào profile embedding để model nhỏ này chạy trên CPU và nằm hẳn trong RAM (VRAM 0,0 GB), không tranh chỗ với LLM. Đo thật: ~50 ms/query, `qwen3:8b` vẫn giữ nguyên trên GPU; điểm cosine trên CPU khác GPU chỉ ở chữ số thập phân thứ tư (0,5574 so với 0,5570), thứ hạng không đổi. Index được tạo lại bằng đường CPU (1 request). Lần nạp CPU đầu tiên vẫn mất ~6 s nên vẫn phải warm trước giờ thi.
+
+| Case | Tự động | Đọc tay |
+| --- | --- | --- |
+| S01 (trước khi sửa) | BLOCKED | `search_kb` hết giờ do VRAM (xem trên) |
+| S01 | PASS | 500,000 VND, trích §10 — đúng |
+| S02 Bao Viet ở Thu Duc | PASS | Tạm ngưng, trả trước nhận hóa đơn, District 1 vẫn dùng — đúng |
+| S03 District 1 | PASS | Đúng |
+| S09 follow-up telehealth | REVIEW | **Tự mâu thuẫn:** mở đầu "Yes … is free", sau đó nói telehealth tính phí đầy đủ 180,000 VND. Lỗi lập luận của `qwen3:8b` |
+| S15 hiệu thuốc Thu Duc CN | **FAIL** | Truy xuất không lấy §9 (xếp hạng 4). Câu trả lời "8:00–12:00" tình cờ đúng nhưng **suy ra không có bằng chứng**, chỉ trích §2 |
+| S07 khám tổng quát bé 5 tuổi | PASS | 200,000 VND đúng, nhưng diễn đạt rối ("250,000 VND with 20% off") và thêm cardiology thừa; trích cả §10 không cần |
+| S18 không có trong KB | **FAIL** | Từ chối đúng giá xét nghiệm máu và bác sĩ trực, **nhưng** thêm thông tin phí da liễu không ai hỏi và trích §4, §10 (đề mong `source_ids` rỗng) |
+| X01 hỏi tiếng Việt, đáp tiếng Anh | PASS | Đúng |
+| V01 tiếng Việt | PASS | Trả lời tiếng Việt, 500.000 VND, nêu 450.000 là phí cũ |
+
+**Accounting:** LLM 22 request (20 trong 10 run, đều 2 request/run, 0 repair, 0 retry; cộng 1 probe hết giờ và 1 warm). Embedding 14 request (10 trong run, 1 tạo lại index, 1 kiểm tra S01, 2 chẩn đoán trực tiếp). Mỗi `search_kb` 42–60 ms; mỗi câu 7–11 s.
+
+Cách đọc: đây là mẫu **rất nhỏ (n = 1 mỗi câu)**, nên 6/9 không phải tỉ lệ đúng của hệ thống. Ba lỗi cần biết: (1) lỗi retrieval S15 sửa được bằng `top_k: 4` (chưa áp dụng, chưa kiểm với LLM); (2) lỗi lập luận S09 và (3) thông tin thừa/trích nguồn thừa ở S18 là hành vi của `qwen3:8b`, chưa chỉnh mission vì chưa có cách kiểm lại trong giới hạn request của phiên.
+
 ## 9. Giới hạn và rủi ro đã biết
 
 0. **Digest model đổi ⇒ phải tạo lại index.** Đã xảy ra thật: sau khi tôi tạo index, Ollama báo hai mục `embeddinggemma:latest` với digest khác (kèm một mục `llamacpp:…`) và `rag:retrieve` từ chối index cũ (`The installed embeddinggemma … differs from the one that built the index`). Chạy lại `npm run rag:index -- --task=sunrise-clinic-rag` (1 request) rồi restart server; điểm cosine đo lại **y hệt** (0,5570 / 0,5183 / 0,3559 cho câu S01) nên các số đo ở 8.4 vẫn đúng. Đây là kiểm tra an toàn đang hoạt động, không phải lỗi.
-1. **Chưa chạy LLM + embedding thật cùng nhau.** Truy xuất thật đã đo (mục 8.4) nhưng dùng câu hỏi làm query; LLM tự viết query nên có thể khác. Các kết quả LLM ở mục 8.3 dùng encoder giả. Bước tiếp theo: `rag:eval --live` (phiên mới, cần bạn đồng ý vì cap 24 generation của đợt này đã dùng 22; thêm `--embedding-spent=16` để cap embedding tính cả 16 query đo ở mục 8.4).
+1. **Mẫu end-to-end rất nhỏ.** 9 lượt, mỗi câu 1 lần (mục 8.5); chưa đo độ ổn định lặp lại. LLM tự viết query nên kết quả truy xuất khác phép đo 8.4 (dùng câu hỏi làm query). Muốn kết luận chắc hơn cần phiên mới (`rag:eval --live`, cần bạn đồng ý).
 2. **Backend giữ section 1 và 10** luôn có trong ngữ cảnh. Đây là chính sách vì section 10 ghi đè các section khác, không phải do cosine. Nếu thầy đổi KB, hãy đổi `required_sections`.
 3. **Grounding chỉ đảm bảo nguồn trích đã từng được hiển thị**, không đảm bảo câu trả lời đúng. PASS tự động không kiểm mọi mệnh đề văn xuôi (xem S09, S07).
 4. `qwen3:8b` có thể tự mâu thuẫn hoặc thêm thông tin thừa; `qwen3:4b` có thể trả JSON hỏng. Không nới repair/timeout để che lỗi.

@@ -9,6 +9,15 @@ const make = async (t, behavior, profile = {}) => {
   return { fake, embedder: createOllamaEmbedder(embeddingProfile(fake.baseUrl, profile)) };
 };
 
+test('num_gpu is sent as an Ollama option only when configured (0 = CPU, so the embedder never fights the LLM for VRAM)', async (t) => {
+  const cpu = await make(t, {}, { numGpu: 0 });
+  await cpu.embedder.embed(['alpha text']);
+  assert.deepEqual(cpu.fake.embedHits()[0].body.options, { num_gpu: 0 });
+  const plain = await make(t, {}, {});
+  await plain.embedder.embed(['alpha text']);
+  assert.equal('options' in plain.fake.embedHits()[0].body, false, 'no options object unless the profile asks for one');
+});
+
 test('request shape: native /api/embed, truncate:false, batch as array, single as string', async (t) => {
   const { fake, embedder } = await make(t, {}, { keepAlive: '30m', dimensions: DIMENSION });
   await embedder.embed(['alpha text', 'beta text']);
