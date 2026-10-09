@@ -182,7 +182,7 @@ Chi tiết và bảng “đổi nhỏ trực tiếp”: [docs/SUNRISE_RAG_EXAM.m
 2. Đổi `top_k` hoặc `context.*`: chỉ cần restart. Đổi `chunking`, KB, embedding profile hoặc template: **bắt buộc** `npm run rag:index -- --task=sunrise-clinic-rag` rồi restart; index cũ bị từ chối (`stale_kb`/`stale_config`).
 3. Embedding thật cần `ollama pull embeddinggemma` do người dùng tự chạy; thiếu model ⇒ `BLOCKED`, exit 3.
 4. Catalog tối đa 8 task và hiện đã có **7**: chỉ còn một slot cho `exam:scaffold`.
-5. Chưa có embedding thật trên máy này nên truy xuất thật chưa được đo; kết quả live hiện có là HYBRID (LLM thật + embedding giả).
+5. Truy xuất thật (`embeddinggemma`) đã đo trên 16 câu hỏi acceptance: 15/16 đủ section cần thiết; trượt câu hiệu thuốc Thu Duc vì section 1 chiếm một slot của top-3. `top_k: 4` (chỉ cần restart) sẽ phủ được câu này nhưng **chưa kiểm với LLM**. Chưa chạy end-to-end LLM + embedding thật. Nạp sẵn model trước giờ thi bằng một lệnh `rag:retrieve` (khởi động nguội ~30 s, tool chỉ chờ 5 s).
 
 ### B.1. Đổi dataset JSON/CSV trong thời gian thi
 

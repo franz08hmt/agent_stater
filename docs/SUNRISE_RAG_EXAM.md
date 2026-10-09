@@ -9,10 +9,10 @@ Tài liệu này là hợp đồng vận hành của bài thi. Mọi mục dư�
 | Phần | Trạng thái |
 | --- | --- |
 | Code RAG, UI debug, in chunk, CLI, grader, tests, QA browser | Hoàn thành và kiểm chứng offline/browser (số liệu ở mục 8) |
-| **Embedding thật `embeddinggemma`** | **BLOCKED** — model chưa được cài trên máy này. Chỉ bạn được tải: `ollama pull embeddinggemma` (khoảng 622 MB). Chưa có index thật, chưa đo chất lượng truy xuất thật |
-| LLM thật `qwen3:8b` | Có chạy local ở chế độ **HYBRID** (LLM thật + embedding **giả**), 8 câu, mục 8.3 |
+| **Embedding thật `embeddinggemma`** | **Đã cài và đã chạy thật** (digest `85462619ee72`, 768 chiều). Index thật tạo bằng 1 request; truy xuất thật đo trên 16 câu: **15/16** đủ section cần thiết (mục 8.4). **Chưa chạy end-to-end LLM + embedding thật** |
+| LLM thật `qwen3:8b` | Chạy local ở chế độ **HYBRID** (LLM thật + embedding **giả**), 8 câu, mục 8.3. Cap generation của đợt đã dùng 22/24 nên **chưa chạy cùng embedding thật** |
 | Model dự phòng `qwen3:4b` | Warm và probe giao thức **PASS**; một câu Sunrise thật trả JSON không hợp lệ ở lượt cuối và chưa kịp repair do hết cap. **Chưa xác minh là dự phòng dùng được** |
-| Push / nộp form | **Bạn tự làm.** Repo không có remote; tôi không push và không gửi form |
+| Push / nộp form | Nhánh đã được push lên `origin` theo yêu cầu của bạn; **nộp form/doc là việc của bạn** |
 
 ## 2. Danh tính (identity) của hệ thống
 
@@ -37,7 +37,7 @@ KB được copy nguyên văn vào `data/sunrise/KB-B_Sunrise-Family-Clinic-Pati
 | # | Yêu cầu đề | Cài đặt | Kiểm chứng |
 | --- | --- | --- | --- |
 | 1 | Chunk KB | `src/rag/chunker.js` (`chunkMarkdown`) | `tests/rag-chunker.test.js` (7); 11 chunk trên KB thật |
-| 2 | Embedding thật + vector store | `src/rag/embedding.js`, `indexBuilder.js`, `vectorIndex.js`; `npm run rag:index` | Code/test bằng Ollama giả (`tests/rag-embedding|index.test.js`). **Embedding thật: BLOCKED** (model chưa cài) |
+| 2 | Embedding thật + vector store | `src/rag/embedding.js`, `indexBuilder.js`, `vectorIndex.js`; `npm run rag:index` | Code/test bằng Ollama giả (`tests/rag-embedding|index.test.js`). Embedding thật: index thật + đo truy xuất 16 câu (mục 8.4) |
 | 3 | Chatbot với LLM thật | `src/agent/*` + tool `search_kb` (`src/tools/searchKb.js`), task `config/sunrise.task.json` | Hybrid live `qwen3:8b` (mục 8.3); tests với model script |
 | 4 | Hiện nguồn section/chunk của từng câu trả lời | UI “Sources”: `10. Updates (…) — kb-b-s10-c1`; `GET /api/runs/:id/retrieval` | `tests/rag-agent.test.js`, `npm run qa:rag` |
 | 5 | KB không có đáp án ⇒ nói không biết | Mission + `source_ids: []` + `unresolved`; backend chặn trích nguồn chưa từng được hiển thị | S18/V18 (mock), S18 hybrid live PASS; tests grounding |
@@ -69,7 +69,7 @@ goal ──► LLM đề xuất {"type":"tool_call","tool":"search_kb","argument
 
 ```powershell
 Set-Location D:\New-Tech\ai-agent-starter
-ollama list                                   # cần thấy qwen3:8b; embeddinggemma chưa có
+ollama list                                   # cần thấy qwen3:8b và embeddinggemma
 ollama pull embeddinggemma                    # BẠN tự chạy (≈622 MB). Tôi không tự tải
 npm run rag:index -- --task=sunrise-clinic-rag     # 1 HTTP embedding, in index_id/digest/dimension
 npm run rag:retrieve -- --task=sunrise-clinic-rag --query="What is the current dermatology fee?"
@@ -107,7 +107,7 @@ Catalog chỉ còn **1 slot task trống** (7/8): không dùng `exam:scaffold` t
 
 ## 7. Chính sách ngôn ngữ
 
-Goal tiếng Việt ⇒ trả lời tiếng Việt; goal tiếng Anh ⇒ trả lời tiếng Anh; nếu goal nói rõ ngôn ngữ trả lời (ví dụ “Hãy trả lời bằng tiếng Anh”) thì yêu cầu đó thắng. Ngôn ngữ **giao diện** (VI/EN) độc lập với ngôn ngữ trả lời, không có bộ chọn ngôn ngữ trả lời và không có lượt dịch (không HTTP phụ). Query embedding là chuỗi mà model viết; `embeddinggemma` là model đa ngôn ngữ nhưng **chất lượng truy xuất tiếng Việt chưa được đo** vì chưa cài model.
+Goal tiếng Việt ⇒ trả lời tiếng Việt; goal tiếng Anh ⇒ trả lời tiếng Anh; nếu goal nói rõ ngôn ngữ trả lời (ví dụ “Hãy trả lời bằng tiếng Anh”) thì yêu cầu đó thắng. Ngôn ngữ **giao diện** (VI/EN) độc lập với ngôn ngữ trả lời, không có bộ chọn ngôn ngữ trả lời và không có lượt dịch (không HTTP phụ). Query embedding là chuỗi mà model viết; `embeddinggemma` là model đa ngôn ngữ và đã đo trên 3 câu hỏi tiếng Việt (V01, V02, V18): cả ba lấy đúng section tiếng Anh cần thiết (mục 8.4). Mẫu nhỏ, chưa phải thống kê.
 
 ## 8. Kết quả kiểm chứng (tách riêng offline / browser / live)
 
@@ -141,9 +141,29 @@ Mỗi câu đạt 1 lần duy nhất; **chưa có case nào đạt 3 lần liên
 
 Model dự phòng `qwen3:4b` (cap riêng 4 HTTP): warm PASS, probe giao thức PASS; câu S01 thật: lượt cuối trả JSON không hợp lệ, cần repair nhưng đã chạm cap phiên nên run dừng `request_budget`. Tổng cả hai phiên **22/24** generation HTTP; còn 2.
 
+### 8.4 Truy xuất thật với `embeddinggemma` (không gọi LLM sinh câu trả lời)
+
+Sau khi cài model và `rag:index` (1 request, khởi động nguội 31 s), tôi chạy 16 câu hỏi của bộ acceptance qua retriever sản phẩm, dùng **chính câu hỏi làm query** (LLM tự viết query nên kết quả thật có thể khác). Chi phí: 16 request embedding (tổng 17/24 embedding thật), ~0,7 s/query khi model đã nạp, 0 gọi LLM. Báo cáo: `var/rag-eval/real-retrieval-check.json`.
+
+| Case | Cần section | Top-3 theo cosine | Kết luận |
+| --- | --- | --- | --- |
+| S01, X01, X02, V01 (phí da liễu) | 4, 10 | 4, 10, 8 | đủ (câu VI và câu chéo ngôn ngữ cũng đủ) |
+| S02, S03, V02 (Bao Viet) | 5, 10 | 5 và 10 đều nằm trong top-3 | đủ, kể cả câu tiếng Việt |
+| S09, S07, S05, S14, S16 | 4 / 4 / 2 / 7 / 6 | đứng đầu | đủ |
+| S11 (thành viên + da liễu) | 8, 10, 4 | 8, 4, 10 | đủ |
+| S18, V18 (không có trong KB) | không có | 4, 6, 10 / 4, 10, 8 | đúng là không có đáp án; điểm cao nhất chỉ 0,36–0,42 |
+| **S15** (hiệu thuốc Thu Duc Chủ nhật) | 2, 9 | **2, 7, 1** | **TRƯỢT:** section 9 xếp hạng 4 (0,420), sau section 7 (0,522) và section 1 (0,461) |
+
+Hai điều rút ra:
+
+- **Section 1 là required nên cũng chiếm một slot của top-3** ở S15. Với `top_k: 4` (chỉ sửa `config/sunrise.task.json` rồi restart), tập top-4 của 16 câu trên là tập cha của top-3 nên S15 cũng đủ section 9; cái giá là thêm một chunk (~100–700 ký tự) mỗi lượt. **Đề xuất này chưa được thử với LLM** và tôi chưa áp dụng.
+- **Điểm cosine không thể dùng làm ngưỡng "không biết"**: câu không có đáp án (S18 0,363, V18 0,420) có điểm gần các câu có đáp án (S05 0,427, V02 0,437). Việc nói "không biết" dựa vào nội dung chunk do LLM đọc, nên vẫn cần kiểm bằng `rag:eval --live`.
+
+**Rủi ro vận hành đã quan sát:** lần nạp model đầu tiên mất khoảng 31 s, trong khi tool `search_kb` chỉ chờ 5 s. Profile đặt `keep_alive: "30m"` nên các query sau nhanh, nhưng nếu Ollama vừa khởi động hoặc model đã bị gỡ khỏi bộ nhớ thì query đầu có thể hết giờ. **Trước giờ thi chạy một lệnh `npm run rag:retrieve -- --task=sunrise-clinic-rag --query="warm up"`** để nạp sẵn.
+
 ## 9. Giới hạn và rủi ro đã biết
 
-1. **Chưa có embedding thật.** Mọi con số truy xuất ở trên dùng encoder giả; chất lượng `embeddinggemma` (đặc biệt tiếng Việt, câu hỏi diễn đạt khác từ khóa) chưa đo. Sau khi cài: `rag:index`, `rag:retrieve` vài câu rồi `rag:eval --live`.
+1. **Chưa chạy LLM + embedding thật cùng nhau.** Truy xuất thật đã đo (mục 8.4) nhưng dùng câu hỏi làm query; LLM tự viết query nên có thể khác. Các kết quả LLM ở mục 8.3 dùng encoder giả. Bước tiếp theo: `rag:eval --live` (phiên mới, cần bạn đồng ý vì cap 24 generation của đợt này đã dùng 22; thêm `--embedding-spent=16` để cap embedding tính cả 16 query đo ở mục 8.4).
 2. **Backend giữ section 1 và 10** luôn có trong ngữ cảnh. Đây là chính sách vì section 10 ghi đè các section khác, không phải do cosine. Nếu thầy đổi KB, hãy đổi `required_sections`.
 3. **Grounding chỉ đảm bảo nguồn trích đã từng được hiển thị**, không đảm bảo câu trả lời đúng. PASS tự động không kiểm mọi mệnh đề văn xuôi (xem S09, S07).
 4. `qwen3:8b` có thể tự mâu thuẫn hoặc thêm thông tin thừa; `qwen3:4b` có thể trả JSON hỏng. Không nới repair/timeout để che lỗi.

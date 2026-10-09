@@ -160,7 +160,7 @@ Provenance dùng ranges hoặc bitmap base64 không mất thông tin, giúp 200 
 
 ### Q14. Project có dùng embedding không? Có vector database không?
 
-**[Đã có, chỉ ở task `sunrise-clinic-rag`] Có embedding retrieval với index vector cục bộ; không có vector database/ANN.** Các task notes khác vẫn dùng keyword BM25 và bảng dùng filter/tính toán xác định, không gọi embedding. Task Sunrise gọi Ollama `/api/embed` (model `embeddinggemma`) khi tạo index (`npm run rag:index`) và một lần cho mỗi truy vấn. **Trên máy này `embeddinggemma` chưa cài** nên truy xuất thật chưa được đo (xem Q67–Q76).
+**[Đã có, chỉ ở task `sunrise-clinic-rag`] Có embedding retrieval với index vector cục bộ; không có vector database/ANN.** Các task notes khác vẫn dùng keyword BM25 và bảng dùng filter/tính toán xác định, không gọi embedding. Task Sunrise gọi Ollama `/api/embed` (model `embeddinggemma`) khi tạo index (`npm run rag:index`) và một lần cho mỗi truy vấn. **Trên máy tác giả `embeddinggemma` đã cài**, index thật đã tạo và truy xuất thật đã đo trên 16 câu (xem Q67–Q76).
 
 **Đáp án 20 giây:** “Task notes dùng `keyword-bm25`, không embedding. Task Sunrise dùng `embeddinggemma` làm embedding model và `vector-cosine` làm retriever; `qwen3:8b` chỉ sinh quyết định/câu trả lời. Không được gọi Qwen3 8B là embedding model.” Chứng minh tại [keywordSearch.js](../src/retrieval/keywordSearch.js), `kind: 'keyword-bm25'`, và [catalog.json](../config/catalog.json), `model_profiles`.
 
@@ -520,7 +520,7 @@ Các nội dung chưa xác định nên bổ sung theo đề/câu hỏi giảng 
 | Chủ đề cần bổ sung | Trạng thái hiện tại | Bằng chứng cần có trước khi viết đáp án |
 |---|---|---|
 | Bộ câu hỏi/tiêu chí chấm thực tế của giảng viên | Chưa được cung cấp | Đề/rubric hoặc câu đã hỏi, không tự đoán là yêu cầu bắt buộc |
-| Embedding thật `embeddinggemma`, ANN/vector DB, hybrid, reranking | Task Sunrise đã có code embedding + exact cosine nhưng model **chưa cài**; ANN/DB/hybrid/rerank chưa có | `ollama pull embeddinggemma` (do người dùng), `rag:index`, đo bằng `rag:retrieve`/`rag:eval --live`; không claim ANN |
+| Embedding thật `embeddinggemma`, ANN/vector DB, hybrid, reranking | Task Sunrise đã có code embedding + exact cosine và đã chạy với model thật; ANN/DB/hybrid/rerank chưa có | `ollama pull embeddinggemma` (do người dùng), `rag:index`, đo bằng `rag:retrieve`/`rag:eval --live`; không claim ANN |
 | Quantization, VRAM/RAM, context limit và tokenizer chính xác của model trên máy | Chưa đối chiếu đầy đủ | Metadata model đã tải, cấu hình/hardware thực tế, nguồn provider phù hợp |
 | Native function calling, streaming, reranking | Chưa có trong đường hiện tại | Code và tests tương ứng nếu thực sự bổ sung |
 | Lưu/chỉnh bản ghi dataset, join/công thức mới | Ngoài tools hiện có | Tool mới, business rules, quyền, approval/idempotency và acceptance |
@@ -621,7 +621,7 @@ Ví dụ minh họa giao thức, không phải transcript/evidence của một r
 | Không nên nói | Nói chính xác |
 |---|---|
 | Em dùng Ollama làm LLM | Em dùng Qwen3 8B; Ollama chạy/phục vụ model |
-| Qwen3 8B là embedding model của em | Embedding model là `embeddinggemma` (chưa cài trên máy này); Qwen3 8B chỉ sinh câu trả lời |
+| Qwen3 8B là embedding model của em | Embedding model là `embeddinggemma`; Qwen3 8B chỉ sinh câu trả lời |
 | Em train bằng cách thêm notes/sửa prompt | Em thay dữ liệu truy xuất/input inference, không cập nhật weights |
 | BM25 là vector search ngữ nghĩa | BM25 chấm từ khóa; chỉ task Sunrise có dense embedding index |
 | Có RAG là không hallucination | Retrieval/grounding giảm rủi ro; vẫn cần eval ngữ nghĩa |
@@ -693,7 +693,7 @@ Backend giữ nguồn, numeric tokens và literals/IDs; outcome ghi phải là f
 
 ## 13. Bài thi RAG Sunrise: vấn đáp và sửa nhỏ
 
-Phần này dành cho đề “Build a RAG Chatbot” (KB-B Sunrise Family Clinic). Mọi con số lấy từ [SUNRISE_RAG_EXAM.md](SUNRISE_RAG_EXAM.md). **Embedding thật `embeddinggemma` chưa cài trên máy này; chất lượng truy xuất thật chưa được đo.** Kết quả live hiện có chỉ là HYBRID (LLM thật + embedding giả).
+Phần này dành cho đề “Build a RAG Chatbot” (KB-B Sunrise Family Clinic). Mọi con số lấy từ [SUNRISE_RAG_EXAM.md](SUNRISE_RAG_EXAM.md). **Embedding thật `embeddinggemma` đã cài và có index thật; truy xuất thật đã đo trên 16 câu (15/16 đủ section), nhưng chưa chạy end-to-end LLM + embedding thật cùng nhau.** Kết quả LLM hiện có chỉ là HYBRID (embedding giả).
 
 ### Q67. Pipeline RAG của bài Sunrise chạy từ KB đến câu trả lời thế nào?
 
@@ -713,11 +713,11 @@ Con số 1200/100 là lựa chọn thiết kế, không phải kết quả tối
 
 ### Q69. Embedding model nào? Prefix là gì? Vì sao không dùng Qwen3?
 
-**[Đã có code; model chưa cài]** `embeddinggemma` qua Ollama `POST /api/embed`, `truncate:false`, không retry, không theo redirect, kiểm tra model/dimension/số vector trả về.
+**[Đã có, đã chạy thật]** `embeddinggemma` qua Ollama `POST /api/embed`, `truncate:false`, không retry, không theo redirect, kiểm tra model/dimension/số vector trả về.
 
 **Đáp án 20 giây:** “Qwen3 là model sinh văn bản, không phải embedding model. Em dùng embeddinggemma. Model này cần prefix: câu hỏi là `task: search result | query: …`, tài liệu là `title: … | text: …`. Template và `preprocessing_version` được ghi trong index; đổi chúng thì index cũ bị coi là stale.”
 
-Mở [embedding.js](../src/rag/embedding.js) (`createOllamaEmbedder`, `applyTemplate`) và `embedding_profiles` trong [catalog.json](../config/catalog.json). Trên máy này model chưa cài: `rag:index` in `BLOCKED … ollama pull embeddinggemma` và thoát mã 3; tôi không tự tải.
+Mở [embedding.js](../src/rag/embedding.js) (`createOllamaEmbedder`, `applyTemplate`) và `embedding_profiles` trong [catalog.json](../config/catalog.json). Máy chưa cài model thì `rag:index` in `BLOCKED … ollama pull embeddinggemma` và thoát mã 3 (không tự tải). Trên máy tác giả: digest `85462619ee72`, 768 chiều, 1 request lập index. Khởi động nguội ~31 s > timeout tool 5 s nên phải nạp sẵn model bằng một lệnh `rag:retrieve`.
 
 ### Q70. Vector store và cosine hoạt động thế nào? Vì sao không dùng ANN?
 
@@ -745,9 +745,9 @@ Mở [embedding.js](../src/rag/embedding.js) (`createOllamaEmbedder`, `applyTemp
 
 ### Q73. Goal tiếng Việt hay tiếng Anh được xử lý ra sao? Embedding có hiểu tiếng Việt không?
 
-**[Đã có chính sách; chất lượng chưa đo]** Goal VI ⇒ trả lời VI; goal EN ⇒ EN; goal nói rõ ngôn ngữ trả lời thì yêu cầu đó thắng (ví dụ ca X01/X02). Ngôn ngữ giao diện độc lập; không có lượt dịch.
+**[Đã có chính sách; đo sơ bộ trên 3 câu tiếng Việt]** Goal VI ⇒ trả lời VI; goal EN ⇒ EN; goal nói rõ ngôn ngữ trả lời thì yêu cầu đó thắng (ví dụ ca X01/X02). Ngôn ngữ giao diện độc lập; không có lượt dịch.
 
-**Đáp án 20 giây:** “Mission yêu cầu trả lời theo ngôn ngữ của goal. Model tự viết query tìm kiếm; `embeddinggemma` là model đa ngôn ngữ nên có thể truy xuất KB tiếng Anh bằng câu hỏi tiếng Việt, nhưng em chưa đo điều đó vì model chưa cài.” Grader có 27 case gồm VI/EN và hai chiều chéo; kiểm ngôn ngữ trả lời bằng bộ phát hiện bảo thủ ([acceptance.js](../src/rag/acceptance.js) `detectLanguage`).
+**Đáp án 20 giây:** “Mission yêu cầu trả lời theo ngôn ngữ của goal. Model tự viết query tìm kiếm; `embeddinggemma` là model đa ngôn ngữ nên có thể truy xuất KB tiếng Anh bằng câu hỏi tiếng Việt, và em đã đo sơ bộ: cả 3 câu hỏi tiếng Việt đều lấy đúng section tiếng Anh cần thiết (mẫu nhỏ).” Grader có 27 case gồm VI/EN và hai chiều chéo; kiểm ngôn ngữ trả lời bằng bộ phát hiện bảo thủ ([acceptance.js](../src/rag/acceptance.js) `detectLanguage`).
 
 ### Q74. Nếu model bị rate limit hoặc hỏng thì sao? Dự phòng đã xác minh chưa?
 
@@ -763,9 +763,9 @@ Mở [embedding.js](../src/rag/embedding.js) (`createOllamaEmbedder`, `applyTemp
 
 ### Q76. Em đã chứng minh gì và chưa chứng minh gì? Nói trung thực thế nào?
 
-**[Đã có]** Offline: unit/integration tests với Ollama giả, bộ chấm có mutation, harness mock 27/27 (chỉ chứng minh wiring). Browser: `npm run qa:rag` (Chromium thật, 1366×768 và 390 px, bàn phím, in, reload). Live: 8 câu HYBRID với `qwen3:8b` thật nhưng embedding giả: 5 PASS, 2 REVIEW, 1 FAIL do **encoder giả** không truy xuất section 2; một câu trả lời tự mâu thuẫn.
+**[Đã có]** Offline: unit/integration tests với Ollama giả, bộ chấm có mutation, harness mock 27/27 (chỉ chứng minh wiring). Browser: `npm run qa:rag` (Chromium thật, 1366×768 và 390 px, bàn phím, in, reload). Truy xuất thật: 16 câu qua `embeddinggemma`, 15/16 đủ section cần thiết; trượt S15 vì section 1 (required) chiếm một slot top-3, đề xuất `top_k: 4` chưa kiểm với LLM. Live LLM: 8 câu HYBRID với `qwen3:8b` thật nhưng embedding giả: 5 PASS, 2 REVIEW, 1 FAIL do **encoder giả**; một câu trả lời tự mâu thuẫn.
 
-**Đáp án 20 giây:** “Em chưa chứng minh được chất lượng truy xuất thật vì chưa cài embeddinggemma. Em chứng minh được kiến trúc, accounting, grounding, UI debug và hành vi của LLM thật với embedding giả. PASS tự động chỉ nghĩa các kiểm tra số tiền/nguồn/ngôn ngữ đạt, không phải mọi câu văn đều đúng.”
+**Đáp án 20 giây:** “Em đã đo truy xuất thật với embeddinggemma trên 16 câu (15/16 đủ section) nhưng chưa chạy LLM và embedding thật cùng nhau. Em chứng minh được kiến trúc, accounting, grounding, UI debug và hành vi của LLM thật với embedding giả. PASS tự động chỉ nghĩa các kiểm tra số tiền/nguồn/ngôn ngữ đạt, không phải mọi câu văn đều đúng.”
 
 Không nói: “đã đúng mọi câu”, “grounding đảm bảo đúng”, “đã demo-ready” (chưa có case nào đạt 3 lần liên tiếp), hay “dự phòng đã xác minh”.
 

@@ -7,7 +7,7 @@ Task `sunrise-clinic-rag` trả lời câu hỏi bệnh nhân **chỉ từ** Pat
 | Thành phần | Giá trị |
 | --- | --- |
 | LLM | Ollama local `qwen3:8b` (profile `ollama-qwen3`); dự phòng `qwen3:4b` (chưa xác minh đầy đủ) hoặc profile `env` trong `.env` |
-| Embedding model | `embeddinggemma` qua Ollama `/api/embed` — **chưa cài trên máy này**: tự chạy `ollama pull embeddinggemma` |
+| Embedding model | `embeddinggemma` qua Ollama `/api/embed` (digest `85462619ee72`, 768 chiều); đã cài và có index thật trên máy tác giả. Máy khác: `ollama pull embeddinggemma` |
 | Chunk | mỗi section `## N.` một chunk, tối đa **1200 ký tự**, overlap **100** ký tự (ký tự, không phải token) → 11 chunk |
 | Truy xuất | exact cosine (O(N×d), không ANN), top-k **3** + section **1** và **10** do backend luôn thêm; tối đa 6 chunk/6000 ký tự |
 | Vector store | `var/rag/sunrise-clinic-rag/index.json` (Git-ignored, tạo bằng `rag:index`) |
@@ -21,7 +21,7 @@ npm run rag:eval -- --profile=mock                                  # harness of
 npm run qa:rag                                                      # Chromium thật: UI chunk, in, VI/EN, reload
 ```
 
-Mỗi câu trả lời hiện “section — source_id”; khối **Retrieved chunks** liệt kê query, hạng, điểm cosine, loại match (semantic/required), section, chunk và toàn văn; **Print retrieved chunks** in đúng khối đó. KB không có đáp án ⇒ trả lời không biết, `source_ids: []`. Chưa có embedding thật nên **chất lượng truy xuất thật chưa được đo**; kết quả live hiện có chỉ là HYBRID (LLM thật + embedding giả), xem mục 8 của tài liệu trên.
+Mỗi câu trả lời hiện “section — source_id”; khối **Retrieved chunks** liệt kê query, hạng, điểm cosine, loại match (semantic/required), section, chunk và toàn văn; **Print retrieved chunks** in đúng khối đó. KB không có đáp án ⇒ trả lời không biết, `source_ids: []`. Truy xuất thật đã đo trên 16 câu hỏi acceptance: 15/16 câu có đủ section cần thiết (mục 8.4 của tài liệu trên). **Chưa chạy end-to-end LLM + embedding thật cùng nhau**; các kết quả LLM hiện có là HYBRID (LLM thật + embedding giả, mục 8.3). **Trước giờ thi chạy một lệnh `rag:retrieve` để nạp sẵn model embedding** (lần đầu mất ~30 s, vượt giới hạn 5 s của tool).
 
 **Chốt ba P2 ngày 09/10/2026, runtime adb6e86:** 423 tests/16 eval và regressions/Chrome QA đạt. Gate chặn câu hỏi/miêu tả tạo nhầm approval; CLI chạy trên source sạch không var và FAIL/exit1 khi expected sai. Live phiên mới cap20: sum và draft approve/replay mỗi ca 3 PASS; ticket final sai bị chặn ở cap, giữ BLOCKED. Đã agent rehearsal trong project tạm; student NOT_RUN. Xem [receipt/goal demo](docs/FREEZE_P2_VERIFICATION.md). Số liệu đợt 08/10 bên dưới là lịch sử; chưa overall READY, không chạy thêm model sau cap.
 
