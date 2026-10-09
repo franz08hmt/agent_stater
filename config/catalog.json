@@ -19,6 +19,6 @@
   "embedding_profiles": [
     { "id": "ollama-embeddinggemma", "label": "Local Ollama EmbeddingGemma 300M", "provider": "ollama", "name": "embeddinggemma", "base_url": "http://127.0.0.1:11434",
       "preprocessing_version": "embeddinggemma-v1", "query_template": "task: search result | query: {text}", "document_template": "title: {title} | text: {text}",
-      "keep_alive": "30m", "timeout_ms": 15000 }
+      "keep_alive": "3h", "timeout_ms": 15000 }
   ]
 }

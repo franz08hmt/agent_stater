@@ -20,7 +20,7 @@ Tài liệu này là hợp đồng vận hành của bài thi. Mọi mục dư�
 | --- | --- |
 | LLM sinh câu trả lời | Ollama local **`qwen3:8b`** (profile `ollama-qwen3`, `http://127.0.0.1:11434/v1/`, `reasoning_effort: none`, output cap 800) |
 | LLM dự phòng | `qwen3:4b` (profile `ollama-qwen3-4b`, local) · hoặc profile `env` (Gemini/OpenAI-compatible trong `.env`; quota tính theo **project**, có thể 429 và không retry tự động) |
-| Embedding model | **`embeddinggemma`** qua Ollama `POST /api/embed` (`truncate:false`, `keep_alive:"30m"`, timeout 15 s). Không dùng `qwen3` làm embedding |
+| Embedding model | **`embeddinggemma`** qua Ollama `POST /api/embed` (`truncate:false`, `keep_alive:"3h"`, timeout 15 s). Không dùng `qwen3` làm embedding |
 | Template embedding | query: `task: search result \| query: {text}` · document: `title: {title} \| text: {text}` · `preprocessing_version: embeddinggemma-v1` |
 | Chunker | `markdown-section-v1`: mỗi section `## N.` là một chunk nếu ≤ 1200 ký tự; dài hơn thì tách theo khối → hàng bảng (lặp header) → mục danh sách (giữ câu dẫn) → câu → cắt cứng |
 | Kích thước chunk | **max 1200 ký tự, overlap 100 ký tự** (đo bằng **ký tự**, không phải token). Overlap chỉ giữa các phần của *cùng một* section bị tách |
@@ -159,7 +159,7 @@ Hai điều rút ra:
 - **Section 1 là required nên cũng chiếm một slot của top-3** ở S15. Với `top_k: 4` (chỉ sửa `config/sunrise.task.json` rồi restart), tập top-4 của 16 câu trên là tập cha của top-3 nên S15 cũng đủ section 9; cái giá là thêm một chunk (~100–700 ký tự) mỗi lượt. **Đề xuất này chưa được thử với LLM** và tôi chưa áp dụng.
 - **Điểm cosine không thể dùng làm ngưỡng "không biết"**: câu không có đáp án (S18 0,363, V18 0,420) có điểm gần các câu có đáp án (S05 0,427, V02 0,437). Việc nói "không biết" dựa vào nội dung chunk do LLM đọc, nên vẫn cần kiểm bằng `rag:eval --live`.
 
-**Rủi ro vận hành đã quan sát:** lần nạp model đầu tiên mất khoảng 31 s, trong khi tool `search_kb` chỉ chờ 5 s. Profile đặt `keep_alive: "30m"` nên các query sau nhanh, nhưng nếu Ollama vừa khởi động hoặc model đã bị gỡ khỏi bộ nhớ thì query đầu có thể hết giờ. **Trước giờ thi chạy một lệnh `npm run rag:retrieve -- --task=sunrise-clinic-rag --query="warm up"`** để nạp sẵn.
+**Rủi ro vận hành đã quan sát:** lần nạp model đầu tiên mất 10–31 s (đo thật: 31 s khi tạo index, 10,3 s khi chạy `rag:retrieve` lúc model đã bị gỡ), trong khi tool `search_kb` chỉ chờ 5 s. Ban đầu profile đặt `keep_alive: "30m"`; vì bài thi dài 120 phút và thầy có thể hỏi sau hơn 30 phút không dùng, đã đổi thành `"3h"` (chỉ là tham số gửi cho Ollama, không đổi timeout của tool, không làm index stale). Nếu Ollama vừa khởi động lại hoặc model đã bị gỡ khỏi bộ nhớ thì query đầu vẫn có thể hết giờ. Kiểm tra bằng `curl http://127.0.0.1:11434/api/ps` (cột `expires_at`). **Trước giờ thi chạy một lệnh `npm run rag:retrieve -- --task=sunrise-clinic-rag --query="warm up"`** để nạp sẵn.
 
 ## 9. Giới hạn và rủi ro đã biết
 
