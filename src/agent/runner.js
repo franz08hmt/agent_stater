@@ -221,6 +221,10 @@ export function createAgentRunner({ model, registry, retriever, store, limits, m
         run.retrieval ??= [];
         if (run.retrieval.length < 6) run.retrieval.push({ step: run.steps_used, at: new Date().toISOString(), ...tool.captureRetrieval(args, result) });
       }
+      if (tool.captureCalculation) {
+        run.calculations ??= [];
+        if (run.calculations.length < 12) run.calculations.push({ step: run.steps_used, ...tool.captureCalculation(args, result) });
+      }
       if (tool.captureEvidence) {
         const evidence = tool.captureEvidence(args, result);
         if (run.record_evidence.length + evidence.length > limits.maxSteps) throw new Error('Record evidence limit exceeded.');

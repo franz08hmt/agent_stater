@@ -101,7 +101,8 @@ export async function validateTaskConfig(raw, root, virtualFiles, embeddingProfi
   if (new Set(raw.sample_inputs.map((x) => x.label.toLowerCase())).size !== raw.sample_inputs.length) invalid('sample_inputs: duplicate labels');
   if (raw.allowed_tools.includes('save_draft') && !raw.allowed_tools.includes('search_notes')) invalid('save_draft requires search_notes for grounded drafts.');
   if (raw.allowed_tools.includes('search_kb') !== Boolean(raw.retrieval)) invalid('search_kb and the retrieval declaration require each other.');
-  if (raw.retrieval && raw.allowed_tools.length !== 1) invalid('A vector-retrieval task may allow only search_kb: it is a read-only knowledge-base task.');
+  if (raw.retrieval && raw.allowed_tools.some((tool) => !['search_kb', 'calculate'].includes(tool))) invalid('A vector-retrieval task may allow only search_kb and calculate: it is a read-only knowledge-base task.');
+  if (raw.allowed_tools.includes('calculate') && !raw.retrieval) invalid('calculate is only available to vector-retrieval knowledge-base tasks.');
   for (const tool of ['query_dataset', 'compare_counts', 'check_asset_availability']) {
     if (raw.allowed_tools.includes(tool) && !raw.data.datasets?.length) invalid(`${tool} requires at least one allowed dataset in data.datasets.`);
   }

@@ -183,6 +183,7 @@ Chi tiết và bảng “đổi nhỏ trực tiếp”: [docs/SUNRISE_RAG_EXAM.m
 3. Embedding thật cần `ollama pull embeddinggemma` do người dùng tự chạy; thiếu model ⇒ `BLOCKED`, exit 3.
 4. Catalog tối đa 8 task và hiện đã có **7**: chỉ còn một slot cho `exam:scaffold`.
 5. Truy xuất thật (`embeddinggemma`) đo trên 16 câu acceptance: 15/16 đủ section cần thiết; trượt câu hiệu thuốc Thu Duc vì section 1 chiếm một slot của top-3, và chạy end-to-end qua giao diện cũng trượt đúng câu đó. `top_k: 4` (chỉ cần restart) sẽ phủ được câu này nhưng **chưa kiểm với LLM**. Nếu GPU nhỏ (6 GB), giữ `num_gpu: 0` cho embedding, nếu không `search_kb` hết giờ 5 s. Nạp sẵn model trước giờ thi bằng một lệnh `rag:retrieve`.
+6. Task Sunrise có hai tool chỉ đọc: `search_kb` và `calculate`. Số tiền suy ra (giảm giá, tổng) phải đi qua `calculate` hoặc phép tính backend tự làm sẵn; số tiền model tự nghĩ ra bị từ chối (`src/tools/calculate.js`, `checkFinal`). Khi đổi sang KB khác không có giá/giảm giá, luật này không làm gì; nếu không cần có thể bỏ `calculate` khỏi `allowed_tools`.
 
 ### B.1. Đổi dataset JSON/CSV trong thời gian thi
 

@@ -185,8 +185,10 @@ test('Sunrise is read-only: other tools are not in its allow-list, so no approva
   assert.deepEqual(await f.store.listDrafts(), []);
   assert.deepEqual(await f.store.listProposals(), []);
   const names = f.catalog.tasks.get(SUNRISE).registry.describe().map((x) => x.name);
-  assert.deepEqual(names, ['search_kb']);
+  assert.deepEqual(names, ['search_kb', 'calculate'], 'the only tools: knowledge-base search and pure arithmetic');
   assert.equal(f.catalog.tasks.get(SUNRISE).registry.get('search_kb').access, 'read');
+  assert.equal(f.catalog.tasks.get(SUNRISE).registry.get('calculate').access, 'read');
+  assert.equal(f.catalog.tasks.get(SUNRISE).registry.get('calculate').requiresApproval, false);
 });
 
 test('other tasks cannot use search_kb, and their search_notes stays BM25 with the global observation limit', async (t) => {
@@ -250,7 +252,7 @@ test('HTTP: start, poll and read the retrieval debug view; reading it never retr
   assert.equal(sunrise.data.vector.index_status, 'ready');
   assert.deepEqual(sunrise.data.vector.required_sections, [1, 10]);
   assert.ok(!JSON.stringify(catalog).includes(f.root), 'no machine paths');
-  assert.equal(sunrise.tools.length, 1);
+  assert.deepEqual(sunrise.tools.map((x) => [x.name, x.access]), [['search_kb', 'read'], ['calculate', 'read']]);
   // starting a vector run with no index over HTTP is a clear 409
   const g = await sunriseFixture(t, { indexed: false });
   const baseG = await g.serve();
@@ -336,6 +338,9 @@ test('task declaration is validated before runtime: unknown profile, missing sec
   await assert.rejects(attempt((r) => { r.retrieval.required_sections = [1, 42]; }), /section 42 does not exist/);
   await assert.rejects(attempt((r) => { r.retrieval.context.max_chunks = 3; }), /must fit top_k plus every required chunk/);
   await assert.rejects(attempt((r) => { r.allowed_tools = ['search_kb', 'search_notes']; }), /may allow only search_kb/);
+  await assert.rejects(attempt((r) => { r.allowed_tools = ['search_kb', 'calculate', 'search_notes']; }), /may allow only search_kb and calculate/);
+  await assert.rejects(attempt((r) => { r.allowed_tools = ['calculate']; }), /require each other|search_kb/);
+  assert.ok((await attempt((r) => { r.allowed_tools = ['search_kb']; })).tasks.get(SUNRISE), 'calculate is optional: search_kb alone is still a valid vector task');
   await assert.rejects(attempt((r) => { delete r.retrieval; }), /require each other/);
   await assert.rejects(attempt((r) => { r.retrieval.kb_file = 'missing.md'; }), /not a \.md file in data\.notes_dir/);
   await assert.rejects(attempt((r) => { r.retrieval.kind = 'keyword'; }), /one of vector/);

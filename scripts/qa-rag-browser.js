@@ -9,7 +9,7 @@ import { sunriseFixture, call, final, SUNRISE } from '../tests/rag-helpers.js';
 
 const cleanups = [];
 const shim = { after: (fn) => cleanups.push(fn) };
-const FEE_ANSWER = 'The current dermatology consultation fee is 520,000 VND, effective 1 October 2026.';
+const FEE_ANSWER = 'The current dermatology consultation fee is 500,000 VND, effective 1 October 2026.';
 const GOAL = 'What is the current dermatology consultation fee?';
 
 const qa = await browserQa();

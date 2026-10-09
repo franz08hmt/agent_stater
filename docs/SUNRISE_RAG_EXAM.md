@@ -29,6 +29,7 @@ Tài liệu này là hợp đồng vận hành của bài thi. Mọi mục dư�
 | Tìm kiếm | **Exact cosine** trên vector đã chuẩn hóa: duyệt hết N chunk, mỗi chunk d chiều ⇒ **O(N×d)**. Không ANN, không HNSW, không claim tốc độ |
 | Chính sách ngữ cảnh | top-k = **3** theo cosine **+** section **1** và **10** do backend luôn thêm (đánh dấu `required`, loại trùng); tối đa 6 chunk / 6000 ký tự trong một observation |
 | Ngân sách embedding | **3 HTTP embedding/run**, đếm trước khi gọi, không retry, tách khỏi số liệu LLM |
+| Công cụ của task | `search_kb` và `calculate`, **cả hai chỉ đọc**, không cần duyệt. `calculate` là số học chính xác (phân số BigInt, không `eval`); xem mục 8.6 |
 
 KB được copy nguyên văn vào `data/sunrise/KB-B_Sunrise-Family-Clinic-Patient-Guide.md` (checksum `83c7f209ef8be61d…` sau chuẩn hóa LF). Hai điểm bẫy của KB: bảng phí section 4 ghi da liễu **450,000** nhưng section 10 (hiệu lực 1/10/2026) **ghi đè thành 500,000**; Bao Viet bị **tạm ngưng direct billing ở Thu Duc**, vẫn dùng ở District 1.
 
@@ -64,6 +65,8 @@ goal ──► LLM đề xuất {"type":"tool_call","tool":"search_kb","argument
 ```
 
 Điểm cần nói được khi vấn đáp: **ledger = đúng các chunk đã đưa cho model** (không phải kết quả tìm kiếm thô); nếu một observation sẽ bị cắt thì run dừng với lỗi thay vì âm thầm bỏ chunk; chunk required không bao giờ bị bỏ, chunk semantic yếu nhất bị bỏ trước khi hết ngân sách ký tự.
+
+**Số tiền trong câu trả lời cuối** phải có nguồn: hoặc trích nguyên văn từ chunk đã hiển thị, hoặc là kết quả của `calculate` (hay phép tính backend tự làm sẵn, mục 8.6). Số lạ bị từ chối và model được yêu cầu sửa; luật này chặn số bịa và số tính sai, **không** chặn lỗi logic (ví dụ áp nhầm khuyến mãi).
 
 ## 5. Chạy thật, từng bước (PowerShell)
 
@@ -184,9 +187,35 @@ Phiên riêng, local, tuần tự, giới hạn 24 request LLM và 24 request em
 
 Cách đọc: đây là mẫu **rất nhỏ (n = 1 mỗi câu)**, nên 6/9 không phải tỉ lệ đúng của hệ thống. Ba lỗi cần biết: (1) lỗi retrieval S15 sửa được bằng `top_k: 4` (chưa áp dụng, chưa kiểm với LLM); (2) lỗi lập luận S09 và (3) thông tin thừa/trích nguồn thừa ở S18 là hành vi của `qwen3:8b`, chưa chỉnh mission vì chưa có cách kiểm lại trong giới hạn request của phiên.
 
+### 8.6 Sửa sau khi giảng viên chấm thử: câu tính toán (câu 4) và câu ngoài KB (câu 5)
+
+Hai câu trong bảng chấm của giảng viên cho kết quả sai khi chạy thật bằng chat box:
+
+- **Câu 4** (thành viên Sunrise Plus khám tim mạch, đáp án 540,000 VND): bot trả "600,000 VND" dù nói giảm 10% có áp dụng (hoặc 510,000 do tính sai).
+- **Câu 5** (dental check-up, phải từ chối): bot **bịa giá** bằng giá khám tổng quát 250,000 VND ("Made it up", 0 điểm).
+
+Đã sửa (tổng quát, không viết riêng cho hai câu này):
+
+1. **Mission, luật 7:** một dịch vụ không được nêu tên trong chunk thì không được dùng giá dịch vụ khác; chỉ nói KB không cung cấp, không thêm thông tin thừa.
+2. **Tool `calculate`** (`src/tools/calculate.js`): số học chính xác bằng phân số BigInt (`600000 * 0.9` = đúng 540000, không sai số dấu phẩy động), bộ phân tích riêng, **không `eval`**; từ chối mã, `%`, lũy thừa, chia 0, số quá lớn.
+3. **Luật số tiền có nguồn** (`calculate.checkFinal`): mọi số tiền ở câu trả lời cuối phải có trong chunk đã hiển thị hoặc là kết quả tính. Khi từ chối, backend tự làm phép "số tiền − %" trên các số mà **chính câu trả lời nêu và có thật trong chunk**, đưa kết quả vào thông báo sửa lỗi (ví dụ "600,000 less 10% = 540,000") và ghi vào `run.calculations` (`via: hint`). Model chỉ cần chép số.
+
+**Vì sao phải ở backend:** thử bốn cách trên `qwen3:8b` thật, mỗi cách vài lượt: (a) chỉ viết công thức trong mission: ra 510,000 (sai) hai lần liên tiếp; (b) bảo model gọi `calculate`: nó không gọi và còn bịa "standard fee 666,666.67"; (c) bắt buộc dùng tool nhưng không có gợi ý: model tính **đúng 540,000** nhưng không gọi tool nên bị từ chối ba lần, run thất bại (bác nhầm một câu đúng); (d) luật + gợi ý do backend tính: **540,000, đạt** (n = 1).
+
+**Kết quả cuối trên code cuối (model thật, mỗi câu 1 lần):**
+
+| Câu | Kết quả | Ghi chú |
+| --- | --- | --- |
+| 4 (member + cardiology) | **540,000 VND, trích §4 và §8** | 3 request (1 lần bị từ chối rồi được gợi ý) |
+| 5 (dental) | Từ chối, **nhưng thêm "closest related information"** (phí khám tổng quát) và trích nguồn | Lần chạy trước (mission cũ hơn) từ chối sạch. Điểm có thể là Refused 1 hoặc Hedged 0,5 tùy giảng viên; chưa sửa dứt điểm |
+| Pediatrics (dịch vụ **có** trong KB) | 400,000 VND, không từ chối nhầm | Kiểm tra luật từ chối không làm bot né câu hợp lệ |
+
+Phiên sửa lỗi này dùng đủ 24/24 request LLM nên **không thử thêm được**. Các điều chưa kiểm: độ ổn định lặp lại của câu 4, các câu giảm giá khác (bé dưới 6 tuổi, thành viên + da liễu) trên model thật, và một cách chữa dứt điểm cho câu 5.
+
 ## 9. Giới hạn và rủi ro đã biết
 
 0. **Digest model đổi ⇒ phải tạo lại index.** Đã xảy ra thật: sau khi tôi tạo index, Ollama báo hai mục `embeddinggemma:latest` với digest khác (kèm một mục `llamacpp:…`) và `rag:retrieve` từ chối index cũ (`The installed embeddinggemma … differs from the one that built the index`). Chạy lại `npm run rag:index -- --task=sunrise-clinic-rag` (1 request) rồi restart server; điểm cosine đo lại **y hệt** (0,5570 / 0,5183 / 0,3559 cho câu S01) nên các số đo ở 8.4 vẫn đúng. Đây là kiểm tra an toàn đang hoạt động, không phải lỗi.
+0b. **Số học và câu ngoài KB phụ thuộc model.** `qwen3:8b` (không bật suy luận) đã tính 510,000 thay vì 540,000, bỏ qua khuyến mãi, và đôi khi thêm thông tin "liên quan" khi từ chối. Backend chặn số bịa/số tính sai và đưa số đúng cho model chép, nhưng **không** hiểu logic (áp nhầm khuyến mãi vẫn qua nếu số suy ra được từ chunk).
 1. **Mẫu end-to-end rất nhỏ.** 9 lượt, mỗi câu 1 lần (mục 8.5); chưa đo độ ổn định lặp lại. LLM tự viết query nên kết quả truy xuất khác phép đo 8.4 (dùng câu hỏi làm query). Muốn kết luận chắc hơn cần phiên mới (`rag:eval --live`, cần bạn đồng ý).
 2. **Backend giữ section 1 và 10** luôn có trong ngữ cảnh. Đây là chính sách vì section 10 ghi đè các section khác, không phải do cosine. Nếu thầy đổi KB, hãy đổi `required_sections`.
 3. **Grounding chỉ đảm bảo nguồn trích đã từng được hiển thị**, không đảm bảo câu trả lời đúng. PASS tự động không kiểm mọi mệnh đề văn xuôi (xem S09, S07).

@@ -20,7 +20,7 @@ const document = { createElement: (tag) => new FakeNode(tag) };
 const item = (over = {}) => ({ source_id: 'kb-b-s04-c1', section: '4. Consultation Fees', chunk: '1/1', match: 'semantic', rank: 1, score: 0.8123, text: 'Dermatology: 450,000 VND', ...over });
 const view = (over = {}) => ({
   run_id: 'r1', task_id: 'sunrise-clinic-rag', status: 'completed', cited_source_ids: ['kb-b-s10-c1'],
-  calls: [{ query: 'dermatology fee', index_id: 'a'.repeat(64), omitted_semantic_matches: 1, items: [item(), item({ source_id: 'kb-b-s10-c1', section: '10. Updates', match: 'required', rank: 7, score: 0.2, text: 'New fee 520,000 VND' })] }],
+  calls: [{ query: 'dermatology fee', index_id: 'a'.repeat(64), omitted_semantic_matches: 1, items: [item(), item({ source_id: 'kb-b-s10-c1', section: '10. Updates', match: 'required', rank: 7, score: 0.2, text: 'New fee 500,000 VND' })] }],
   embeddings: { requests: 1, failed: 0, ms: 420, limits: { requests: 3 }, tokens: { reported_input: null } }, ...over,
 });
 
@@ -73,7 +73,7 @@ test('the print sheet carries run, task, model, embedding identity, accounting a
   const sheet = new FakeNode('section');
   renderPrintSheet(document, sheet, view(), { task: 'Sunrise', model: 'Live gemma', goal: 'How much is dermatology?', embedding: 'embeddinggemma (embeddinggemma-v1)' });
   const text = sheet.textContent;
-  for (const needle of ['Retrieved chunks', 'r1', 'Sunrise', 'Live gemma', 'How much is dermatology?', 'embeddinggemma (embeddinggemma-v1)', 'embedding HTTP request(s)', 'kb-b-s10-c1', 'Dermatology: 450,000 VND', 'New fee 520,000 VND']) assert.ok(text.includes(needle), needle);
+  for (const needle of ['Retrieved chunks', 'r1', 'Sunrise', 'Live gemma', 'How much is dermatology?', 'embeddinggemma (embeddinggemma-v1)', 'embedding HTTP request(s)', 'kb-b-s10-c1', 'Dermatology: 450,000 VND', 'New fee 500,000 VND']) assert.ok(text.includes(needle), needle);
   renderPrintSheet(document, sheet, view(), { task: 'x', model: 'y', goal: 'z', embedding: null });
   assert.ok(sheet.textContent.includes('unavailable'), 'unknown embedding identity is stated, not invented');
 });

@@ -769,6 +769,14 @@ Mở [embedding.js](../src/rag/embedding.js) (`createOllamaEmbedder`, `applyTemp
 
 Không nói: “đã đúng mọi câu”, “grounding đảm bảo đúng”, “đã demo-ready” (chưa có case nào đạt 3 lần liên tiếp), hay “dự phòng đã xác minh”.
 
+### Q77. Vì sao có tool `calculate` và luật "số tiền phải có nguồn"? Chuyện gì xảy ra khi model tính sai?
+
+**[Đã có; thử với model thật n = 1]** `qwen3:8b` (không bật suy luận) nêu đúng dữ kiện nhưng hay làm sai bước cuối: tính 510,000 thay vì 540,000, hoặc chốt 600,000 dù nói giảm 10% có áp dụng. Câu "thành viên Sunrise Plus khám tim mạch" của giảng viên bị đúng lỗi này.
+
+**Đáp án 20 giây:** “Em không để LLM tự làm toán. Backend có tool `calculate` làm số học chính xác bằng phân số BigInt, không dùng eval. Ngoài ra mọi số tiền trong câu trả lời cuối phải được trích từ chunk hoặc do backend tính. Số lạ bị từ chối, và backend tự tính sẵn ‘600,000 giảm 10% = 540,000’ từ các số mà chính câu trả lời nêu và có thật trong chunk, để model chỉ chép lại. Luật này chặn số bịa và số sai, nhưng không hiểu logic: nếu model áp nhầm khuyến mãi mà số vẫn suy ra được từ chunk thì vẫn qua.”
+
+Mở [calculate.js](../src/tools/calculate.js) (`evaluate`, `checkFinal`) và [calculate.test.js](../tests/calculate.test.js). Em đã thử bốn cách trên model thật: chỉ viết công thức (sai hai lần), bảo gọi tool (model không gọi), bắt buộc tool không gợi ý (bác nhầm một câu tính đúng, run thất bại), luật cộng gợi ý (đúng 540,000, một lần chạy). Bài học: luật ở backend đáng tin hơn lời nhắc, nhưng phải đo lại trên model thật.
+
 ## 14. Học trên điện thoại và cập nhật bản HTML
 
 File **ORAL_EXAM_STUDY.html** là bản học standalone sinh từ tài liệu này. Toàn bộ câu hỏi/đáp án, CSS/JS và font có sẵn trong file; không fetch API, không gọi LLM, không cần key hoặc CDN. Link tài liệu chính thức chỉ dùng mạng khi bạn chủ động mở. Bản thân HTML không chứng minh các tests/live được chạy lại.

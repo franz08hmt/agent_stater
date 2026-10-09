@@ -59,8 +59,9 @@ export async function createMockHarness({ reference, root = ROOT, ollama = {}, b
         if (!ref) throw new Error(`No reference answer for case ${testCase.id}.`);
         mock.model = createScriptedModel([
           JSON.stringify({ type: 'tool_call', tool: 'search_kb', arguments: { query: ref.query } }),
+          ...(ref.calc ? [JSON.stringify({ type: 'tool_call', tool: 'calculate', arguments: { expression: ref.calc } })] : []),
           (messages) => {
-            const shown = new Set(messages.at(-1).content.match(/kb-b-s\d{2}-c\d+/g) ?? []);
+            const shown = new Set(messages.map((m) => m.content).join(' ').match(/kb-b-s\d{2}-c\d+/g) ?? []);
             return JSON.stringify({ type: 'final', answer: ref.answer, source_ids: ref.source_ids.filter((id) => shown.has(id)), unresolved: ref.unresolved ?? '' });
           },
         ]);

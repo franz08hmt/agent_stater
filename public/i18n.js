@@ -7,6 +7,7 @@ export const VI = Object.freeze({
   'Save a draft from note sources after approval.': 'Lưu bản nháp từ nguồn ghi chú sau phê duyệt.',
   'Save an internal proposal after approval; changes are not applied.': 'Lưu đề xuất nội bộ sau phê duyệt; chưa áp dụng thay đổi.',
   'Check available equipment quantity; no actual loan or booking.': 'Kiểm tra số lượng thiết bị khả dụng; không cho mượn hoặc đặt chỗ thật.',
+  'Exact arithmetic on numbers copied from the knowledge base.': 'Tính toán chính xác trên số lấy từ cơ sở tri thức.',
   'Rephrase this result': 'Diễn đạt lại kết quả này', 'Rephrase request': 'Yêu cầu diễn đạt lại', 'Rephrase': 'Diễn đạt lại', 'Rephrasing…': 'Đang diễn đạt lại…',
   'Translate the previous answer into English.': 'Giải thích lại bằng tiếng Việt.',
   'This result only; no tools or new business work. Separate budget: 3 calls per run.': 'Chỉ kết quả này; không gọi tool hoặc làm nghiệp vụ mới. Ngân sách riêng: 3 lượt mỗi run.',
@@ -61,7 +62,8 @@ export const VI = Object.freeze({
 let locale = 'en';
 export const TOOL_HINTS = Object.freeze({ search_notes: 'Search allowed notes using BM25 keywords.', query_dataset: 'Lookup, filter, count, sum and compare allowed dataset snapshots.',
   compare_counts: 'Compare record counts of two groups in one dataset.', save_draft: 'Save a draft from note sources after approval.',
-  create_proposal: 'Save an internal proposal after approval; changes are not applied.', check_asset_availability: 'Check available equipment quantity; no actual loan or booking.' });
+  create_proposal: 'Save an internal proposal after approval; changes are not applied.', check_asset_availability: 'Check available equipment quantity; no actual loan or booking.',
+  calculate: 'Exact arithmetic on numbers copied from the knowledge base.' });
 export const currentLocale = () => locale;
 export function setLocale(value) { locale = ['vi','en'].includes(value) ? value : 'en'; }
 const ERRORS = { request_budget: ['Request budget exhausted.', 'Hết ngân sách request.'], token_budget: ['Token planning budget exhausted.', 'Hết ngân sách dự phòng token.'],
