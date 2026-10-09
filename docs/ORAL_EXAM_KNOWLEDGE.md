@@ -717,7 +717,7 @@ Con số 1200/100 là lựa chọn thiết kế, không phải kết quả tối
 
 **Đáp án 20 giây:** “Qwen3 là model sinh văn bản, không phải embedding model. Em dùng embeddinggemma. Model này cần prefix: câu hỏi là `task: search result | query: …`, tài liệu là `title: … | text: …`. Template và `preprocessing_version` được ghi trong index; đổi chúng thì index cũ bị coi là stale.”
 
-Mở [embedding.js](../src/rag/embedding.js) (`createOllamaEmbedder`, `applyTemplate`) và `embedding_profiles` trong [catalog.json](../config/catalog.json). Máy chưa cài model thì `rag:index` in `BLOCKED … ollama pull embeddinggemma` và thoát mã 3 (không tự tải). Trên máy tác giả: digest `85462619ee72`, 768 chiều, 1 request lập index. Khởi động nguội ~31 s > timeout tool 5 s nên phải nạp sẵn model bằng một lệnh `rag:retrieve`.
+Mở [embedding.js](../src/rag/embedding.js) (`createOllamaEmbedder`, `applyTemplate`) và `embedding_profiles` trong [catalog.json](../config/catalog.json). Máy chưa cài model thì `rag:index` in `BLOCKED … ollama pull embeddinggemma` và thoát mã 3 (không tự tải). Trên máy tác giả: 768 chiều, 1 request lập index; Ollama từng đổi digest của cùng tên model và `rag:retrieve` từ chối index cũ cho đến khi `rag:index` lại (vector đo lại cho điểm cosine y hệt). Khởi động nguội ~31 s > timeout tool 5 s nên phải nạp sẵn model bằng một lệnh `rag:retrieve`.
 
 ### Q70. Vector store và cosine hoạt động thế nào? Vì sao không dùng ANN?
 

@@ -9,7 +9,7 @@ Tài liệu này là hợp đồng vận hành của bài thi. Mọi mục dư�
 | Phần | Trạng thái |
 | --- | --- |
 | Code RAG, UI debug, in chunk, CLI, grader, tests, QA browser | Hoàn thành và kiểm chứng offline/browser (số liệu ở mục 8) |
-| **Embedding thật `embeddinggemma`** | **Đã cài và đã chạy thật** (digest `85462619ee72`, 768 chiều). Index thật tạo bằng 1 request; truy xuất thật đo trên 16 câu: **15/16** đủ section cần thiết (mục 8.4). **Chưa chạy end-to-end LLM + embedding thật** |
+| **Embedding thật `embeddinggemma`** | **Đã cài và đã chạy thật** (768 chiều; digest ghi trong index). Index thật tạo bằng 1 request; truy xuất thật đo trên 16 câu: **15/16** đủ section cần thiết (mục 8.4). **Chưa chạy end-to-end LLM + embedding thật** |
 | LLM thật `qwen3:8b` | Chạy local ở chế độ **HYBRID** (LLM thật + embedding **giả**), 8 câu, mục 8.3. Cap generation của đợt đã dùng 22/24 nên **chưa chạy cùng embedding thật** |
 | Model dự phòng `qwen3:4b` | Warm và probe giao thức **PASS**; một câu Sunrise thật trả JSON không hợp lệ ở lượt cuối và chưa kịp repair do hết cap. **Chưa xác minh là dự phòng dùng được** |
 | Push / nộp form | Nhánh đã được push lên `origin` theo yêu cầu của bạn; **nộp form/doc là việc của bạn** |
@@ -163,6 +163,7 @@ Hai điều rút ra:
 
 ## 9. Giới hạn và rủi ro đã biết
 
+0. **Digest model đổi ⇒ phải tạo lại index.** Đã xảy ra thật: sau khi tôi tạo index, Ollama báo hai mục `embeddinggemma:latest` với digest khác (kèm một mục `llamacpp:…`) và `rag:retrieve` từ chối index cũ (`The installed embeddinggemma … differs from the one that built the index`). Chạy lại `npm run rag:index -- --task=sunrise-clinic-rag` (1 request) rồi restart server; điểm cosine đo lại **y hệt** (0,5570 / 0,5183 / 0,3559 cho câu S01) nên các số đo ở 8.4 vẫn đúng. Đây là kiểm tra an toàn đang hoạt động, không phải lỗi.
 1. **Chưa chạy LLM + embedding thật cùng nhau.** Truy xuất thật đã đo (mục 8.4) nhưng dùng câu hỏi làm query; LLM tự viết query nên có thể khác. Các kết quả LLM ở mục 8.3 dùng encoder giả. Bước tiếp theo: `rag:eval --live` (phiên mới, cần bạn đồng ý vì cap 24 generation của đợt này đã dùng 22; thêm `--embedding-spent=16` để cap embedding tính cả 16 query đo ở mục 8.4).
 2. **Backend giữ section 1 và 10** luôn có trong ngữ cảnh. Đây là chính sách vì section 10 ghi đè các section khác, không phải do cosine. Nếu thầy đổi KB, hãy đổi `required_sections`.
 3. **Grounding chỉ đảm bảo nguồn trích đã từng được hiển thị**, không đảm bảo câu trả lời đúng. PASS tự động không kiểm mọi mệnh đề văn xuôi (xem S09, S07).

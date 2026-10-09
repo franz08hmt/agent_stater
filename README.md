@@ -7,7 +7,7 @@ Task `sunrise-clinic-rag` trả lời câu hỏi bệnh nhân **chỉ từ** Pat
 | Thành phần | Giá trị |
 | --- | --- |
 | LLM | Ollama local `qwen3:8b` (profile `ollama-qwen3`); dự phòng `qwen3:4b` (chưa xác minh đầy đủ) hoặc profile `env` trong `.env` |
-| Embedding model | `embeddinggemma` qua Ollama `/api/embed` (digest `85462619ee72`, 768 chiều); đã cài và có index thật trên máy tác giả. Máy khác: `ollama pull embeddinggemma` |
+| Embedding model | `embeddinggemma` qua Ollama `/api/embed` (768 chiều; digest của bản đã cài được ghi vào index); đã cài và có index thật trên máy tác giả. Máy khác: `ollama pull embeddinggemma` rồi `rag:index` |
 | Chunk | mỗi section `## N.` một chunk, tối đa **1200 ký tự**, overlap **100** ký tự (ký tự, không phải token) → 11 chunk |
 | Truy xuất | exact cosine (O(N×d), không ANN), top-k **3** + section **1** và **10** do backend luôn thêm; tối đa 6 chunk/6000 ký tự |
 | Vector store | `var/rag/sunrise-clinic-rag/index.json` (Git-ignored, tạo bằng `rag:index`) |
